@@ -1,10 +1,11 @@
 // Avis tab — ported from src/admin/views/PresProfile.tsx (tAvis) and
-// logic.ts profileReviews / setReviewFilter / openReviewPres.
+// logic.ts profileReviews / setReviewFilter / openReviewPres. Rows and the
+// rating roll-up come from GET /prestataires/{companyId} (see fromFiche).
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
 import { useT } from '@/lib/i18n';
-import { useReviews } from '../../api/reviews';
-import { presStats, starsOf, withDay } from './lib';
+import { starsOf } from './lib';
+import type { AvisView } from './fromFiche';
 
 type ReviewFilter = 'all' | 'client' | 'de9de9';
 
@@ -14,32 +15,22 @@ const SRC_META: Record<'client' | 'de9de9', { key: 'sourceClient' | null; bg: st
 };
 
 interface AvisPanelProps {
-  presId: string;
-  fallbackRating: number;
+  avis: AvisView;
   onAddReview: () => void;
 }
 
-export function AvisPanel({ presId, fallbackRating, onAddReview }: AvisPanelProps) {
+export function AvisPanel({ avis, onAddReview }: AvisPanelProps) {
   const t = useT();
   const [filter, setFilter] = useState<ReviewFilter>('all');
-  const reviewsQ = useReviews(presId);
 
-  const all = reviewsQ.data ?? [];
-  const st = presStats(all);
-  const list = filter === 'all' ? all : all.filter((r) => r.source === filter);
-
-  const avgNum = st.count ? st.avg : fallbackRating;
-  const avgRating = st.count
-    ? st.avg.toFixed(1)
-    : fallbackRating
-      ? fallbackRating.toFixed(1)
-      : '—';
-  const avgStars = starsOf(Math.round(avgNum));
+  const list = filter === 'all' ? avis.rows : avis.rows.filter((r) => r.source === filter);
+  const avgRating = avis.count ? avis.avg.toFixed(1) : '—';
+  const avgStars = starsOf(Math.round(avis.avg));
 
   const filters: { key: ReviewFilter; label: string; n: number }[] = [
-    { key: 'all', label: t('tous'), n: st.count },
-    { key: 'client', label: t('reviewClients'), n: st.nClient },
-    { key: 'de9de9', label: 'de9de9', n: st.nDe9 },
+    { key: 'all', label: t('tous'), n: avis.count },
+    { key: 'client', label: t('reviewClients'), n: avis.nClient },
+    { key: 'de9de9', label: 'de9de9', n: avis.nDe9 },
   ];
 
   return (
@@ -59,7 +50,7 @@ export function AvisPanel({ presId, fallbackRating, onAddReview }: AvisPanelProp
         <div className="flex-none text-center">
           <div className="text-[30px] leading-none font-extrabold text-de9-ink">{avgRating}</div>
           <div className="mt-[3px] text-[11px] text-de9-gray">
-            {st.count} {t('surNAvis')}
+            {avis.count} {t('surNAvis')}
           </div>
         </div>
         <div className="min-w-0 flex-1">
@@ -109,9 +100,7 @@ export function AvisPanel({ presId, fallbackRating, onAddReview }: AvisPanelProp
                 <div className="text-[13px] tracking-[1px] text-[#F2A93B]">{starsOf(rv.note)}</div>
               </div>
               <div className="mt-[7px] text-[12.5px] leading-normal text-de9-slate">{rv.comment}</div>
-              <div className="mt-1.5 text-[10.5px] text-de9-gray">
-                {rv.service} · {withDay(rv.date, t)}
-              </div>
+              <div className="mt-1.5 text-[10.5px] text-de9-gray">{rv.sub}</div>
             </div>
           );
         })}

@@ -1,7 +1,8 @@
-// Prestataire profile overlay — ported from src/admin/views/PresProfile.tsx +
-// logic.ts renderVals profile section (buildPresFicheExtra, profileReviews,
-// buildContractVM, synthPres). Opened via the '?pres=' search param
-// (prestataire id or name); closing clears the param.
+// Prestataire profile overlay — every tab is driven by one request,
+// GET /prestataires/{companyId} (fiche + avis + dossier); `fromFiche` maps that
+// payload onto the view-models below. Visual ground truth:
+// src/admin/views/PresProfile.tsx. Opened via the '?pres=' search param
+// (company id, or a mock id / name offline); closing clears the param.
 import { useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
@@ -11,31 +12,22 @@ import { cn } from '@/lib/utils';
 import { Dialog, DialogOverlay, DialogPortal, DialogTitle } from '@/components/ui/dialog';
 import { useL, useT } from '@/lib/i18n';
 import { uiActions } from '@/stores/uiStore';
-import { usePrestataires } from '../api/prestataires';
-import { useReviews } from '../api/reviews';
-import { useKyc } from '../api/kyc';
-import type { KycAuditEntry, KycStatus } from '../schemas/prestataire';
+import { usePrestataireFiche } from '../api/prestataires';
+import type { KycAuditEntry, KycDoc, KycStatus } from '../schemas/prestataire';
 import { selectionActions, useSelectionStore } from '../stores/selectionStore';
 import { ReviewModal } from './ReviewModal';
-import { useAllCommandesForProfile, useCreditsForProfile } from './profile/data';
+import { KYC_LABEL_FR, nowStamp } from './profile/lib';
 import {
-  FAM_COLOR,
-  FAM_LABEL,
-  KYC_LABEL_FR,
-  catMeta,
-  facturesForMissions,
-  fmtMoney,
-  missionLine,
-  nowStamp,
-  ouvriersForMissions,
-  presStats,
-  subjectFromPres,
-  synthSubject,
-  tarifLabel,
-  withDay,
-} from './profile/lib';
-import type { ProfileSubject } from './profile/lib';
-import { useContractsStore } from './profile/contractsStore';
+  avisView,
+  contratView,
+  equipeRows,
+  factureRows,
+  kycView,
+  missionRows,
+  profileVM,
+  statCards,
+  versementRows,
+} from './profile/fromFiche';
 import { KycPanel } from './profile/KycPanel';
 import { ContratPanel } from './profile/ContratPanel';
 import { AvisPanel } from './profile/AvisPanel';
@@ -53,7 +45,7 @@ type ProfileTab =
   | 'equipe'
   | 'stats';
 
-/** Reads '?pres=' (id or name) and renders the profile overlay; closing clears the param. */
+/** Reads '?pres=' and renders the profile overlay; closing clears the param. */
 export function PresProfileHost() {
   const [searchParams, setSearchParams] = useSearchParams();
   const presParam = searchParams.get('pres');
@@ -104,6 +96,18 @@ function ErrorBlock() {
   );
 }
 
+/** One label/value pair of the identity block. */
+function InfoField({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-xl bg-secondary px-3 py-2.5">
+      <div className="text-[10px] font-extrabold tracking-[.04em] text-de9-gray uppercase">
+        {label}
+      </div>
+      <div className="mt-[3px] text-[12.5px] font-bold text-de9-ink">{value || '—'}</div>
+    </div>
+  );
+}
+
 // ---------- profile ----------
 
 function PresProfile({ presParam, onClose }: { presParam: string; onClose: () => void }) {
@@ -115,80 +119,76 @@ function PresProfile({ presParam, onClose }: { presParam: string; onClose: () =>
   const [piece, setPiece] = useState<PieceView | null>(null);
   const [reviewOpen, setReviewOpen] = useState(false);
 
-  // KYC status / motif / replaced doc names have no API endpoint — they stay
-  // client-side exactly like the prototype's local state (logic.ts setKycStatus,
-  // setKycMotif, replaceKycDoc), layered over the fetched KYC state.
+  // KYC is read-only server-side: status, motif, and every piece edit stay
+  // client-side exactly like the prototype (logic.ts setKycStatus / setKycMotif
+  // / addKycDoc / replaceKycDoc / removeKycDoc), layered over dossier.kyc.
   const [kycStatusLocal, setKycStatusLocal] = useState<KycStatus | null>(null);
   const [kycMotifLocal, setKycMotifLocal] = useState<string | null>(null);
   const [kycLocalAudit, setKycLocalAudit] = useState<KycAuditEntry[]>([]);
   const [kycDocNames, setKycDocNames] = useState<Record<string, string>>({});
+  const [kycAddedDocs, setKycAddedDocs] = useState<KycDoc[]>([]);
+  const [kycRemovedDocs, setKycRemovedDocs] = useState<string[]>([]);
 
-  const presQ = usePrestataires();
-  const cmdsQ = useAllCommandesForProfile();
-  const creditsQ = useCreditsForProfile();
-
-  // logic.ts renderVals — resolve by id, then by name, else synthPres()
-  const subject: ProfileSubject | null = useMemo(() => {
-    if (!presQ.data) return null;
-    const p =
-      presQ.data.find((x) => x.id === presParam) ??
-      presQ.data.find((x) => x.name === presParam);
-    if (p) return subjectFromPres(p);
-    const missions = (cmdsQ.data ?? []).filter((c) => c.prestataire?.name === presParam);
-    return synthSubject(presParam, missions);
-  }, [presQ.data, cmdsQ.data, presParam]);
-
-  const subjectId = subject?.id ?? '';
-  const subjectName = subject?.name ?? '';
-
-  const reviewsQ = useReviews(subjectId || undefined);
-  const kycKey = 'pres:' + subjectId;
-  const kycQ = useKyc(subjectId ? kycKey : '');
-  const contract = useContractsStore((s) => (subjectId ? s.contracts[subjectId] : undefined));
+  const ficheQ = usePrestataireFiche(presParam);
+  const payload = ficheQ.data ?? null;
   const selected = useSelectionStore((s) => s.selected);
 
+  const vm = useMemo(() => (payload ? profileVM(payload) : null), [payload]);
+  const kycServer = useMemo(() => (payload ? kycView(payload.dossier?.kyc, t) : null), [payload, t]);
+  const avis = useMemo(() => (payload ? avisView(payload, t) : null), [payload, t]);
   const missions = useMemo(
-    () => (cmdsQ.data ?? []).filter((c) => c.prestataire?.name === subjectName),
-    [cmdsQ.data, subjectName],
+    () => missionRows(payload?.dossier?.commandes ?? [], t),
+    [payload, t],
+  );
+  const factures = useMemo(() => factureRows(payload?.dossier?.factures ?? [], t), [payload, t]);
+  const versements = useMemo(
+    () => versementRows(payload?.dossier?.versements ?? [], t),
+    [payload, t],
+  );
+  const equipe = useMemo(() => equipeRows(payload?.dossier?.equipe ?? [], t), [payload, t]);
+  const contrat = useMemo(() => contratView(payload?.dossier?.contrat), [payload]);
+  const stats = useMemo(
+    () => (payload && vm ? statCards(payload, vm, t) : []),
+    [payload, vm, t],
   );
 
-  const st = presStats(reviewsQ.data ?? []);
-  const factures = facturesForMissions(missions, t);
-  const versements = (creditsQ.data ?? []).filter(
-    (r) => r.type === 'vers' && r.benef === subjectName,
-  );
-  const ouvriers = ouvriersForMissions(missions);
-  const statCa = factures.reduce((s, f) => s + f.montantNum, 0);
+  const companyId = vm?.companyId ?? presParam;
+  const presName = vm?.name ?? '';
 
   // ---------- kyc (server state + local overlay) ----------
-  const kycStatus = kycStatusLocal ?? kycQ.data?.status ?? 'pending';
-  const kycMotif = kycMotifLocal ?? kycQ.data?.motif ?? '';
-  const kycDocs = (kycQ.data?.docs ?? []).map((d) =>
-    kycDocNames[d.id] ? { ...d, name: kycDocNames[d.id] ?? d.name } : d,
-  );
-  const kycAudit = [...kycLocalAudit, ...(kycQ.data?.audit ?? [])];
+  const kycStatus = kycStatusLocal ?? kycServer?.status ?? 'pending';
+  const kycMotif = kycMotifLocal ?? kycServer?.motif ?? '';
+  const kycDocs = [...(kycServer?.docs ?? []), ...kycAddedDocs]
+    .filter((d) => !kycRemovedDocs.includes(d.id))
+    .map((d) => (kycDocNames[d.id] ? { ...d, name: kycDocNames[d.id] ?? d.name } : d));
+  const kycAudit = [...kycLocalAudit, ...(kycServer?.audit ?? [])];
+
+  const logKyc = (action: string) =>
+    setKycLocalAudit((prev) => [{ who: 'Karim', action, date: nowStamp() }, ...prev]);
 
   const setKycStatus = (status: KycStatus) => {
     const lbl = KYC_LABEL_FR[status];
     setKycStatusLocal(status);
-    setKycLocalAudit((prev) => [
-      {
-        who: 'Karim',
-        action: 'Statut → ' + lbl + (kycMotif ? ' (' + kycMotif + ')' : ''),
-        date: nowStamp(),
-      },
-      ...prev,
-    ]);
+    logKyc('Statut → ' + lbl + (kycMotif ? ' (' + kycMotif + ')' : ''));
     toast.success(t('commonKycToastStatut').replace('{n}', lbl));
+  };
+
+  const addKycDoc = (label: string, fileName: string) => {
+    setKycAddedDocs((prev) => [...prev, { id: 'local:' + fileName, label, name: fileName }]);
+    logKyc('Ajout document · ' + fileName);
+    toast.success(t('docToastAjoute'));
   };
 
   const replaceKycDoc = (docId: string, fileName: string) => {
     setKycDocNames((prev) => ({ ...prev, [docId]: fileName }));
-    setKycLocalAudit((prev) => [
-      { who: 'Karim', action: 'Remplacement document · ' + fileName, date: nowStamp() },
-      ...prev,
-    ]);
+    logKyc('Remplacement document · ' + fileName);
     toast.success(t('docToastRemplace'));
+  };
+
+  const removeKycDoc = (docId: string) => {
+    setKycRemovedDocs((prev) => [...prev, docId]);
+    logKyc('Suppression document');
+    toast.success(t('docToastSupprime'));
   };
 
   const openPiece = (title: string, fileName: string) => setPiece({ title, fileName });
@@ -203,7 +203,7 @@ function PresProfile({ presParam, onClose }: { presParam: string; onClose: () =>
 
   // logic.ts addCandidate
   const addCandidate = () => {
-    if (!selected.includes(subjectId)) selectionActions.toggle(subjectId);
+    if (!selected.includes(companyId)) selectionActions.toggle(companyId, presName);
     toast.success(t('presToastAjouteCandidats'));
   };
 
@@ -213,13 +213,7 @@ function PresProfile({ presParam, onClose }: { presParam: string; onClose: () =>
     navigate('/commandes/' + id);
   };
 
-  // ---------- header derivations (logic.ts renderVals profile) ----------
-  const fam = subject ? (catMeta(subject.cat)?.fam ?? 'NOIR') : 'NOIR';
-  const famColor = FAM_COLOR[fam];
-  const co = subject ? catMeta(subject.cat) : null;
-  const rating = subject ? (st.avg || subject.rating || 0).toFixed(1) : '0.0';
-  const reviewCount = subject ? st.count || subject.reviews : 0;
-  const signed = contract?.status === 'signed';
+  const signed = contrat?.signed ?? false;
 
   const tabs: { key: ProfileTab; label: string }[] = [
     { key: 'infos', label: t('commonTabInfos') },
@@ -249,9 +243,9 @@ function PresProfile({ presParam, onClose }: { presParam: string; onClose: () =>
           }}
           className="fixed start-1/2 top-1/2 z-[92] max-h-[90vh] w-full max-w-[calc(100%-24px)] -translate-x-1/2 -translate-y-1/2 animate-sheet-up overflow-y-auto rounded-[22px] bg-card text-de9-ink shadow-[0_30px_70px_rgba(20,30,45,.35)] outline-none sm:w-[calc(100%-48px)] sm:max-w-[560px] rtl:translate-x-1/2"
         >
-          {!subject ? (
+          {!vm || !avis ? (
             <div className="px-4 py-6 sm:px-[26px]">
-              {presQ.isError ? <ErrorBlock /> : <PanelSkeleton rows={4} />}
+              {ficheQ.isError ? <ErrorBlock /> : <PanelSkeleton rows={4} />}
             </div>
           ) : (
             <>
@@ -260,22 +254,24 @@ function PresProfile({ presParam, onClose }: { presParam: string; onClose: () =>
                 <div className="flex items-center gap-3.5">
                   <div
                     className="flex h-14 w-14 flex-none items-center justify-center rounded-[15px] text-[18px] font-extrabold text-white"
-                    style={{ background: famColor }}
+                    style={{ background: vm.famColor }}
                   >
-                    {subject.init}
+                    {vm.init}
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
                       <DialogTitle className="font-sans text-[19px] leading-normal font-extrabold text-de9-ink">
-                        {subject.name}
+                        {vm.name}
                       </DialogTitle>
-                      <span
-                        className="rounded-full px-2 py-[3px] text-[10px] font-extrabold text-white"
-                        style={{ background: famColor }}
-                      >
-                        {FAM_LABEL[fam]}
-                      </span>
-                      {subject.kyc && (
+                      {vm.famLabel && (
+                        <span
+                          className="rounded-full px-2 py-[3px] text-[10px] font-extrabold text-white"
+                          style={{ background: vm.famColor }}
+                        >
+                          {vm.famLabel}
+                        </span>
+                      )}
+                      {vm.kycVerifie && (
                         <span className="rounded-full bg-[#E7F6EE] px-2 py-[3px] text-[10px] font-extrabold text-[#2FA86A] dark:bg-[#2FA86A]/15 dark:text-[#6FCF97]">
                           ✓ KYC
                         </span>
@@ -291,20 +287,20 @@ function PresProfile({ presParam, onClose }: { presParam: string; onClose: () =>
                       </span>
                     </div>
                     <div className="mt-[3px] text-[12.5px] text-de9-gray">
-                      ★ {rating} · {reviewCount} {t('surNAvis')} · {subject.missions}{' '}
-                      {t('presMissionsCount')} · {subject.sat}
+                      ★ {vm.rating} · {avis.count || vm.reviewCount} {t('surNAvis')} · {vm.missions}{' '}
+                      {t('presMissionsCount')} · {vm.satisfaction}
                     </div>
                   </div>
                 </div>
                 <div className="mt-4 flex flex-wrap gap-[9px]">
                   <a
-                    href={'tel:+213' + subject.phone.replace(/^0/, '')}
+                    href={'tel:' + vm.phone.replace(/\s/g, '')}
                     className="min-w-[90px] flex-1 rounded-xl border-[1.5px] border-de9-line bg-card py-[11px] text-center text-[12.5px] font-bold text-de9-slate no-underline"
                   >
                     📞 {t('tel')}
                   </a>
                   <a
-                    href={'https://wa.me/' + subject.wa}
+                    href={vm.waUrl}
                     target="_blank"
                     rel="noreferrer"
                     className="min-w-[90px] flex-1 rounded-xl border-[1.5px] border-de9-line bg-card py-[11px] text-center text-[12.5px] font-bold text-de9-slate no-underline"
@@ -312,7 +308,7 @@ function PresProfile({ presParam, onClose }: { presParam: string; onClose: () =>
                     💬 WhatsApp
                   </a>
                   <a
-                    href={'mailto:' + subject.email}
+                    href={'mailto:' + vm.email}
                     className="min-w-[90px] flex-1 rounded-xl border-[1.5px] border-de9-line bg-card py-[11px] text-center text-[12.5px] font-bold text-de9-slate no-underline"
                   >
                     ✉️ Email
@@ -355,41 +351,47 @@ function PresProfile({ presParam, onClose }: { presParam: string; onClose: () =>
                       <SectionLabel>{t('presFamilles')}</SectionLabel>
                       <div
                         className="mt-1.5 text-[14px] font-bold text-de9-ink"
-                        style={{ color: fam === 'NOIR' ? undefined : famColor }}
+                        style={{ color: vm.famColor }}
                       >
-                        {co ? co.icon + ' ' : ''}
-                        {co ? l(co.fr, co.ar) : '—'}
+                        {vm.categoryLabel}
                       </div>
                       <div className="mt-[2px] text-[12.5px] text-de9-slate">
-                        {subject.subs.join(' · ') || '—'}
+                        {vm.subs.join(' · ') || '—'}
                       </div>
                       <div className="mt-[2px] text-[12.5px] text-de9-slate">
-                        📍 {subject.wilayas.join(', ') || '—'}
+                        📍 {vm.zones.join(', ') || '—'}
                       </div>
+                      {vm.pitch && (
+                        <div className="mt-2 text-[12.5px] leading-normal text-de9-slate">
+                          {vm.pitch}
+                        </div>
+                      )}
                     </div>
                     <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
                       <div className="rounded-xl bg-secondary p-3 text-center">
-                        <div className="text-[16px] font-extrabold">{subject.effectif}</div>
+                        <div className="text-[16px] font-extrabold">{vm.effectif}</div>
                         <div className="text-[10px] text-de9-gray">{t('presEquipe')}</div>
                       </div>
                       <div className="rounded-xl bg-secondary p-3 text-center">
                         <div className="text-[16px] font-extrabold">
-                          {subject.anc} {t('presAns')}
+                          {vm.anciennete} {t('presAns')}
                         </div>
                         <div className="text-[10px] text-de9-gray">{t('presAnciennete')}</div>
                       </div>
                       <div className="rounded-xl bg-secondary p-3 text-center">
-                        <div className="text-[16px] font-extrabold">
-                          {tarifLabel(subject.tarif) || '—'}
-                        </div>
-                        <div className="text-[10px] text-de9-gray">{t('presTarifs')}</div>
+                        <div className="text-[16px] font-extrabold">{vm.anneeCreation}</div>
+                        <div className="text-[10px] text-de9-gray">{t('presAnneeCreation')}</div>
                       </div>
                     </div>
-                    {subject.certs.length > 0 && (
+                    <div>
+                      <SectionLabel>{t('presTarifFourchette')}</SectionLabel>
+                      <div className="mt-1.5 text-[13px] font-bold text-de9-ink">{vm.tarif}</div>
+                    </div>
+                    {vm.certifications.length > 0 && (
                       <div>
                         <SectionLabel>{t('presCertifications')}</SectionLabel>
                         <div className="mt-[7px] flex flex-wrap gap-[7px]">
-                          {subject.certs.map((ct, i) => (
+                          {vm.certifications.map((ct, i) => (
                             <span
                               key={i}
                               className="rounded-full bg-secondary px-2.5 py-[5px] text-[11px] font-bold text-de9-slate"
@@ -403,249 +405,198 @@ function PresProfile({ presParam, onClose }: { presParam: string; onClose: () =>
                     <div>
                       <SectionLabel>{t('presLangues')}</SectionLabel>
                       <div className="mt-1.5 text-[13px] text-de9-ink">
-                        {subject.langues.join(', ') || '—'}
+                        {vm.langues.join(', ') || '—'}
                       </div>
                     </div>
-                    {subject.refs.length > 0 && (
-                      <div>
-                        <SectionLabel>{t('presMissionsPassees')}</SectionLabel>
-                        <div className="mt-[7px] flex flex-col gap-[7px]">
-                          {subject.refs.map((rf, i) => (
-                            <div key={i} className="flex items-center gap-[9px] text-[12.5px]">
-                              <span className="h-[7px] w-[7px] flex-none rounded-full bg-de9-teal" />
-                              <b>{rf.client}</b>
-                              <span className="text-de9-gray">· {rf.service}</span>
-                            </div>
-                          ))}
-                        </div>
+                    <div>
+                      <SectionLabel>{t('presIdentiteLegale')}</SectionLabel>
+                      <div className="mt-[7px] grid grid-cols-2 gap-2">
+                        <InfoField label={l('Raison sociale', 'التسمية')} value={vm.legalName} />
+                        <InfoField label="RC" value={vm.rc} />
+                        <InfoField label={t('presPieceNif')} value={vm.nif} />
+                        <InfoField label={t('presPieceNis')} value={vm.nis} />
                       </div>
-                    )}
+                      {vm.address && (
+                        <div className="mt-2 text-[12.5px] text-de9-slate">📍 {vm.address}</div>
+                      )}
+                    </div>
                   </>
                 )}
 
                 {/* KYC */}
                 {tab === 'kyc' &&
-                  (kycQ.isPending ? (
+                  (ficheQ.isPending ? (
                     <PanelSkeleton />
-                  ) : kycQ.isError ? (
-                    <ErrorBlock />
                   ) : (
                     <KycPanel
-                      kycKey={kycKey}
                       status={kycStatus}
                       motif={kycMotif}
                       docs={kycDocs}
                       audit={kycAudit}
                       onStatusChange={setKycStatus}
                       onMotifChange={setKycMotifLocal}
+                      onAddDoc={addKycDoc}
                       onReplaceDoc={replaceKycDoc}
+                      onRemoveDoc={removeKycDoc}
                       onOpenPiece={openPiece}
                     />
                   ))}
 
                 {/* CONTRAT */}
-                {tab === 'contrat' && <ContratPanel presId={subjectId} onOpenPiece={openPiece} />}
+                {tab === 'contrat' && (
+                  <ContratPanel presId={companyId} contrat={contrat} onOpenPiece={openPiece} />
+                )}
 
                 {/* MISSIONS */}
-                {tab === 'missions' &&
-                  (cmdsQ.isPending ? (
-                    <PanelSkeleton />
-                  ) : cmdsQ.isError ? (
-                    <ErrorBlock />
-                  ) : (
-                    <div className="flex flex-col gap-[9px]">
-                      {missions.map((c) => {
-                        const ms = missionLine(c, t);
-                        return (
-                          <button
-                            key={ms.id}
-                            type="button"
-                            onClick={() => openCmd(ms.id)}
-                            className="flex cursor-pointer items-center gap-[11px] rounded-[13px] border-[1.5px] border-de9-line bg-card px-3.5 py-3 text-start"
-                          >
-                            <div className="min-w-0 flex-1">
-                              <div className="text-[13px] font-bold">
-                                {ms.id} · {ms.service}
-                              </div>
-                              <div className="text-[11.5px] text-de9-gray">
-                                {ms.client} · {ms.date} {ms.occLabel}
-                              </div>
-                            </div>
-                            <span
-                              className="rounded-full px-2.5 py-[5px] text-[10.5px] font-bold"
-                              style={{ background: ms.status.bg, color: ms.status.fg }}
-                            >
-                              {ms.status.label}
-                            </span>
-                            <span className="text-[15px] text-de9-gray">›</span>
-                          </button>
-                        );
-                      })}
-                      {missions.length === 0 && <EmptyState />}
-                    </div>
-                  ))}
+                {tab === 'missions' && (
+                  <div className="flex flex-col gap-[9px]">
+                    {missions.map((ms) => (
+                      <button
+                        key={ms.id}
+                        type="button"
+                        onClick={() => openCmd(ms.id)}
+                        className="flex cursor-pointer items-center gap-[11px] rounded-[13px] border-[1.5px] border-de9-line bg-card px-3.5 py-3 text-start"
+                      >
+                        <div className="min-w-0 flex-1">
+                          <div className="text-[13px] font-bold">{ms.title}</div>
+                          <div className="text-[11.5px] text-de9-gray">{ms.sub}</div>
+                        </div>
+                        <span
+                          className="rounded-full px-2.5 py-[5px] text-[10.5px] font-bold"
+                          style={{ background: ms.badge.bg, color: ms.badge.fg }}
+                        >
+                          {ms.badge.label}
+                        </span>
+                        <span className="text-[15px] text-de9-gray">›</span>
+                      </button>
+                    ))}
+                    {missions.length === 0 && <EmptyState />}
+                  </div>
+                )}
 
                 {/* FACTURES */}
-                {tab === 'factures' &&
-                  (cmdsQ.isPending ? (
-                    <PanelSkeleton />
-                  ) : cmdsQ.isError ? (
-                    <ErrorBlock />
-                  ) : (
-                    <div className="flex flex-col gap-[9px]">
-                      {factures.map((fc, i) => (
-                        <div
-                          key={i}
-                          className="flex items-center gap-[11px] rounded-[13px] border-[1.5px] border-de9-line px-3.5 py-3"
-                        >
-                          <div className="flex h-9 w-9 flex-none items-center justify-center rounded-[11px] bg-[#F4EFFB] text-[16px] dark:bg-[#7C57C7]/15">
-                            🧾
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <div className="text-[13px] font-bold">
-                              {fc.ref} · {fc.montant}{' '}
-                              <span className="text-[10px] text-de9-gray">{t('credits')}</span>
-                            </div>
-                            <div className="text-[11px] text-de9-gray">{fc.date}</div>
-                          </div>
-                          <span
-                            className="rounded-full px-2.5 py-[5px] text-[10.5px] font-bold"
-                            style={{ background: fc.status.bg, color: fc.status.fg }}
-                          >
-                            {fc.status.label}
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => openPiece(fc.title, fc.file)}
-                            className="flex-none cursor-pointer rounded-[9px] bg-de9-ink px-[11px] py-[7px] text-[11px] font-bold text-white dark:text-[#151923]"
-                          >
-                            {t('voir')}
-                          </button>
+                {tab === 'factures' && (
+                  <div className="flex flex-col gap-[9px]">
+                    {factures.map((fc) => (
+                      <div
+                        key={fc.id}
+                        className="flex items-center gap-[11px] rounded-[13px] border-[1.5px] border-de9-line px-3.5 py-3"
+                      >
+                        <div className="flex h-9 w-9 flex-none items-center justify-center rounded-[11px] bg-[#F4EFFB] text-[16px] dark:bg-[#7C57C7]/15">
+                          🧾
                         </div>
-                      ))}
-                      {factures.length === 0 && <EmptyState />}
-                    </div>
-                  ))}
+                        <div className="min-w-0 flex-1">
+                          <div className="text-[13px] font-bold">
+                            {fc.ref} · {fc.montant}{' '}
+                            <span className="text-[10px] text-de9-gray">{t('credits')}</span>
+                          </div>
+                          <div className="text-[11px] text-de9-gray">{fc.sub}</div>
+                        </div>
+                        <span
+                          className="rounded-full px-2.5 py-[5px] text-[10.5px] font-bold"
+                          style={{ background: fc.badge.bg, color: fc.badge.fg }}
+                        >
+                          {fc.badge.label}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => openPiece(t('presFactureService') + ' ' + fc.ref, fc.fileName)}
+                          className="flex-none cursor-pointer rounded-[9px] bg-de9-ink px-[11px] py-[7px] text-[11px] font-bold text-white dark:text-[#151923]"
+                        >
+                          {t('voir')}
+                        </button>
+                      </div>
+                    ))}
+                    {factures.length === 0 && <EmptyState />}
+                  </div>
+                )}
 
                 {/* VERSEMENTS */}
-                {tab === 'versements' &&
-                  (creditsQ.isPending ? (
-                    <PanelSkeleton />
-                  ) : creditsQ.isError ? (
-                    <ErrorBlock />
-                  ) : (
-                    <div className="flex flex-col gap-[9px]">
-                      <div className="text-[11.5px] text-de9-gray">{t('part85')}</div>
-                      {versements.map((vs, i) => (
-                        <div
-                          key={i}
-                          className="flex items-center gap-[11px] rounded-[13px] border-[1.5px] border-de9-line px-3.5 py-3"
-                        >
-                          <div className="min-w-0 flex-1">
-                            <div className="text-[13px] font-extrabold text-[#2FA86A] dark:text-[#6FCF97]">
-                              +{fmtMoney(Math.abs(vs.credits))}{' '}
-                              <span className="text-[10px] font-semibold text-de9-gray">
-                                {t('credits')}
-                              </span>
-                            </div>
-                            <div className="text-[11px] text-de9-gray">
-                              {vs.ref} · {withDay(vs.date, t)}
-                            </div>
+                {tab === 'versements' && (
+                  <div className="flex flex-col gap-[9px]">
+                    <div className="text-[11.5px] text-de9-gray">{t('part85')}</div>
+                    {versements.map((vs) => (
+                      <div
+                        key={vs.id}
+                        className="flex items-center gap-[11px] rounded-[13px] border-[1.5px] border-de9-line px-3.5 py-3"
+                      >
+                        <div className="min-w-0 flex-1">
+                          <div className="text-[13px] font-extrabold text-[#2FA86A] dark:text-[#6FCF97]">
+                            +{vs.montant}{' '}
+                            <span className="text-[10px] font-semibold text-de9-gray">
+                              {t('credits')}
+                            </span>
                           </div>
-                          <span className="flex-none rounded-full bg-[#E7F6EE] px-[9px] py-1 text-[10px] font-extrabold text-[#2FA86A] dark:bg-[#2FA86A]/15 dark:text-[#6FCF97]">
-                            {t('transfere')}
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() =>
-                              openPiece(
-                                t('factureServicePresta') + ' — ' + subjectName,
-                                'facture-service-F-' + vs.cmdRef.replace(/[^0-9]/g, '') + '.pdf',
-                              )
-                            }
-                            className="flex-none cursor-pointer rounded-[9px] bg-[#EAF2FD] px-[11px] py-[7px] text-[11px] font-bold text-[#2F7FD0] dark:bg-[#2F7FD0]/15 dark:text-[#7EB5EC]"
-                          >
-                            🧾 {t('voir')}
-                          </button>
+                          <div className="text-[11px] text-de9-gray">{vs.sub}</div>
                         </div>
-                      ))}
-                      {versements.length === 0 && <EmptyState />}
-                    </div>
-                  ))}
+                        <span className="flex-none rounded-full bg-[#E7F6EE] px-[9px] py-1 text-[10px] font-extrabold text-[#2FA86A] dark:bg-[#2FA86A]/15 dark:text-[#6FCF97]">
+                          {vs.statut}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            openPiece(t('factureServicePresta') + ' — ' + presName, vs.fileName)
+                          }
+                          className="flex-none cursor-pointer rounded-[9px] bg-[#EAF2FD] px-[11px] py-[7px] text-[11px] font-bold text-[#2F7FD0] dark:bg-[#2F7FD0]/15 dark:text-[#7EB5EC]"
+                        >
+                          🧾 {t('voir')}
+                        </button>
+                      </div>
+                    ))}
+                    {versements.length === 0 && <EmptyState />}
+                  </div>
+                )}
 
                 {/* AVIS */}
-                {tab === 'avis' &&
-                  (reviewsQ.isPending ? (
-                    <PanelSkeleton />
-                  ) : reviewsQ.isError ? (
-                    <ErrorBlock />
-                  ) : (
-                    <AvisPanel
-                      presId={subjectId}
-                      fallbackRating={subject.rating}
-                      onAddReview={() => setReviewOpen(true)}
-                    />
-                  ))}
+                {tab === 'avis' && <AvisPanel avis={avis} onAddReview={() => setReviewOpen(true)} />}
 
                 {/* ÉQUIPE */}
-                {tab === 'equipe' &&
-                  (cmdsQ.isPending ? (
-                    <PanelSkeleton />
-                  ) : cmdsQ.isError ? (
-                    <ErrorBlock />
-                  ) : (
-                    <div className="flex flex-col gap-[9px]">
-                      {ouvriers.map((ov) => (
-                        <div
-                          key={ov.name}
-                          className="flex items-center gap-[11px] rounded-[13px] border-[1.5px] border-de9-line px-3.5 py-[11px]"
-                        >
-                          <div className="flex h-[34px] w-[34px] flex-none items-center justify-center rounded-full bg-de9-ink text-[13px] font-bold text-white dark:text-[#151923]">
-                            {ov.init}
-                          </div>
-                          <div className="flex-1 text-[13px] font-bold">{ov.name}</div>
-                          <span className="text-[15px] text-de9-gray">›</span>
+                {tab === 'equipe' && (
+                  <div className="flex flex-col gap-[9px]">
+                    {equipe.map((ov) => (
+                      <div
+                        key={ov.id}
+                        className="flex items-center gap-[11px] rounded-[13px] border-[1.5px] border-de9-line px-3.5 py-[11px]"
+                      >
+                        <div className="flex h-[34px] w-[34px] flex-none items-center justify-center rounded-full bg-de9-ink text-[13px] font-bold text-white dark:text-[#151923]">
+                          {ov.init}
                         </div>
-                      ))}
-                      {ouvriers.length === 0 && <EmptyState />}
-                    </div>
-                  ))}
+                        <div className="min-w-0 flex-1">
+                          <div className="text-[13px] font-bold">{ov.name}</div>
+                          {ov.sub && <div className="text-[11px] text-de9-gray">{ov.sub}</div>}
+                        </div>
+                        {ov.role && (
+                          <span className="flex-none rounded-full bg-secondary px-2.5 py-[5px] text-[10.5px] font-bold text-de9-slate">
+                            {ov.role}
+                          </span>
+                        )}
+                      </div>
+                    ))}
+                    {equipe.length === 0 && <EmptyState />}
+                  </div>
+                )}
 
                 {/* STATS */}
-                {tab === 'stats' &&
-                  (cmdsQ.isPending ? (
-                    <PanelSkeleton rows={2} />
-                  ) : cmdsQ.isError ? (
-                    <ErrorBlock />
-                  ) : (
-                    <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
-                      <div className="rounded-[14px] bg-secondary p-[15px]">
-                        <div className="text-[19px] font-extrabold">
-                          {fmtMoney(statCa)}{' '}
-                          <span className="text-[11px] text-de9-gray">{t('credits')}</span>
+                {tab === 'stats' && (
+                  <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+                    {stats.map((sc, i) => (
+                      <div key={i} className="rounded-[14px] bg-secondary p-[15px]">
+                        <div
+                          className={cn(
+                            'text-[19px] font-extrabold',
+                            sc.accent && 'text-[#2FA86A] dark:text-[#6FCF97]',
+                          )}
+                        >
+                          {sc.value}
+                          {i === 0 && (
+                            <span className="text-[11px] text-de9-gray"> {t('credits')}</span>
+                          )}
                         </div>
-                        <div className="mt-[3px] text-[11px] text-de9-gray">{t('statCA')}</div>
+                        <div className="mt-[3px] text-[11px] text-de9-gray">{sc.label}</div>
                       </div>
-                      <div className="rounded-[14px] bg-secondary p-[15px]">
-                        <div className="text-[19px] font-extrabold">{missions.length}</div>
-                        <div className="mt-[3px] text-[11px] text-de9-gray">
-                          {t('statMissionsL')}
-                        </div>
-                      </div>
-                      <div className="rounded-[14px] bg-secondary p-[15px]">
-                        <div className="text-[19px] font-extrabold text-[#2FA86A] dark:text-[#6FCF97]">
-                          {subject.sat}
-                        </div>
-                        <div className="mt-[3px] text-[11px] text-de9-gray">{t('statSatL')}</div>
-                      </div>
-                      <div className="rounded-[14px] bg-secondary p-[15px]">
-                        <div className="text-[19px] font-extrabold">{subject.delai}</div>
-                        <div className="mt-[3px] text-[11px] text-de9-gray">
-                          {t('statDelaiL')}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
+                )}
               </div>
 
               {/* ---------- footer ---------- */}
@@ -668,8 +619,8 @@ function PresProfile({ presParam, onClose }: { presParam: string; onClose: () =>
 
               <PieceViewer piece={piece} onClose={() => setPiece(null)} />
               <ReviewModal
-                presId={subjectId}
-                presName={subjectName}
+                presId={companyId}
+                presName={presName}
                 open={reviewOpen}
                 onOpenChange={setReviewOpen}
               />

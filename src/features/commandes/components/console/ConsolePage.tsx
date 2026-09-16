@@ -1,13 +1,15 @@
 // COMMANDES — command detail console. Visual ground truth: src/admin/views/Console.tsx;
 // behavioral ground truth: logic.ts buildConsole()/buildAgir()/act()/devisAct()
 // (status projections, band, prochaine action, devis flow, occurrences, agir, audit).
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { useT, useL, type TKey } from '@/lib/i18n';
 import { useUiStore } from '@/stores/uiStore';
 import { cn } from '@/lib/utils';
-import { useCommande, useCommandeAction, useDevisAction } from '../../api/commandes';
+import { problemMessage } from '@/api/problem';
+import axios from 'axios';
+import { useCommande, useCommandeAction, useDevisAction, useWorklistDetail } from '../../api/commandes';
 import type {
   Ball,
   Commande,
@@ -26,6 +28,7 @@ import {
   type ViewFactureVM,
 } from './ActionModals';
 import { DocViewer, type DocState } from './DocViewer';
+import { WorklistSummary } from './WorklistSummary';
 
 type Tr = (key: TKey) => string;
 
@@ -388,15 +391,43 @@ export function ConsolePage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const roleView = useUiStore((s) => s.roleView);
 
-  const { data: cmd, isPending, isError, error } = useCommande(id);
+  const { data: cmd, isPending, isError, error, refetch: refetchCommande } = useCommande(id);
+  // No mock commande for this id — a live commande id from the worklist (appel
+  // d'offres or visit) — so show its worklist detail, where the next action can
+  // run. Idle on the normal path, where the mock commande loads.
+  const needsFallback = isError || (!isPending && !cmd);
+  const detailQ = useWorklistDetail(id, needsFallback);
+  // Prefer the server's RFC 7807 `detail` over axios' English message — the UI is fr/ar.
+  const errMsg = (err: unknown): string => (err == null ? l('Erreur', 'خطأ') : problemMessage(err));
+
+  // Reporting a failed refresh must not outlive the page: the query passes no
+  // abort signal, so a hung refetch can settle long after the operator left.
+  const mounted = useRef(true);
+  useEffect(
+    () => () => {
+      mounted.current = false;
+    },
+    [],
+  );
+
+  /** Refetch the row detail, surfacing a failure the operator would otherwise read as « nothing new ». */
+  const refreshDetail = (): void => {
+    void detailQ.refetch().then((result) => {
+      if (mounted.current && result.isError) toast.error(errMsg(result.error));
+    });
+  };
+
+  /** From the error card: the console payload failed too, so retry both queries. */
+  const retryAll = (): void => {
+    void refetchCommande();
+    refreshDetail();
+  };
   const action = useCommandeAction(id);
   const devisAction = useDevisAction(id);
 
   const [auditOpen, setAuditOpen] = useState(false);
   const [modal, setModal] = useState<ModalState | null>(null);
   const [doc, setDoc] = useState<DocState | null>(null);
-
-  const errMsg = (err: unknown): string => (err instanceof Error ? err.message : l('Erreur', 'خطأ'));
 
   const runAction = (input: CommandeActionInput, msg: string): void => {
     action.mutate(input, {
@@ -524,16 +555,56 @@ export function ConsolePage() {
     );
   }
 
-  if (isError || !cmd) {
+  if (needsFallback) {
+    if (detailQ.isPending) {
+      return (
+        <div className="mx-auto max-w-[980px]">
+          {backLink}
+          <div className="h-[260px] animate-pulse rounded-[20px] bg-secondary" />
+        </div>
+      );
+    }
+    if (detailQ.data) {
+      return (
+        <div className="mx-auto max-w-[980px]">
+          {backLink}
+          <WorklistSummary
+            detail={detailQ.data}
+            onRefresh={refreshDetail}
+            refreshing={detailQ.isFetching}
+          />
+        </div>
+      );
+    }
+    // Nothing to fall back on: the worklist doesn't know this id either.
+    const notFound = axios.isAxiosError(detailQ.error) && detailQ.error.response?.status === 404;
+    const message = notFound
+      ? t('apercuIntrouvable')
+      : detailQ.isError
+        ? errMsg(detailQ.error)
+        : isError
+          ? errMsg(error)
+          : t('aucuneCommande');
     return (
       <div className="mx-auto max-w-[980px]">
         {backLink}
-        <div className={cn(CARD, 'text-[13px] font-semibold text-de9-red')}>
-          {isError ? errMsg(error) : t('aucuneCommande')}
+        <div className={cn(CARD, 'flex flex-wrap items-center gap-3 text-[13px] font-semibold text-de9-red')}>
+          {message}
+          {/* The only way back from a failed first load — the card above never mounts. */}
+          <button
+            type="button"
+            onClick={retryAll}
+            disabled={detailQ.isFetching}
+            className="cursor-pointer rounded-[10px] border-[1.5px] border-de9-line bg-card px-2.5 py-1.5 text-[11.5px] font-bold text-de9-slate disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {detailQ.isFetching ? t('apercuActionEnCours') : '⟳ ' + t('apercuRafraichir')}
+          </button>
         </div>
       </div>
     );
   }
+
+  if (!cmd) return null;
 
   // ===================== console view-model (logic.ts buildConsole) =====================
   const stOcc = cmd.setup === 'assigne' ? currentOcc(cmd) : null;

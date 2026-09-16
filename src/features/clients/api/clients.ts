@@ -146,8 +146,10 @@ export function useCredits() {
   return useQuery({
     queryKey: ['credits'],
     queryFn: async (): Promise<FicheCredit[]> => {
-      const res = await apiClient.get('/credits');
-      return ficheCreditSchema.array().parse(res.data);
+      // Real endpoint is paginated (meta/data envelope); the fiche filters
+      // client-side, so pull one large page.
+      const res = await apiClient.get('/credits', { params: { PageSize: 200 } });
+      return z.object({ data: z.array(ficheCreditSchema) }).parse(res.data).data;
     },
   });
 }

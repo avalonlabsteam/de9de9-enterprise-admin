@@ -1,9 +1,11 @@
-// COMMANDES — worklist page. Visual ground truth: src/admin/views/Worklist.tsx;
-// behavioral ground truth: the worklist section of src/admin/logic.ts renderVals()
-// (urgency ranking, KPI counts, status → label/color mapping, filters).
-import { useMemo, useState } from 'react';
+// COMMANDES — worklist page, driven by GET /commandes/worklist. The server
+// computes each row (currentStatus, ball, slaOverdueMinutes, traite, …) and
+// applies filters + pagination; this page only maps UI state to query params
+// and renders rows. Visual ground truth: src/admin/views/Worklist.tsx.
+// (The mock twin of the endpoint lives in src/api/mock/worklist.ts.)
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { useT, type TKey } from '@/lib/i18n';
+import { useL, useT } from '@/lib/i18n';
 import { useUiStore } from '@/stores/uiStore';
 import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
@@ -14,245 +16,60 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { useCommandes } from '../api/commandes';
-import type { Ball, Commande, Occurrence, OccStatus } from '../schemas/commande';
+import { useWorklist, useWorklistKpis } from '../api/commandes';
+import { useCommunes, useWilayas } from '@/features/geo/api/geo';
+import type { WorklistItem, WorklistParams, WorklistStatut } from '../schemas/worklist';
+import { BALL_COLOR, ballLabel, formatDuration, statusBadge, visitLabel } from '../lib/worklistDisplay';
 import { NotesModal } from './NotesModal';
 
-type Tr = (key: TKey) => string;
-
-// ===================== derivation (ported from logic.ts) =====================
-
-/** S/V progression chip shown before each status — purely cosmetic. */
-const STATUS_NUM: Record<string, string> = {
-  arappeler: 'S1',
-  contacte: 'S2',
-  devis: 'S3',
-  assigne: 'S4',
-  added: 'V0',
-  toConfirm: 'V1',
-  confirmed: 'V2',
-  confirmedAssigned: 'V3',
-  doneNoInvoice: 'V4',
-  doneInvoiced: 'V5',
-  doneDisputed: 'V5·C',
-  doneApproved: 'V6',
-  paid: 'V7',
-  cancelled: 'V✕',
-};
-
-interface Proj {
-  ball: Ball;
-  badgeKey: TKey;
-  badgeBg: string;
-  badgeFg: string;
-}
-
-const OCC_PROJ: Record<OccStatus, Proj> = {
-  added: { ball: 'de9', badgeKey: 'consoleBadgeAPlanifier', badgeBg: '#FBF4E4', badgeFg: '#B68A2E' },
-  toConfirm: { ball: 'client', badgeKey: 'consoleBadgeAConfirmer', badgeBg: '#EAF2FD', badgeFg: '#2F7FD0' },
-  confirmed: { ball: 'pro', badgeKey: 'consoleBadgeConfirmee', badgeBg: '#E7F6EE', badgeFg: '#2FA86A' },
-  confirmedAssigned: { ball: 'de9', badgeKey: 'consoleBadgeOuvrierAffecte', badgeBg: '#E7F6EE', badgeFg: '#2FA86A' },
-  doneNoInvoice: { ball: 'pro', badgeKey: 'consoleBadgeRealiseeSansFacture', badgeBg: '#F4EFFB', badgeFg: '#7C57C7' },
-  doneInvoiced: { ball: 'client', badgeKey: 'consoleBadgeFactureDeposee', badgeBg: '#F4EFFB', badgeFg: '#7C57C7' },
-  doneDisputed: { ball: 'de9', badgeKey: 'consoleBadgeContestee', badgeBg: '#FDECEC', badgeFg: '#E7464E' },
-  doneApproved: { ball: 'de9', badgeKey: 'consoleBadgeApprouvee', badgeBg: '#E7F6EE', badgeFg: '#2FA86A' },
-  paid: { ball: 'done', badgeKey: 'consoleBadgePayee', badgeBg: '#E7F6EE', badgeFg: '#2FA86A' },
-  cancelled: { ball: 'done', badgeKey: 'consoleBadgeAnnulee', badgeBg: '#F1F4F6', badgeFg: '#9AA4B2' },
-};
-
-const DONE_PROJ: Proj = { ball: 'done', badgeKey: 'commonTermine', badgeBg: '#F1F4F6', badgeFg: '#9AA4B2' };
-
-function setupProj(cmd: Commande): Proj | null {
-  if (cmd.setup === 'arappeler') {
-    return { ball: 'de9', badgeKey: 'fSArappeler', badgeBg: '#FDECEC', badgeFg: '#E7464E' };
-  }
-  if (cmd.setup === 'contacte') {
-    return { ball: 'de9', badgeKey: 'consoleDevisADemander', badgeBg: '#FEF3E2', badgeFg: '#D9871F' };
-  }
-  if (cmd.setup === 'devis') {
-    const dv = cmd.devis ?? [];
-    const anyRecu = dv.some((d) => d.status === 'recu');
-    const anyValide = dv.some((d) => d.status === 'valide');
-    if (cmd.proposedToClient && anyValide) {
-      return { ball: 'client', badgeKey: 'consoleDevisTransmisAttente', badgeBg: '#EAF2FD', badgeFg: '#2F7FD0' };
-    }
-    if (anyRecu || anyValide) {
-      return { ball: 'de9', badgeKey: 'consoleDevisAValider', badgeBg: '#FEF3E2', badgeFg: '#D9871F' };
-    }
-    return { ball: 'pro', badgeKey: 'consoleAttenteDevis', badgeBg: '#FEF3E2', badgeFg: '#D9871F' };
-  }
-  return null; // assigne → handled by occurrences
-}
-
-/** Current actionable occurrence (earliest non-terminal, by action priority). */
-const OCC_ORDER: OccStatus[] = [
-  'doneDisputed',
-  'doneApproved',
-  'doneInvoiced',
-  'doneNoInvoice',
-  'confirmed',
-  'confirmedAssigned',
-  'toConfirm',
-  'added',
-];
-
-function currentOcc(cmd: Commande): Occurrence | null {
-  let best: Occurrence | null = null;
-  let bi = 99;
-  cmd.occurrences.forEach((o) => {
-    const i = OCC_ORDER.indexOf(o.status);
-    if (i >= 0 && i < bi) {
-      bi = i;
-      best = o;
-    }
-  });
-  return best;
-}
-
-interface CmdState {
-  kind: 'setup' | 'occ' | 'done';
-  proj: Proj | null;
-  occ: Occurrence | null;
-}
-
-function cmdState(cmd: Commande): CmdState {
-  if (cmd.setup !== 'assigne') return { kind: 'setup', proj: setupProj(cmd), occ: null };
-  const o = currentOcc(cmd);
-  if (!o) return { kind: 'done', proj: null, occ: null };
-  return { kind: 'occ', proj: OCC_PROJ[o.status], occ: o };
-}
-
-function urgencyRank(cmd: Commande): number {
-  const st = cmdState(cmd);
-  if (cmd.setup === 'arappeler') return cmd.sla.mins < 0 ? -1 : 0;
-  if (st.kind === 'done') return 9;
-  const ball: Ball = st.proj ? st.proj.ball : 'done';
-  const k = st.occ ? st.occ.status : cmd.setup;
-  if (k === 'doneDisputed') return 1;
-  if (k === 'doneApproved') return 2;
-  if (cmd.setup === 'contacte') return 3;
-  if (k === 'added') return 4;
-  return ball === 'de9' ? 5 : 6;
-}
-
-type StatutKey = 'arappeler' | 'devis' | 'litige' | 'regler' | 'actif';
-
-function statutKey(c: Commande): StatutKey {
-  if (c.setup === 'arappeler') return 'arappeler';
-  if (c.setup === 'contacte' || c.setup === 'devis') return 'devis';
-  if (c.occurrences.some((o) => o.status === 'doneDisputed')) return 'litige';
-  if (c.occurrences.some((o) => o.status === 'doneApproved')) return 'regler';
-  return 'actif';
-}
-
-const BALL_COLOR: Record<Ball, string> = {
-  client: '#2F7FD0',
-  pro: '#2FA86A',
-  de9: '#E7464E',
-  done: '#9AA4B2',
-};
-
-function ballLabel(ball: Ball, t: Tr): string {
-  if (ball === 'client') return t('roleClient');
-  if (ball === 'pro') return t('rolePrestataire');
-  if (ball === 'de9') return 'de9de9';
-  return t('commonTermine');
-}
-
-const DAY_KEYS: TKey[] = [
-  'commonJourDimanche',
-  'commonJourLundi',
-  'commonJourMardi',
-  'commonJourMercredi',
-  'commonJourJeudi',
-  'commonJourVendredi',
-  'commonJourSamedi',
-];
-
-function dayName(ddmmyyyy: string, t: Tr): string {
-  const p = ddmmyyyy.split('/');
-  if (p.length !== 3) return '';
-  const dt = new Date(Number(p[2]), Number(p[1]) - 1, Number(p[0]));
-  if (Number.isNaN(dt.getTime())) return '';
-  const key = DAY_KEYS[dt.getDay()];
-  return key ? t(key) : '';
-}
-
-function withDay(s: string, t: Tr): string {
-  const m = s.match(/(\d{2}\/\d{2}\/\d{4})/);
-  if (!m?.[1]) return s;
-  const d = dayName(m[1], t);
-  return d ? s.replace(m[1], d + ' ' + m[1]) : s;
-}
 
 // ===================== filters =====================
 
 interface WorklistFilter {
-  needsAction: boolean;
-  type: 'all' | 'recurrent' | 'ponctuel';
-  prestataire: string;
+  needsDe9de9: boolean;
+  /** Client-side refinement of the current page — the API has no `kind` param. */
+  kind: 'all' | 'recurrent' | 'ponctuel';
+  prestataireId: string;
   wilaya: string;
   commune: string;
-  client: string;
+  clientId: string;
   balle: string;
   statut: string;
   search: string;
 }
 
 const INITIAL_FILTER: WorklistFilter = {
-  needsAction: false,
-  type: 'all',
-  prestataire: 'all',
+  needsDe9de9: false,
+  kind: 'all',
+  prestataireId: 'all',
   wilaya: 'all',
   commune: 'all',
-  client: 'all',
+  clientId: 'all',
   balle: 'all',
   statut: 'all',
   search: '',
 };
 
-type SelectField = 'prestataire' | 'wilaya' | 'commune' | 'client' | 'balle' | 'statut';
+type SelectField = 'prestataireId' | 'wilaya' | 'commune' | 'clientId' | 'balle' | 'statut';
 
-function applyFilters(cmds: Commande[], f: WorklistFilter): Commande[] {
-  let list = cmds.slice().sort((a, b) => urgencyRank(a) - urgencyRank(b));
-  if (f.type !== 'all') list = list.filter((c) => c.type === f.type);
-  if (f.needsAction) {
-    list = list.filter((c) => {
-      const s = cmdState(c);
-      return s.proj !== null && s.proj.ball === 'de9';
-    });
-  }
-  if (f.prestataire !== 'all') list = list.filter((c) => (c.prestataire ? c.prestataire.name : '—') === f.prestataire);
-  if (f.wilaya !== 'all') list = list.filter((c) => c.wilaya === f.wilaya);
-  if (f.commune !== 'all') list = list.filter((c) => c.commune === f.commune);
-  if (f.client !== 'all') list = list.filter((c) => c.client === f.client);
-  if (f.balle !== 'all') {
-    list = list.filter((c) => {
-      const s = cmdState(c);
-      return (s.proj ? s.proj.ball : 'done') === f.balle;
-    });
-  }
-  if (f.statut !== 'all') list = list.filter((c) => statutKey(c) === f.statut);
-  if (f.search.trim()) {
-    const s = f.search.trim().toLowerCase();
-    list = list.filter((c) => {
-      const pres = c.prestataire ? c.prestataire.name.toLowerCase() : '';
-      const presEmail = c.prestataire?.email?.toLowerCase() ?? '';
-      const cEmail = c.clientEmail.toLowerCase();
-      return (
-        c.id.toLowerCase().includes(s) ||
-        c.client.toLowerCase().includes(s) ||
-        pres.includes(s) ||
-        cEmail.includes(s) ||
-        presEmail.includes(s)
-      );
-    });
-  }
-  return list;
+const PAGE_SIZE = 20;
+const SEARCH_DEBOUNCE_MS = 300;
+
+interface Opt {
+  v: string;
+  l: string;
 }
 
-const uniq = (arr: string[]): string[] => [...new Set(arr)];
-const alpha = (arr: string[]): string[] => uniq(arr).sort((a, b) => a.localeCompare(b, 'fr'));
+/** Unique options sorted by label; `null` entries are skipped. */
+function toOpts(pairs: ([string, string] | null)[]): Opt[] {
+  const seen = new Map<string, string>();
+  for (const p of pairs) {
+    if (p && !seen.has(p[0])) seen.set(p[0], p[1]);
+  }
+  return [...seen.entries()]
+    .map(([v, l]) => ({ v, l }))
+    .sort((a, b) => a.l.localeCompare(b.l, 'fr'));
+}
 
 // ===================== page =====================
 
@@ -260,76 +77,122 @@ const ROW_GRID = 'grid min-w-[960px] grid-cols-[1.8fr_1.4fr_1.7fr_0.9fr_1.2fr_0.
 
 export function WorklistPage() {
   const t = useT();
+  const l = useL();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const roleView = useUiStore((s) => s.roleView);
-  const { data: cmds, isPending, isError, error } = useCommandes();
 
   const [filter, setFilter] = useState<WorklistFilter>(INITIAL_FILTER);
+  const [page, setPage] = useState(1);
+  const [searchInput, setSearchInput] = useState('');
+  /** Local overrides of the server `traite` flag — no toggle endpoint yet. */
   const [handled, setHandled] = useState<Record<string, boolean>>({});
   const [notesFor, setNotesFor] = useState<string | null>(null);
 
-  const list = useMemo(() => applyFilters(cmds ?? [], filter), [cmds, filter]);
+  // Debounce the search box into the filter. Every filter change re-opens the
+  // list at page 1.
+  useEffect(() => {
+    const id = setTimeout(() => {
+      setFilter((f) => (f.search === searchInput ? f : { ...f, search: searchInput }));
+      setPage(1);
+    }, SEARCH_DEBOUNCE_MS);
+    return () => clearTimeout(id);
+  }, [searchInput]);
 
-  // ===== KPIs (counts over the full dataset, not the filtered list) =====
-  const all = cmds ?? [];
-  const cntRappel = all.filter((c) => c.setup === 'arappeler').length;
-  const cntLitige = all.filter((c) => c.occurrences.some((o) => o.status === 'doneDisputed')).length;
-  const cntRegler = all.filter((c) => c.occurrences.some((o) => o.status === 'doneApproved')).length;
-  const cntActives = all.filter(
-    (c) => c.setup === 'assigne' && c.occurrences.some((o) => o.status !== 'paid' && o.status !== 'cancelled'),
-  ).length;
-  const kpis: { key: string; label: string; value: number; color: string; border: string }[] = [
-    { key: 'rappeler', label: t('fSArappeler'), value: cntRappel, color: '#E7464E', border: cntRappel ? '#F6D2D4' : '#EDF1F3' },
-    { key: 'litige', label: t('worklistKpiLitiges'), value: cntLitige, color: '#E7464E', border: '#EDF1F3' },
-    { key: 'regler', label: t('worklistKpiFacturesARegler'), value: cntRegler, color: '#2FA86A', border: '#EDF1F3' },
-    { key: 'actives', label: t('worklistKpiCommandesActives'), value: cntActives, color: '#2F7FD0', border: '#EDF1F3' },
+  const params = useMemo<WorklistParams>(() => {
+    const p: WorklistParams = { page, pageSize: PAGE_SIZE };
+    if (filter.search.trim()) p.search = filter.search.trim();
+    if (filter.clientId !== 'all') p.clientId = filter.clientId;
+    if (filter.prestataireId !== 'all') p.prestataireId = filter.prestataireId;
+    if (filter.wilaya !== 'all') p.wilaya = filter.wilaya;
+    if (filter.commune !== 'all') p.commune = filter.commune;
+    if (filter.statut !== 'all') p.statut = filter.statut;
+    if (filter.balle !== 'all') p.balle = filter.balle;
+    if (filter.needsDe9de9) p.needsDe9de9 = true;
+    return p;
+  }, [filter, page]);
+
+  const { data, isPending, isError, error, isPlaceholderData } = useWorklist(params);
+  const rows = useMemo(() => data?.data ?? [], [data]);
+  const meta = data?.meta;
+
+  // The API has no `kind` param, so the recurrent/ponctuel chips refine the
+  // fetched page only.
+  const list = filter.kind === 'all' ? rows : rows.filter((r) => r.kind === filter.kind);
+
+  // ===== KPIs (all four counts in one server request; clicking toggles the statut filter) =====
+  const { data: counts } = useWorklistKpis();
+  const kpis: { statut: WorklistStatut; label: string; value: number | undefined; color: string; alert: boolean }[] = [
+    { statut: 'arappeler', label: t('fSArappeler'), value: counts?.aRappeler, color: '#E7464E', alert: (counts?.aRappeler ?? 0) > 0 },
+    { statut: 'litige', label: t('worklistKpiLitiges'), value: counts?.litigesAResoudre, color: '#E7464E', alert: false },
+    { statut: 'regler', label: t('worklistKpiFacturesARegler'), value: counts?.facturesARegler, color: '#2FA86A', alert: false },
+    { statut: 'actif', label: t('worklistKpiCommandesActives'), value: counts?.commandesActives, color: '#2F7FD0', alert: false },
   ];
 
-  const kpiFilter = (key: string): void => {
-    setFilter((f) => ({ ...f, needsAction: key === 'rappeler' || key === 'litige' || key === 'regler' }));
+  const toggleStatut = (statut: string): void => {
+    setFilter((f) => ({ ...f, statut: f.statut === statut ? 'all' : statut }));
+    setPage(1);
   };
 
   // ===== filter chips =====
-  const filterChips: { key: string; val: WorklistFilter['type'] | ''; label: string; icon: string; active: boolean }[] = [
-    { key: 'needsAction', val: '', label: t('worklistNecessiteDe9'), icon: '◆', active: filter.needsAction },
-    { key: 'type', val: 'all', label: t('tous'), icon: '≡', active: filter.type === 'all' },
-    { key: 'type', val: 'recurrent', label: t('commonRecurrent'), icon: '↻', active: filter.type === 'recurrent' },
-    { key: 'type', val: 'ponctuel', label: t('commonPonctuel'), icon: '•', active: filter.type === 'ponctuel' },
+  const filterChips: { key: string; val: WorklistFilter['kind'] | ''; label: string; icon: string; active: boolean }[] = [
+    { key: 'needsDe9de9', val: '', label: t('worklistNecessiteDe9'), icon: '◆', active: filter.needsDe9de9 },
+    { key: 'kind', val: 'all', label: t('tous'), icon: '≡', active: filter.kind === 'all' },
+    { key: 'kind', val: 'recurrent', label: t('commonRecurrent'), icon: '↻', active: filter.kind === 'recurrent' },
+    { key: 'kind', val: 'ponctuel', label: t('commonPonctuel'), icon: '•', active: filter.kind === 'ponctuel' },
   ];
 
-  const toggleChip = (key: string, val: WorklistFilter['type'] | ''): void => {
-    if (key === 'needsAction') setFilter((f) => ({ ...f, needsAction: !f.needsAction }));
-    else if (val !== '') setFilter((f) => ({ ...f, type: val }));
+  const toggleChip = (key: string, val: WorklistFilter['kind'] | ''): void => {
+    if (key === 'needsDe9de9') setFilter((f) => ({ ...f, needsDe9de9: !f.needsDe9de9 }));
+    else if (val !== '') setFilter((f) => ({ ...f, kind: val }));
+    setPage(1);
   };
 
   // ===== select filters =====
-  const communeOpts = alpha(
-    (filter.wilaya === 'all' ? all : all.filter((c) => c.wilaya === filter.wilaya)).map((c) => c.commune),
+  // Wilayas/communes come from the geo dictionary endpoints (localized labels,
+  // French nom as the value — that's what the worklist params and rows carry).
+  // The commune list cascades from the selected wilaya's code.
+  const { data: wilayas } = useWilayas();
+  const selectedWilaya = filter.wilaya !== 'all' ? wilayas?.find((w) => w.nom === filter.wilaya) : undefined;
+  const { data: communes } = useCommunes(selectedWilaya?.code ?? null);
+  const wilayaOpts = toOpts((wilayas ?? []).map((w) => [w.nom, l(w.nom, w.nomAr)]));
+  const communeOpts = toOpts((communes ?? []).map((c) => [c.nom, l(c.nom, c.nomAr)]));
+
+  // Client/prestataire options are still derived from the rows currently
+  // loaded — good enough until the API exposes dictionary endpoints for them.
+  const presOpts = toOpts(
+    rows.map((r) => (r.prestataireCompanyId && r.prestataireName ? [r.prestataireCompanyId, r.prestataireName] : null)),
   );
+  const clientOpts = toOpts(rows.map((r) => (r.clientCompanyId ? [r.clientCompanyId, r.clientName] : null)));
+
   const mkSelect = (
     field: SelectField,
     label: string,
-    opts: (string | [string, string])[],
-  ): { field: SelectField; value: string; options: { v: string; l: string }[] } => ({
-    field,
-    value: filter[field],
-    options: [{ v: 'all', l: label + ' : ' + t('tous') }].concat(
-      opts.map((o) => (Array.isArray(o) ? { v: o[0], l: o[1] } : { v: o, l: o })),
-    ),
-  });
+    opts: Opt[],
+  ): { field: SelectField; value: string; options: Opt[] } => {
+    const value = filter[field];
+    const options = [{ v: 'all', l: label + ' : ' + t('tous') }, ...opts];
+    // Keep the active selection visible even when the filtered rows no longer
+    // contain it (Radix Select needs the value to exist as an item).
+    if (value !== 'all' && !options.some((o) => o.v === value)) options.push({ v: value, l: value });
+    return { field, value, options };
+  };
   const selects = [
-    mkSelect('prestataire', t('fPrestataire'), alpha(all.filter((c) => c.prestataire).map((c) => c.prestataire?.name ?? ''))),
-    mkSelect('wilaya', t('fWilaya'), alpha(all.map((c) => c.wilaya))),
+    mkSelect('prestataireId', t('fPrestataire'), presOpts),
+    mkSelect('wilaya', t('fWilaya'), wilayaOpts),
     mkSelect('commune', t('fCommune'), communeOpts),
-    mkSelect('client', t('fClient'), alpha(all.map((c) => c.client))),
-    mkSelect('balle', t('fBalle'), [['de9', 'de9de9'], ['client', t('fClient')], ['pro', t('fPrestataire')]]),
+    mkSelect('clientId', t('fClient'), clientOpts),
+    mkSelect('balle', t('fBalle'), [
+      { v: 'de9', l: 'de9de9' },
+      { v: 'client', l: t('fClient') },
+      { v: 'pro', l: t('fPrestataire') },
+    ]),
     mkSelect('statut', t('fStatut'), [
-      ['arappeler', t('fSArappeler')],
-      ['devis', t('fSDevis')],
-      ['litige', t('fSLitige')],
-      ['regler', t('fSRegler')],
-      ['actif', t('fSActif')],
+      { v: 'arappeler', l: t('fSArappeler') },
+      { v: 'devis', l: t('fSDevis') },
+      { v: 'litige', l: t('fSLitige') },
+      { v: 'regler', l: t('fSRegler') },
+      { v: 'actif', l: t('fSActif') },
     ]),
   ];
 
@@ -339,6 +202,7 @@ export function WorklistPage() {
       if (field === 'wilaya') nf.commune = 'all';
       return nf;
     });
+    setPage(1);
   };
 
   // ===== overlay params (prestataire profile / client fiche survive navigation) =====
@@ -349,10 +213,14 @@ export function WorklistPage() {
     sp.delete('pres');
     setSearchParams(sp);
   };
-  const openPresByName = (name: string): void => {
-    if (!name || name === '—') return;
+  /**
+   * The profile overlay is keyed by company id — the row carries one, so pass
+   * it; the name is only a fallback for the mock, which also resolves by name.
+   */
+  const openPres = (key: string): void => {
+    if (!key || key === '—') return;
     const sp = new URLSearchParams(searchParams);
-    sp.set('pres', name);
+    sp.set('pres', key);
     sp.delete('client');
     setSearchParams(sp);
   };
@@ -370,19 +238,20 @@ export function WorklistPage() {
       <div className="mt-[18px] grid grid-cols-2 gap-3.5 md:grid-cols-4">
         {kpis.map((k) => (
           <div
-            key={k.key}
-            onClick={() => kpiFilter(k.key)}
+            key={k.statut}
+            onClick={() => toggleStatut(k.statut)}
             className={cn(
               'cursor-pointer rounded-2xl border-[1.5px] bg-card px-[17px] py-[15px] shadow-[0_6px_18px_rgba(38,50,69,.04)]',
-              k.border === '#F6D2D4' ? 'border-[#F6D2D4] dark:border-[#E7464E]/40' : 'border-de9-line',
+              k.alert ? 'border-[#F6D2D4] dark:border-[#E7464E]/40' : 'border-de9-line',
             )}
+            style={filter.statut === k.statut ? { borderColor: k.color } : undefined}
           >
             <div className="flex items-center gap-2">
               <div className="h-[9px] w-[9px] rounded-full" style={{ background: k.color }} />
               <div className="text-[12.5px] font-semibold text-de9-gray">{k.label}</div>
             </div>
             <div className="mt-2 text-[28px] font-extrabold" style={{ color: k.color }}>
-              {k.value}
+              {k.value ?? '—'}
             </div>
           </div>
         ))}
@@ -408,8 +277,8 @@ export function WorklistPage() {
       {/* Select filters + search */}
       <div className="mt-3 flex flex-wrap items-center gap-2.5">
         <Input
-          value={filter.search}
-          onChange={(e) => setFilter((f) => ({ ...f, search: e.target.value }))}
+          value={searchInput}
+          onChange={(e) => setSearchInput(e.target.value)}
           placeholder={t('rechercher')}
           className="h-auto w-auto min-w-0 flex-1 rounded-[11px] border-[1.5px] border-de9-line bg-card px-3.5 py-2.5 text-[13px] text-de9-ink shadow-none outline-none sm:flex-[0_0_250px] md:text-[13px]"
         />
@@ -431,7 +300,7 @@ export function WorklistPage() {
 
       {/* Rows table */}
       <div className="mt-4 overflow-hidden rounded-[18px] border border-de9-line bg-card shadow-[0_10px_30px_rgba(38,50,69,.06)]">
-        <div className="overflow-x-auto">
+        <div className={cn('overflow-x-auto transition-opacity', isPlaceholderData && 'opacity-60')}>
         <div
           className={cn(
             ROW_GRID,
@@ -463,37 +332,34 @@ export function WorklistPage() {
 
         {!isPending &&
           !isError &&
-          list.map((c) => {
-            const s = cmdState(c);
-            const proj = s.proj ?? DONE_PROJ;
-            const lastOcc = c.occurrences[c.occurrences.length - 1];
-            const nextNum =
-              STATUS_NUM[s.occ ? s.occ.status : s.kind === 'done' ? (lastOcc?.status ?? 'paid') : c.setup] ?? '';
-            const overdue = c.setup === 'arappeler' && c.sla.mins < 0;
+          list.map((c: WorklistItem) => {
+            const badge = statusBadge(c.currentStatus.code);
+            const overdue = c.slaOverdueMinutes != null && c.slaOverdueMinutes > 0;
             let slaLabel = '—';
             let slaSub = '';
             let slaClass = 'text-de9-gray';
-            if (c.setup === 'arappeler') {
+            if (c.slaOverdueMinutes != null) {
               slaLabel = overdue
-                ? t('worklistRetardMin').replace('{n}', String(Math.abs(c.sla.mins)))
-                : c.sla.mins + ' min';
+                ? t('worklistRetard').replace('{n}', formatDuration(c.slaOverdueMinutes, t))
+                : formatDuration(c.slaOverdueMinutes, t);
               slaClass = overdue ? 'text-[#E7464E] dark:text-[#F2848A]' : 'text-[#D9871F] dark:text-[#EBA24E]';
-              slaSub = t('worklistSlaRappel');
-            } else if (s.occ) {
-              slaLabel = withDay(s.occ.date, t);
+              // The server names the running SLA; the callback SLA was the
+              // only one before the contract carried `slaLabel`.
+              slaSub = c.slaLabel ?? t('worklistSlaRappel');
+            } else if (c.nextVisitAt) {
+              slaLabel = visitLabel(c.nextVisitAt, t);
               slaSub = t('worklistProchaineVisite');
               slaClass = 'text-de9-slate';
             }
-            const isHandled = !!handled[c.id];
-            const noteCount = c.notes.length;
-            const ballColor = BALL_COLOR[proj.ball];
+            const isHandled = handled[c.id] ?? c.traite;
+            const ballColor = BALL_COLOR[c.ball];
             const ballRing =
               roleView !== 'de9' &&
-              ((roleView === 'client' && proj.ball === 'client') ||
-                (roleView === 'prestataire' && proj.ball === 'pro'))
+              ((roleView === 'client' && c.ball === 'client') ||
+                (roleView === 'prestataire' && c.ball === 'pro'))
                 ? `0 0 0 4px ${ballColor}66`
                 : 'none';
-            const presName = c.prestataire ? c.prestataire.name : '—';
+            const presName = c.prestataireName ?? '—';
 
             return (
               <div
@@ -510,33 +376,33 @@ export function WorklistPage() {
                     <span
                       onClick={(e) => {
                         e.stopPropagation();
-                        openClientFiche(c.client);
+                        openClientFiche(c.clientName);
                       }}
                       className="cursor-pointer underline decoration-dotted decoration-[#C7CFD7] underline-offset-[3px]"
                     >
-                      {c.client}
+                      {c.clientName}
                     </span>
                   </div>
                   <div className="text-[11.5px] text-de9-gray">
-                    {c.id} · {c.contact}
+                    {c.reference ?? c.id} · {c.clientContact ?? '—'}
                   </div>
                 </div>
                 <div>
-                  <div className="text-[13.5px] font-semibold">{c.service}</div>
+                  <div className="text-[13.5px] font-semibold">{c.serviceLabel}</div>
                   <div className="flex items-center gap-[5px] text-[11.5px] text-de9-gray">
-                    {c.type === 'recurrent' ? '↻' : '•'}{' '}
-                    {c.type === 'recurrent' ? t('commonRecurrent') : t('commonPonctuel')} · {c.wilaya}
+                    {c.kind === 'recurrent' ? '↻' : '•'}{' '}
+                    {c.kind === 'recurrent' ? t('commonRecurrent') : t('commonPonctuel')} · {c.wilaya ?? '—'}
                   </div>
                 </div>
                 <div>
                   <span
                     className="inline-flex items-center gap-1.5 rounded-full px-[11px] py-1.5 text-xs font-bold"
-                    style={{ background: proj.badgeBg, color: proj.badgeFg }}
+                    style={{ background: badge.bg, color: badge.fg }}
                   >
                     <span className="inline-flex min-w-[18px] flex-none items-center justify-center rounded-md bg-[#232838] px-[5px] py-[2px] text-[9.5px] font-extrabold leading-[1.4] tracking-[.02em] text-white">
-                      {nextNum}
+                      {c.currentStatus.code}
                     </span>
-                    {t(proj.badgeKey)}
+                    {c.currentStatus.label}
                   </span>
                 </div>
                 <div>
@@ -545,14 +411,14 @@ export function WorklistPage() {
                       className="h-2 w-2 rounded-full"
                       style={{ background: ballColor, boxShadow: ballRing }}
                     />
-                    {ballLabel(proj.ball, t)}
+                    {ballLabel(c.ball, t)}
                   </span>
                 </div>
-                <div className={cn('text-[13px] font-semibold', c.prestataire ? 'text-de9-ink' : 'text-[#C0C8D0]')}>
+                <div className={cn('text-[13px] font-semibold', c.prestataireName ? 'text-de9-ink' : 'text-[#C0C8D0]')}>
                   <span
                     onClick={(e) => {
                       e.stopPropagation();
-                      openPresByName(presName);
+                      openPres(c.prestataireCompanyId ?? presName);
                     }}
                     className="cursor-pointer underline decoration-dotted decoration-[#C7CFD7] underline-offset-[3px]"
                   >
@@ -566,7 +432,7 @@ export function WorklistPage() {
                 <div
                   onClick={(e) => {
                     e.stopPropagation();
-                    setHandled((h) => ({ ...h, [c.id]: !h[c.id] }));
+                    setHandled((h) => ({ ...h, [c.id]: !isHandled }));
                   }}
                   className="flex cursor-pointer items-center gap-[7px]"
                 >
@@ -594,11 +460,11 @@ export function WorklistPage() {
                   }}
                   className={cn(
                     'flex cursor-pointer items-center gap-[5px] text-[13px] font-bold',
-                    noteCount ? 'text-[#7C57C7] dark:text-[#A98BE8]' : 'text-[#C0C8D0]',
+                    c.noteCount ? 'text-[#7C57C7] dark:text-[#A98BE8]' : 'text-[#C0C8D0]',
                   )}
                 >
                   <span className="text-base">💬</span>
-                  {noteCount}
+                  {c.noteCount}
                 </div>
               </div>
             );
@@ -608,6 +474,37 @@ export function WorklistPage() {
           <div className="p-[50px] text-center text-sm text-de9-gray">{t('aucuneCommande')}</div>
         )}
         </div>
+
+        {/* Pagination footer */}
+        {meta && meta.total_pages > 1 && (
+          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-de9-line px-[22px] py-3">
+            <div className="text-[12.5px] font-semibold text-de9-gray">
+              {t('worklistPageInfo')
+                .replace('{n}', String(meta.current_page))
+                .replace('{m}', String(meta.total_pages))}
+              {' · '}
+              {t('worklistTotalCount').replace('{n}', String(meta.total))}
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                disabled={page <= 1}
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                className="cursor-pointer rounded-[11px] border-[1.5px] border-de9-line bg-card px-[13px] py-2 text-[12.5px] font-bold text-de9-slate disabled:cursor-default disabled:opacity-40"
+              >
+                {t('pagePrecedent')}
+              </button>
+              <button
+                type="button"
+                disabled={!meta.has_more_pages}
+                onClick={() => setPage((p) => p + 1)}
+                className="cursor-pointer rounded-[11px] border-[1.5px] border-de9-line bg-card px-[13px] py-2 text-[12.5px] font-bold text-de9-slate disabled:cursor-default disabled:opacity-40"
+              >
+                {t('pageSuivant')}
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       <NotesModal

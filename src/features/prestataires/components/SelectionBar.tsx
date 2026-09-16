@@ -1,23 +1,19 @@
 import { toast } from 'sonner';
 import { useT } from '@/lib/i18n';
-import type { Prestataire } from '../schemas/prestataire';
 import { useSelectionStore, selectionActions } from '../stores/selectionStore';
 
 interface SelectionBarProps {
-  prestataires: Prestataire[];
   onRequestQuotes: () => void;
 }
 
 /** Fixed bottom bar shown while the selection is non-empty (logic.ts presSel). */
-export function SelectionBar({ prestataires, onRequestQuotes }: SelectionBarProps) {
+export function SelectionBar({ onRequestQuotes }: SelectionBarProps) {
   const t = useT();
   const selected = useSelectionStore((s) => s.selected);
+  const storedNames = useSelectionStore((s) => s.names);
   if (!selected.length) return null;
 
-  const names = selected
-    .map((id) => prestataires.find((p) => p.id === id)?.name)
-    .filter((n): n is string => !!n)
-    .join(', ');
+  const names = selected.map((id) => storedNames[id] ?? id).join(', ');
 
   // logic.ts proposeClient — toast '{n} prestataire(s) proposé(s) au client'
   const proposeClient = () => {

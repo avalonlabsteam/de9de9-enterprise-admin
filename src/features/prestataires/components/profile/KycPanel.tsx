@@ -1,47 +1,51 @@
 // KYC tab of the prestataire profile — ported from src/admin/views/PresProfile.tsx (tKyc)
 // and logic.ts buildKycVM / setKycStatus / setKycMotif / addKycDoc / replaceKycDoc / removeKycDoc.
+//
+// Status, pieces and the review event come from GET /prestataires/{companyId}
+// (dossier.kyc). Nothing here is writable server-side, so every edit — status,
+// motif, adding / replacing / removing a piece — is a local overlay the host
+// keeps, exactly as the prototype did.
 import type { ChangeEvent } from 'react';
 import { cn } from '@/lib/utils';
 import { Textarea } from '@/components/ui/textarea';
 import { useT } from '@/lib/i18n';
-import { useAddKycDoc, useRemoveKycDoc } from '../../api/kyc';
 import type { KycAuditEntry, KycDoc, KycStatus } from '../../schemas/prestataire';
 import { kycMeta } from './lib';
 
 const STATUSES: KycStatus[] = ['verified', 'pending', 'rejected'];
 
 interface KycPanelProps {
-  kycKey: string;
   status: KycStatus;
   motif: string;
   docs: KycDoc[];
   audit: KycAuditEntry[];
   onStatusChange: (status: KycStatus) => void;
   onMotifChange: (motif: string) => void;
+  onAddDoc: (label: string, fileName: string) => void;
   onReplaceDoc: (docId: string, fileName: string) => void;
+  onRemoveDoc: (docId: string) => void;
   onOpenPiece: (title: string, fileName: string) => void;
 }
 
 export function KycPanel({
-  kycKey,
   status,
   motif,
   docs,
   audit,
   onStatusChange,
   onMotifChange,
+  onAddDoc,
   onReplaceDoc,
+  onRemoveDoc,
   onOpenPiece,
 }: KycPanelProps) {
   const t = useT();
-  const addDoc = useAddKycDoc(kycKey);
-  const removeDoc = useRemoveKycDoc(kycKey);
   const meta = kycMeta(status, t);
 
   const onAddFile = (e: ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
     if (!f) return;
-    addDoc.mutate({ label: f.name.replace(/\.[^.]+$/, ''), fileName: f.name });
+    onAddDoc(f.name.replace(/\.[^.]+$/, ''), f.name);
     e.target.value = '';
   };
 
@@ -101,20 +105,9 @@ export function KycPanel({
           <div className="text-[11px] font-extrabold tracking-[.04em] text-de9-gray uppercase">
             {t('kycDocs')}
           </div>
-          <label
-            className={cn(
-              'cursor-pointer rounded-[9px] bg-[#E5F7F4] px-3 py-[7px] text-[11.5px] font-bold text-de9-teal-dark dark:bg-[#178A82]/15',
-              addDoc.isPending && 'pointer-events-none opacity-60',
-            )}
-          >
+          <label className="cursor-pointer rounded-[9px] bg-[#E5F7F4] px-3 py-[7px] text-[11.5px] font-bold text-de9-teal-dark dark:bg-[#178A82]/15">
             ＋ {t('kycAjouterDoc')}
-            <input
-              type="file"
-              accept="image/*,application/pdf"
-              onChange={onAddFile}
-              disabled={addDoc.isPending}
-              className="hidden"
-            />
+            <input type="file" accept="image/*,application/pdf" onChange={onAddFile} className="hidden" />
           </label>
         </div>
         <div className="flex flex-col gap-2">
@@ -146,9 +139,8 @@ export function KycPanel({
               </label>
               <button
                 type="button"
-                onClick={() => removeDoc.mutate(kd.id)}
-                disabled={removeDoc.isPending}
-                className="flex-none cursor-pointer text-[14px] text-de9-gray disabled:opacity-60"
+                onClick={() => onRemoveDoc(kd.id)}
+                className="flex-none cursor-pointer text-[14px] text-de9-gray"
               >
                 ✕
               </button>

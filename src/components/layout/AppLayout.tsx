@@ -1,16 +1,18 @@
-import { useEffect, useState } from "react";
-import { NavLink, Outlet } from "react-router-dom";
-import { Menu, Moon, Sun, SunMoon } from "lucide-react";
-import { Toaster } from "@/components/ui/sonner";
+import { useState } from "react";
+import { NavLink, Outlet, useNavigate } from "react-router-dom";
+import { LogOut, Menu, Moon, Sun, SunMoon } from "lucide-react";
+import { toast } from "sonner";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { PresProfileHost } from "@/features/prestataires/components/ProfileHost";
 import { ClientFicheHost } from "@/features/clients/components/ClientFicheHost";
 import { WorkerViewHost } from "@/features/commandes/components/console/WorkerViewHost";
+import { logout } from "@/features/auth/api/auth";
 import { cn } from "@/lib/utils";
 import { useT, type TKey } from "@/lib/i18n";
 import { dirOf, langActions, useLangStore } from "@/stores/langStore";
 import { useUiStore } from "@/stores/uiStore";
-import { resolveTheme, themeActions, useThemeStore, type ThemeMode } from "@/stores/themeStore";
+import { useAuthStore } from "@/stores/authStore";
+import { themeActions, useThemeStore, type ThemeMode } from "@/stores/themeStore";
 
 const NAV_ITEMS: ReadonlyArray<{ to: string; labelKey: TKey }> = [
   { to: "/commandes", labelKey: "navCommandes" },
@@ -104,29 +106,19 @@ const iconButtonCls =
   "flex h-[38px] w-11 flex-none cursor-pointer items-center justify-center rounded-[11px] border-[1.5px] border-de9-line text-[13px] font-extrabold text-de9-slate hover:bg-de9-row";
 
 export function AppLayout() {
+  const t = useT();
+  const navigate = useNavigate();
   const lang = useLangStore((s) => s.lang);
   const mode = useThemeStore((s) => s.mode);
+  const userEmail = useAuthStore((s) => s.user?.email ?? null);
   const dir = dirOf(lang);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
-  useEffect(() => {
-    document.documentElement.dir = dir;
-    document.documentElement.lang = lang;
-  }, [dir, lang]);
-
-  // Apply the theme class; track OS preference while in "system" mode.
-  useEffect(() => {
-    const media = window.matchMedia("(prefers-color-scheme: dark)");
-    const apply = () => {
-      document.documentElement.classList.toggle(
-        "dark",
-        resolveTheme(mode, media.matches) === "dark",
-      );
-    };
-    apply();
-    media.addEventListener("change", apply);
-    return () => media.removeEventListener("change", apply);
-  }, [mode]);
+  const onLogout = (): void => {
+    logout();
+    toast.success(t("deconnexionToast"));
+    navigate("/login", { replace: true });
+  };
 
   const ThemeIcon = THEME_ICONS[mode];
 
@@ -183,6 +175,24 @@ export function AppLayout() {
             >
               {lang === "fr" ? "ع" : "FR"}
             </button>
+
+            {userEmail && (
+              <span
+                className="hidden max-w-[190px] overflow-hidden text-ellipsis whitespace-nowrap text-[12.5px] font-semibold text-de9-gray md:block"
+                title={userEmail}
+              >
+                {userEmail}
+              </span>
+            )}
+            <button
+              type="button"
+              onClick={onLogout}
+              className={iconButtonCls}
+              aria-label={t("deconnexion")}
+              title={t("deconnexion")}
+            >
+              <LogOut className="size-[18px]" />
+            </button>
           </div>
         </header>
 
@@ -198,7 +208,6 @@ export function AppLayout() {
       <ClientFicheHost />
       <WorkerViewHost />
 
-      <Toaster position="bottom-center" />
     </div>
   );
 }

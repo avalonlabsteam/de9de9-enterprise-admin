@@ -1,14 +1,23 @@
-import { useState } from 'react';
+// FACTURES — console board, driven by GET /factures/console. The server
+// filters (Q/Statut), sorts and paginates; chips and cards show per-statut
+// totals from PageSize=1 count queries. Visual ground truth: logic.ts
+// buildFactures. The mock twin lives in src/api/mock/handlers.ts.
+import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { useT, useL, type TKey } from '@/lib/i18n';
 import { useLangStore, type Lang } from '@/stores/langStore';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
-import { useFactures, useFactureAction, type FactureActionKind } from '../api/factures';
-import type { Facture, FactureStatus } from '../schemas/facture';
+import {
+  useFacturesConsole,
+  useFacturesConsoleCount,
+  useFactureAction,
+  type FactureActionKind,
+} from '../api/factures';
+import type { FactureConsoleItem, FactureConsoleParams, FactureStatus } from '../schemas/facture';
 
-// ===================== derivation (ported from logic.ts buildFactures) =====================
+// ===================== status metadata (ported from logic.ts buildFactures) =====================
 
 type FilterKey = 'all' | 'attente' | 'litige' | 'regler' | 'paid';
 type Group = Exclude<FilterKey, 'all'>;
@@ -80,6 +89,14 @@ const STATUS_META: Record<FactureStatus, StatusMeta> = {
   },
 };
 
+/** UI filter group → the canonical status the `Statut` param expects. */
+const GROUP_STATUS: Record<Group, FactureStatus> = {
+  attente: 'doneInvoiced',
+  litige: 'doneDisputed',
+  regler: 'doneApproved',
+  paid: 'paid',
+};
+
 const TOTALS: { group: Group; labelKey: TKey; colorCls: string }[] = [
   { group: 'attente', labelKey: 'fcTotalAttente', colorCls: 'text-[#C98A1E] dark:text-[#D9B36A]' },
   { group: 'regler', labelKey: 'fcTotalRegler', colorCls: 'text-[#2E9E5B] dark:text-[#6FCF97]' },
@@ -104,24 +121,20 @@ const TOAST_KEY: Record<FactureActionKind, TKey> = {
 
 const fmt = (n: number): string => n.toLocaleString('fr-FR');
 
-/** 'dd/mm/yyyy' → sortable number (logic.ts toNum). */
-const toNum = (d: string): number => {
-  const p = d.split('/');
-  return p.length === 3 ? Number(p[2]) * 10000 + Number(p[1]) * 100 + Number(p[0]) : 0;
-};
-
-/** Prefix the localized weekday name (logic.ts dayName/withDay). */
-function withDay(s: string, lang: Lang): string {
-  const m = s.match(/(\d{2}\/\d{2}\/\d{4})/);
-  if (!m || !m[1]) return s;
-  const p = m[1].split('/');
-  const dt = new Date(Number(p[2]), Number(p[1]) - 1, Number(p[0]));
+/** dd/mm/yyyy or ISO → localized « Jeudi 28/08/2026 » (raw value if unparseable). */
+function dateLabel(s: string, lang: Lang): string {
+  const m = s.match(/^(\d{2})\/(\d{2})\/(\d{4})/);
+  const dt = m ? new Date(Number(m[3]), Number(m[2]) - 1, Number(m[1])) : new Date(s);
   if (Number.isNaN(dt.getTime())) return s;
   const fr = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
   const ar = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
   const day = (lang === 'ar' ? ar : fr)[dt.getDay()];
-  return day ? s.replace(m[1], day + ' ' + m[1]) : s;
+  const p = (n: number) => String(n).padStart(2, '0');
+  return `${day} ${p(dt.getDate())}/${p(dt.getMonth() + 1)}/${dt.getFullYear()}`;
 }
+
+const PAGE_SIZE = 20;
+const SEARCH_DEBOUNCE_MS = 300;
 
 // ===================== page =====================
 
@@ -132,41 +145,52 @@ export function FacturesPage() {
   const [searchParams] = useSearchParams();
 
   const [filter, setFilter] = useState<FilterKey>('all');
-  const [search, setSearch] = useState(() => searchParams.get('client') ?? '');
-  const [approveTarget, setApproveTarget] = useState<Facture | null>(null);
-  const [viewTarget, setViewTarget] = useState<Facture | null>(null);
+  const [searchInput, setSearchInput] = useState(() => searchParams.get('client') ?? '');
+  const [q, setQ] = useState(searchInput);
+  const [page, setPage] = useState(1);
+  const [approveTarget, setApproveTarget] = useState<FactureConsoleItem | null>(null);
+  const [viewTarget, setViewTarget] = useState<FactureConsoleItem | null>(null);
 
-  const { data, isPending, isError } = useFactures();
+  useEffect(() => {
+    const id = setTimeout(() => {
+      setQ(searchInput.trim());
+      setPage(1);
+    }, SEARCH_DEBOUNCE_MS);
+    return () => clearTimeout(id);
+  }, [searchInput]);
+
+  const params = useMemo<FactureConsoleParams>(() => {
+    const p: FactureConsoleParams = { page, pageSize: PAGE_SIZE };
+    if (q) p.q = q;
+    if (filter !== 'all') p.statut = GROUP_STATUS[filter];
+    return p;
+  }, [q, filter, page]);
+
+  const consoleQ = useFacturesConsole(params);
   const action = useFactureAction();
+  const rows = consoleQ.data?.data ?? [];
+  const meta = consoleQ.data?.meta;
 
-  // newest first by visit date
-  const all = [...(data ?? [])].sort((a, b) => toNum(b.date) - toNum(a.date));
-
-  const q = search.trim().toLowerCase();
-  let view = all;
-  if (q) {
-    const qc = q.replace(/\s/g, '');
-    view = view.filter(
-      (f) =>
-        f.client.toLowerCase().includes(q) ||
-        f.email.toLowerCase().includes(q) ||
-        f.contact.toLowerCase().replace(/\s/g, '').includes(qc),
-    );
-  }
-  if (filter !== 'all') view = view.filter((f) => STATUS_META[f.status].group === filter);
-
-  const countBy = (g: Group): number => all.filter((f) => STATUS_META[f.status].group === g).length;
-  const sumBy = (g: Group): number =>
-    all.filter((f) => STATUS_META[f.status].group === g).reduce((s, f) => s + f.montant, 0);
-  const counts: Record<FilterKey, number> = {
-    all: all.length,
-    attente: countBy('attente'),
-    litige: countBy('litige'),
-    regler: countBy('regler'),
-    paid: countBy('paid'),
+  // Per-statut totals (server counts; the montant sums need a stats endpoint).
+  const cntAll = useFacturesConsoleCount(null);
+  const cntAttente = useFacturesConsoleCount('doneInvoiced');
+  const cntLitige = useFacturesConsoleCount('doneDisputed');
+  const cntRegler = useFacturesConsoleCount('doneApproved');
+  const cntPaid = useFacturesConsoleCount('paid');
+  const counts: Record<FilterKey, number | undefined> = {
+    all: cntAll.data,
+    attente: cntAttente.data,
+    litige: cntLitige.data,
+    regler: cntRegler.data,
+    paid: cntPaid.data,
   };
 
-  const runAction = (f: Facture, kind: FactureActionKind, onDone?: () => void) => {
+  const setFilterKey = (key: FilterKey): void => {
+    setFilter(key);
+    setPage(1);
+  };
+
+  const runAction = (f: FactureConsoleItem, kind: FactureActionKind, onDone?: () => void) => {
     action.mutate(
       { cmdId: f.cmdId, kind, occId: f.occId },
       {
@@ -178,7 +202,7 @@ export function FacturesPage() {
     );
   };
 
-  const onRowAction = (f: Facture, kind: FactureActionKind) => {
+  const onRowAction = (f: FactureConsoleItem, kind: FactureActionKind) => {
     if (kind === 'approve') setApproveTarget(f);
     else runAction(f, kind);
   };
@@ -192,7 +216,7 @@ export function FacturesPage() {
         </div>
       </div>
 
-      {isPending ? (
+      {consoleQ.isPending ? (
         <div className="mt-4 animate-pulse">
           <div className="grid grid-cols-2 gap-3.5 md:grid-cols-4">
             {[0, 1, 2, 3].map((i) => (
@@ -201,27 +225,25 @@ export function FacturesPage() {
           </div>
           <div className="mt-3.5 h-64 rounded-[18px] border border-de9-line bg-card" />
         </div>
-      ) : isError ? (
+      ) : consoleQ.isError ? (
         <div className="mt-4 rounded-xl border border-[#F3C9CB] bg-[#FDECEC] px-4 py-3 text-[12.5px] font-semibold text-de9-red dark:border-[#E7464E]/40 dark:bg-[#E7464E]/15">
           {l('Erreur de chargement des factures', 'خطأ في تحميل الفواتير')}
         </div>
       ) : (
         <>
-          {/* totals */}
+          {/* per-statut counts */}
           <div className="mt-4 grid grid-cols-2 gap-3.5 md:grid-cols-4">
             {TOTALS.map((tot) => (
               <div
                 key={tot.group}
-                className="rounded-2xl border border-de9-line bg-card px-[18px] py-4 shadow-[0_6px_18px_rgba(38,50,69,.04)]"
+                onClick={() => setFilterKey(filter === tot.group ? 'all' : tot.group)}
+                className="cursor-pointer rounded-2xl border border-de9-line bg-card px-[18px] py-4 shadow-[0_6px_18px_rgba(38,50,69,.04)]"
               >
                 <div className="text-xs font-semibold text-de9-gray">{t(tot.labelKey)}</div>
                 <div className={cn('mt-1.5 text-[22px] font-extrabold', tot.colorCls)}>
-                  {fmt(sumBy(tot.group))}{' '}
-                  <span className="text-xs font-semibold text-de9-gray">{t('credits')}</span>
+                  {counts[tot.group] ?? '—'}
                 </div>
-                <div className="text-[11px] text-de9-gray">
-                  {counts[tot.group]} {t('fcCount')}
-                </div>
+                <div className="text-[11px] text-de9-gray">{t('fcCount')}</div>
               </div>
             ))}
           </div>
@@ -229,8 +251,8 @@ export function FacturesPage() {
           {/* search + filters */}
           <div className="mt-4 flex flex-wrap items-center gap-[9px]">
             <input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
               placeholder={t('facSearch')}
               className="min-w-0 flex-1 rounded-[11px] border-[1.5px] border-de9-line bg-card px-[15px] py-2.5 text-[12.5px] text-de9-ink outline-none sm:flex-[0_0_300px]"
             />
@@ -240,13 +262,13 @@ export function FacturesPage() {
                 <button
                   key={ff.key}
                   type="button"
-                  onClick={() => setFilter(ff.key)}
+                  onClick={() => setFilterKey(ff.key)}
                   className={cn(
                     'cursor-pointer rounded-full border-[1.5px] px-[15px] py-[9px] text-[12.5px] font-bold',
                     active ? 'border-[#232838] bg-[#232838] text-white' : 'border-de9-line bg-card text-de9-slate',
                   )}
                 >
-                  {t(ff.labelKey)} · {counts[ff.key]}
+                  {t(ff.labelKey)} · {counts[ff.key] ?? '—'}
                 </button>
               );
             })}
@@ -254,7 +276,7 @@ export function FacturesPage() {
 
           {/* table */}
           <div className="mt-3.5 overflow-hidden rounded-[18px] border border-de9-line bg-card shadow-[0_10px_30px_rgba(38,50,69,.06)]">
-            <div className="overflow-x-auto">
+            <div className={cn('overflow-x-auto transition-opacity', consoleQ.isPlaceholderData && 'opacity-60')}>
               <div className="min-w-[880px]">
                 <div className="grid grid-cols-[1.3fr_1.7fr_1.3fr_1.3fr_1fr_1.2fr_1.8fr] gap-3 border-b border-de9-line bg-secondary px-[22px] py-[13px] text-[10.5px] font-bold tracking-[.04em] text-de9-gray uppercase">
                   <div>{t('fcRef')}</div>
@@ -266,17 +288,17 @@ export function FacturesPage() {
                   <div className="text-end">{t('fcActions')}</div>
                 </div>
 
-                {view.map((f) => {
+                {rows.map((f) => {
                   const st = STATUS_META[f.status];
                   return (
                     <div
-                      key={f.cmdId + '-' + f.occId}
+                      key={f.invoiceId}
                       className="grid grid-cols-[1.3fr_1.7fr_1.3fr_1.3fr_1fr_1.2fr_1.8fr] items-center gap-3 border-b border-de9-line px-[22px] py-3.5"
                     >
                       <div>
                         <div className="text-[13px] font-extrabold">{f.ref}</div>
                         <div className="text-[11px] text-de9-gray">
-                          {f.cmdId} · {f.service}
+                          {f.cmdRef ?? f.cmdId} · {f.service ?? '—'}
                         </div>
                       </div>
                       <div>
@@ -285,14 +307,14 @@ export function FacturesPage() {
                             {f.client}
                           </span>
                         </div>
-                        <div className="text-[11px] text-de9-gray">{f.email}</div>
+                        <div className="text-[11px] text-de9-gray">{f.email ?? '—'}</div>
                       </div>
                       <div className="text-[12.5px] font-semibold text-de9-slate">
                         <span className="cursor-pointer underline decoration-[#C7CFD7] decoration-dotted underline-offset-[3px]">
-                          {f.pres}
+                          {f.pres ?? '—'}
                         </span>
                       </div>
-                      <div className="text-xs text-de9-slate">{withDay(f.date, lang)}</div>
+                      <div className="text-xs text-de9-slate">{dateLabel(f.date, lang)}</div>
                       <div className="text-end">
                         <span className="text-[13.5px] font-extrabold text-de9-ink">{fmt(f.montant)}</span>
                         <div className="text-[10px] text-de9-gray">{t('credits')}</div>
@@ -340,8 +362,39 @@ export function FacturesPage() {
               </div>
             </div>
 
-            {view.length === 0 && (
+            {rows.length === 0 && (
               <div className="p-11 text-center text-sm text-de9-gray">{t('fcEmpty')}</div>
+            )}
+
+            {/* pagination footer */}
+            {meta && meta.total_pages > 1 && (
+              <div className="flex flex-wrap items-center justify-between gap-3 border-t border-de9-line px-[22px] py-3">
+                <div className="text-[12.5px] font-semibold text-de9-gray">
+                  {t('worklistPageInfo')
+                    .replace('{n}', String(meta.current_page))
+                    .replace('{m}', String(meta.total_pages))}
+                  {' · '}
+                  {meta.total} {t('fcCount')}
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    disabled={page <= 1}
+                    onClick={() => setPage((n) => Math.max(1, n - 1))}
+                    className="cursor-pointer rounded-[11px] border-[1.5px] border-de9-line bg-card px-[13px] py-2 text-[12.5px] font-bold text-de9-slate disabled:cursor-default disabled:opacity-40"
+                  >
+                    {t('pagePrecedent')}
+                  </button>
+                  <button
+                    type="button"
+                    disabled={!meta.has_more_pages}
+                    onClick={() => setPage((n) => n + 1)}
+                    className="cursor-pointer rounded-[11px] border-[1.5px] border-de9-line bg-card px-[13px] py-2 text-[12.5px] font-bold text-de9-slate disabled:cursor-default disabled:opacity-40"
+                  >
+                    {t('pageSuivant')}
+                  </button>
+                </div>
+              </div>
             )}
           </div>
         </>
@@ -410,13 +463,13 @@ export function FacturesPage() {
                 <DialogTitle className="text-[19px] leading-normal font-extrabold text-de9-ink">
                   {t('titleView')}
                 </DialogTitle>
-                <span className="text-xs text-de9-gray">{withDay(viewTarget.date, lang)}</span>
+                <span className="text-xs text-de9-gray">{dateLabel(viewTarget.date, lang)}</span>
               </div>
               <div className="mt-3.5 overflow-hidden rounded-[14px] border-[1.5px] border-de9-line">
                 <div className="border-b border-de9-line bg-secondary p-7 text-center">
                   <div className="text-[42px]">📄</div>
                   <div className="mt-2 text-[13px] font-bold text-de9-slate">
-                    facture-{viewTarget.occId}.pdf
+                    facture-{viewTarget.ref}.pdf
                   </div>
                   <div className="text-[11px] text-de9-gray">{t('apercu')}</div>
                 </div>
