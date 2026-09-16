@@ -14,6 +14,7 @@ import { cn } from '@/lib/utils';
 import { problemMessage } from '@/api/problem';
 import {
   useAffecterOuvrier,
+  useChoisirPrestataire,
   useDeposerFacture,
   useDevisDecision,
   usePlanifierOccurrence,
@@ -28,6 +29,7 @@ import { BALL_COLOR, ballLabel, formatDuration, statusBadge, visitLabel, type Tr
 import { ReprogramModal } from './ActionModals';
 import { AssignTeamModal } from './AssignTeamModal';
 import { DepositInvoiceModal } from './DepositInvoiceModal';
+import { ChoosePrestataireModal, type ChoosableQuote } from './ChoosePrestataireModal';
 
 const CARD =
   'rounded-[20px] border border-de9-line bg-card px-6 py-[22px] shadow-[0_10px_30px_rgba(38,50,69,.06)]';
@@ -155,9 +157,10 @@ export function WorklistSummary({ detail: d, onRefresh, refreshing = false }: Wo
   const planifier = usePlanifierOccurrence(d.id);
   const affecter = useAffecterOuvrier(d.id);
   const deposer = useDeposerFacture(d.id);
+  const choisir = useChoisirPrestataire(d.id);
   // Any of the three drives the same « form step » button.
-  const stepPending = planifier.isPending || affecter.isPending || deposer.isPending;
-  const [visitForm, setVisitForm] = useState<'reprogram' | 'assign' | 'deposit' | null>(null);
+  const stepPending = planifier.isPending || affecter.isPending || deposer.isPending || choisir.isPending;
+  const [visitForm, setVisitForm] = useState<'reprogram' | 'assign' | 'deposit' | 'choose' | null>(null);
   const prestataireCompanyId = d.prestataire?.companyId ?? null;
   // The team loads when « Affecter un ouvrier » is opened, not with the page.
   const equipeQ = usePrestataireEquipe(prestataireCompanyId, visitForm === 'assign');
@@ -173,7 +176,20 @@ export function WorklistSummary({ detail: d, onRefresh, refreshing = false }: Wo
   const form = next?.form ?? null;
   const code = d.currentStatus.code;
   const visitStep = VISIT_FORM_STEP[code] ?? null;
-  const blockingForm = NEXT_ACTION_STEPS.has(code) ? null : form;
+  // S4 → V1: the server marks the rows the client may retain with `choosable`,
+  // and every choosable row observed carries a devisId. With none of them the
+  // step has nothing to act on, so it stays locked rather than posting a choice
+  // the server would reject.
+  const choosableQuotes: ChoosableQuote[] = (d.devis ?? [])
+    .filter((dv) => dv.choosable && dv.devisId)
+    .map((dv) => ({
+      devisId: dv.devisId as string,
+      raison: dv.raison,
+      montantLabel: dv.montantCredits != null ? dv.montantCredits.toLocaleString('fr-FR') + ' ' + t('credits') : dash,
+    }));
+  const chooseStep = form === 'choisir-prestataire' && choosableQuotes.length > 0;
+  const s4NothingChoosable = form === 'choisir-prestataire' && choosableQuotes.length === 0;
+  const blockingForm = NEXT_ACTION_STEPS.has(code) || chooseStep ? null : form;
   /** Whose move it is while the step can't run from here. */
   const waitingOn =
     next?.actor === 'client'
@@ -376,6 +392,23 @@ export function WorklistSummary({ detail: d, onRefresh, refreshing = false }: Wo
                       <span className="text-[11.5px] font-semibold text-de9-gray">{t('visiteEquipeVide')}</span>
                     ) : null)}
                 </>
+              ) : chooseStep ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setVisitForm('choose')}
+                    disabled={stepPending}
+                    className="cursor-pointer rounded-[11px] bg-de9-ink px-4 py-2.5 text-[12.5px] font-bold text-white disabled:cursor-not-allowed disabled:opacity-45 dark:text-[#151923]"
+                  >
+                    {stepPending ? t('apercuActionEnCours') : '\u25B6 ' + t('apercuExecuter') + ' \u00B7 ' + next.action}
+                  </button>
+                  <span className="text-[11.5px] font-semibold text-de9-gray">{t('apercuChoisirInfo')}</span>
+                </>
+              ) : s4NothingChoosable ? (
+                <span className="inline-flex items-center gap-2 rounded-[11px] bg-card px-3.5 py-2.5 text-[12px] font-bold text-de9-slate">
+                  <span aria-hidden>\uD83D\uDD12</span>
+                  {t('apercuChoisirAucun')}
+                </span>
               ) : s3NothingToPropose ? (
                 <span className="inline-flex items-center gap-2 rounded-[11px] bg-card px-3.5 py-2.5 text-[12px] font-bold text-de9-slate">
                   <span aria-hidden>🔒</span>
@@ -582,6 +615,28 @@ export function WorklistSummary({ detail: d, onRefresh, refreshing = false }: Wo
                 onError: (err) => toast.error(actionError(err, t)),
               },
             )
+          }
+        />
+      )}
+      {visitForm === 'choose' && (
+        <ChoosePrestataireModal
+          open
+          onOpenChange={closeVisitForm}
+          quotes={choosableQuotes}
+          pending={choisir.isPending}
+          onConfirm={(q, when) =>
+            choisir.mutate({ devisId: q.devisId, ...when }, {
+              onSuccess: (updated) => {
+                toast.success(t('apercuChoisirOk').replace('{n}', q.raison));
+                setVisitForm(null);
+                // Retaining a devis turns the appel d'offres into a visit under a
+                // new id — follow it, or this page 404s on the next fetch.
+                if (updated.newId && updated.newId !== d.id) {
+                  navigate('/commandes/' + updated.newId, { replace: true });
+                }
+              },
+              onError: (err) => toast.error(actionError(err, t)),
+            })
           }
         />
       )}
