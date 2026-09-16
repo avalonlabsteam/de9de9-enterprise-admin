@@ -15,6 +15,7 @@ import {
   devisRefuserHandler,
   devisValiderHandler,
   affecterOuvrierHandler,
+  choisirPrestataireHandler,
   deposerFactureHandler,
   planifierOccurrenceHandler,
   worklistDetailHandler,
@@ -116,6 +117,12 @@ register('POST', '/commandes/worklist/:id/affecter-ouvrier', affecterOuvrierHand
 passthrough('POST', '/commandes/worklist/:id/deposer-facture');
 
 register('POST', '/commandes/worklist/:id/deposer-facture', deposerFactureHandler);
+
+// S4 → V1 — the client retains one of the devis transmitted to them. The route
+// is the one the payload's nextAction.route names, not /commandes/:id/actions.
+passthrough('POST', '/commandes/worklist/:id/choisir-prestataire');
+
+register('POST', '/commandes/worklist/:id/choisir-prestataire', choisirPrestataireHandler);
 
 // ===================== devis =====================
 // Integrated with the real API — served by the network, not the mock. Comment

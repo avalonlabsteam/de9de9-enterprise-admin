@@ -338,6 +338,56 @@ export const affecterOuvrierHandler: MockHandler = (req) => {
 };
 
 /**
+ * POST /commandes/worklist/:id/choisir-prestataire — S4 → V1: the client
+ * retains one of the devis they were shown, which turns the appel d'offres into
+ * a visit. Per the API schema the body is { devisId, date, time }: retaining a
+ * devis also schedules that first visit, so the date travels with the choice.
+ * Mock devis ids are `<commandeId>:devis:<index>`. `date` is yyyy-mm-dd — the
+ * live API answers 400 « date : format attendu aaaa-mm-jj » otherwise — and the
+ * mock db stores a day only, so the time is accepted and dropped, exactly as in
+ * planifier-occurrence.
+ *
+ * Same state change as the mock console's `choose` devis action: the retained
+ * devis is flagged, the commande moves to Assigné, and it gets its first
+ * occurrence to confirm. Guarded so the twin can't reach a state the live API
+ * would refuse.
+ */
+export const choisirPrestataireHandler: MockHandler = (req) => {
+  const id = req.pathParams['id'] ?? '';
+  const cmd = cmdById(id);
+  if (!cmd) return problem(404, 'Not Found', `Ligne introuvable dans la file : ${id}`);
+
+  const body = (req.body ?? {}) as { devisId?: unknown; date?: unknown; time?: unknown };
+  const found = typeof body.devisId === 'string' ? findDevis(body.devisId) : null;
+  const picked = found && found.cmd === cmd ? found.devis : null;
+  if (!picked) return problem(400, 'Bad Request', 'Un « devisId » valide est requis.');
+
+  const date = typeof body.date === 'string' ? body.date.trim() : '';
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return problem(400, 'Bad Request', 'date : format attendu aaaa-mm-jj.');
+
+  if (!cmd.proposedToClient) return problem(409, 'Conflict', "Les devis n'ont pas encore été transmis au client.");
+  if (cmd.prestataire) return problem(409, 'Conflict', 'Un prestataire a déjà été retenu sur cette ligne.');
+  if (picked.status !== 'valide') return problem(409, 'Conflict', 'Seul un devis validé peut être retenu par le client.');
+
+  (cmd.devis ?? []).forEach((d) => {
+    d.chosen = d.presId === picked.presId;
+  });
+  cmd.setup = 'assigne';
+  cmd.prestataire = { name: picked.raison, phone: picked.phone };
+  // Retaining the devis schedules the first visit, so the date lands on the
+  // occurrence rather than on a placeholder day.
+  const occ = currentOcc(cmd);
+  if (occ) {
+    occ.date = fromISO(date);
+    occ.status = 'toConfirm';
+  } else {
+    cmd.occurrences = [{ id: 'o1', date: fromISO(date), status: 'toConfirm', ouvrier: null, facture: null }];
+  }
+  addAudit(cmd, 'Devis « ' + picked.raison + ' » choisi par le client — la commande passe Assigné.', 'client');
+  return { data: { ...worklistDetailOf(cmd), newId: null } };
+};
+
+/**
  * POST /commandes/worklist/:id/deposer-facture — V4 → V5: the invoice upload.
  * Reads the multipart body (`files`, or a single `file` part, plus an optional
  * JSON `payload`) and records the mock facture, with the same state change and

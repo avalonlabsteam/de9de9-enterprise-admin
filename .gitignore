@@ -12,6 +12,12 @@ dist
 dist-ssr
 *.local
 
+# Local env files — real values live here and are never committed.
+# .env.example is the tracked template.
+.env
+.env.*
+!.env.example
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

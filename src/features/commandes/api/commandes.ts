@@ -149,6 +149,34 @@ export function useProposerDevis(rfqId: string) {
 }
 
 /**
+ * S4 → V1 « Choisir le prestataire » — the client retains one of the devis they
+ * were shown, which turns the appel d'offres into a visit. Per the API schema
+ * the body is { devisId, date, time }: retaining a devis also schedules that
+ * first visit, so the date and time are part of the same call, not a follow-up.
+ *
+ * `date` must be yyyy-mm-dd — the API answers 400 « date : format attendu
+ * aaaa-mm-jj » otherwise — and `time` is HH:mm, as for planifier-occurrence.
+ *
+ * Responds with the updated detail plus `newId`: the row's id changes when it
+ * becomes a visit, so the caller must follow it.
+ */
+export function useChoisirPrestataire(id: string) {
+  return useMutation({
+    mutationFn: async (input: { devisId: string; date: string; time: string }): Promise<WorklistDetail> => {
+      const res = await apiClient.post(`/commandes/worklist/${encodeURIComponent(id)}/choisir-prestataire`, input);
+      return worklistDetailSchema.parse(res.data);
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['commandes'] });
+      void queryClient.invalidateQueries({ queryKey: ['factures'] });
+    },
+    onError: () => {
+      void queryClient.invalidateQueries({ queryKey: ['commandes', 'worklist-detail', id] });
+    },
+  });
+}
+
+/**
  * POST /commandes/worklist/:id/planifier-occurrence — V0 → V1: plan the visit
  * at a date (ISO yyyy-mm-dd) and time. A dedicated route rather than the generic
  * actions one, and it answers with the updated worklist detail, so the console
