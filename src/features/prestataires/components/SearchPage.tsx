@@ -1,127 +1,37 @@
+// PRESTATAIRES — search page, driven by GET /prestataires/recherche. The
+// server filters, sorts and paginates; this page maps UI state to query params
+// and renders the result cards. Visual ground truth: src/admin (logic.ts
+// buildPrestataires). The mock twin lives in src/api/mock/prestatairesRecherche.ts.
+//
+// Dropped vs the mock-era page (no API param exists): the € tarif-level and
+// langue filters, and the reviews-store rating overlay (`note`/`nombreAvis`
+// are server-authoritative now).
 import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { useL, useT } from '@/lib/i18n';
+import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useContextCommande, usePrestataires, type CtxCommande } from '../api/prestataires';
-import { useReviews } from '../api/reviews';
-import type { Prestataire } from '../schemas/prestataire';
-import type { Review } from '../schemas/review';
+import { useCommunes, useWilayas } from '@/features/geo/api/geo';
+import { useContextCommande, useRecherchePrestataires, type CtxCommande } from '../api/prestataires';
+import type { PrestataireSearchItem, RechercheParams } from '../schemas/recherche';
+import {
+  FAM_COLOR,
+  FAM_KEYS,
+  FAM_LABEL,
+  SERVICE_CAT,
+  TAXO,
+  catObj,
+  slugify,
+  type FamKey,
+} from '../lib/taxonomy';
 import { selectionActions, useSelectionStore } from '../stores/selectionStore';
 import { SelectionBar } from './SelectionBar';
 import { BriefModal } from './BriefModal';
 import { ReviewModal } from './ReviewModal';
 
-/* ===================== taxonomy & helpers (ported from logic.ts) ===================== */
-
-type FamKey = 'NOIR' | 'BLEU' | 'VERT' | 'ROUGE';
-
-interface TaxoCat {
-  id: number;
-  c: 'noir' | 'bleu' | 'vert' | 'rouge';
-  icon: string;
-  fr: string;
-  ar: string;
-  subs: string[];
-}
-
-const TAXO: TaxoCat[] = [
-  { id: 1, c: 'noir', icon: '⚖️', fr: 'Services Juridiques & Légaux', ar: 'الخدمات القانونية', subs: ["Avocat d'affaires", 'Notaire', 'Huissier de justice', 'Conseil juridique', 'Rédaction & révision de contrats', 'Propriété intellectuelle & marques', 'Recouvrement de créances', 'Contentieux commerciaux', 'Droit du travail & social', 'Droit fiscal & douanier', 'Conformité réglementaire & RGPD', 'Constitution de sociétés', 'Traduction juridique assermentée'] },
-  { id: 2, c: 'noir', icon: '🧮', fr: 'Comptabilité, Finance & Fiscalité', ar: 'المحاسبة والمالية', subs: ['Expert-comptable', 'Commissaire aux comptes', 'Comptabilité externalisée', 'Gestion de la paie', 'Déclarations fiscales (G50, IBS, TVA)', 'Déclarations sociales (CNAS, CASNOS)', 'Audit financier & comptable', 'Contrôle de gestion & reporting', 'Conseil financier & levée de fonds', 'Montage de dossier bancaire', "Domiciliation d'entreprise", "Évaluation d'entreprise", 'Gestion de trésorerie'] },
-  { id: 3, c: 'bleu', icon: '👥', fr: 'Ressources Humaines & Recrutement', ar: 'الموارد البشرية', subs: ['Cabinet de recrutement', 'Chasse de têtes', 'Travail temporaire & intérim', 'Externalisation RH (SIRH)', 'Formation professionnelle', 'Conseil RH & organisation', 'Bilan de compétences', 'Coaching dirigeants & cadres', 'Team building', 'Gestion administrative du personnel', 'Médecine du travail'] },
-  { id: 4, c: 'bleu', icon: '💻', fr: 'Services Informatiques & Digitaux', ar: 'خدمات المعلوماتية', subs: ['Développement logiciel sur mesure', 'Développement web & e-commerce', 'Applications mobiles', 'Maintenance & helpdesk', 'Infogérance & gestion de parc', 'Infrastructure réseau & câblage', 'Administration serveurs & systèmes', 'Cybersécurité & audit', 'Hébergement, cloud & sauvegarde', 'Intégration ERP (SAP, Odoo)', 'Intégration CRM', 'Data, BI & IA', 'Conseil & transformation digitale', 'Vidéosurveillance IP'] },
-  { id: 5, c: 'rouge', icon: '📣', fr: 'Marketing, Communication & Créatif', ar: 'التسويق والاتصال', subs: ['Agence de communication globale', 'Marketing digital & réseaux sociaux', 'SEO & publicité SEA', 'Community management & contenu', 'Production vidéo & motion design', 'Montage & post-production', 'Photographie corporate', 'Design graphique & identité visuelle', 'Branding & stratégie de marque', 'Rédaction & copywriting', 'Régie publicitaire & affichage', 'Relations presse & média', 'Impression & PLV', 'Goodies & objets publicitaires'] },
-  { id: 6, c: 'vert', icon: '🧼', fr: 'Nettoyage & Hygiène', ar: 'النظافة والصحة', subs: ['Nettoyage de bureaux & locaux', 'Nettoyage industriel & usines', 'Nettoyage de fin de chantier', 'Vitres & façades', 'Désinfection 3D (dératisation)', 'Gestion & collecte des déchets', "Produits d'hygiène sanitaire", 'Entretien des espaces verts', 'Blanchisserie industrielle', 'Dégraissage de hottes & cuisines'] },
-  { id: 7, c: 'noir', icon: '🛡️', fr: 'Sécurité & Gardiennage', ar: 'الأمن والحراسة', subs: ['Société de gardiennage', 'Agents de sécurité & vigiles', 'Vidéosurveillance & alarme', "Contrôle d'accès", 'Sécurité incendie & extincteurs', 'Transport de fonds & valeurs', 'Sécurité événementielle', 'Conseil & audit de sûreté', 'Maître-chien & cynophile'] },
-  { id: 8, c: 'bleu', icon: '🚚', fr: 'Logistique, Transport & Supply Chain', ar: 'اللوجستيك والنقل', subs: ['Transport de marchandises (national)', 'Transit & dédouanement', 'Entreposage & stockage', 'Logistique & distribution', 'Livraison dernier kilomètre', 'Fret maritime / aérien / routier', 'Location de véhicules & camions', 'Manutention & déménagement', "Location d'engins de levage", 'Gestion de flotte'] },
-  { id: 9, c: 'vert', icon: '🏗️', fr: 'BTP, Travaux & Aménagement', ar: 'البناء والأشغال', subs: ['Bâtiment (gros œuvre)', 'Aménagement & agencement de bureaux', 'Électricité industrielle & bâtiment', 'Plomberie & sanitaire', 'Climatisation, chauffage & froid (CVC)', 'Étanchéité & isolation', 'Peinture & revêtement', 'Faux plafonds & cloisons', 'Vitrerie & façades', "Bureau d'études & architecture", 'Suivi & coordination de chantier', 'Terrassement & VRD', 'Métallerie & serrurerie'] },
-  { id: 10, c: 'vert', icon: '🔧', fr: 'Maintenance Industrielle & Technique', ar: 'الصيانة الصناعية', subs: ["Maintenance d'équipements industriels", 'Maintenance préventive & curative', 'Électromécanique & automatisme', 'Groupes électrogènes', 'Ascenseurs & monte-charges', 'Chaudronnerie & soudure', 'Usinage & fabrication de pièces', 'Calibrage & métrologie', 'Maintenance CVC & froid commercial', 'Maintenance informatique industrielle (GMAO)'] },
-  { id: 11, c: 'noir', icon: '📊', fr: "Conseil & Stratégie d'Entreprise", ar: 'الاستشارة والاستراتيجية', subs: ['Conseil en management & organisation', 'Stratégie & business plan', 'Étude de marché & faisabilité', "Création d'entreprise", 'Certification (ISO 9001, HACCP)', 'Conduite du changement', 'Intelligence économique & veille', 'Financement & subventions (ANADE)', 'Optimisation des processus (Lean)', 'Conseil RSE & développement durable'] },
-  { id: 12, c: 'rouge', icon: '📦', fr: 'Fournitures & Équipements (B2B)', ar: 'اللوازم والتجهيزات', subs: ['Fournitures de bureau', 'Mobilier de bureau', 'Matériel informatique & bureautique', 'Machines industrielles', 'Consommables & pièces de rechange', 'EPI (protection individuelle)', 'Matières premières', 'Emballage & conditionnement', 'Uniformes & vêtements de travail', 'Matériel médical & laboratoire', 'Énergie solaire & équipements'] },
-  { id: 13, c: 'rouge', icon: '🍽️', fr: 'Restauration & Événementiel', ar: 'الإطعام والمناسبات', subs: ['Restauration collective & cantine', 'Traiteur événementiel', 'Plateaux repas & livraison', 'Séminaires & conférences', 'Location de salles & réunion', 'Salons & stands', 'Location de matériel événementiel', 'Animation & sonorisation', "Agence de voyage d'affaires"] },
-  { id: 14, c: 'bleu', icon: '🛟', fr: 'Assurance & Gestion des Risques', ar: 'التأمين وإدارة المخاطر', subs: ['Courtier en assurance entreprise', 'Multirisque professionnelle', 'Flotte automobile', 'Responsabilité civile pro', 'Transport & marchandises', 'Santé & prévoyance collective', 'Expertise de sinistres', 'Conseil en gestion des risques'] },
-  { id: 15, c: 'bleu', icon: '🌍', fr: 'Import-Export & Commerce International', ar: 'الاستيراد والتصدير', subs: ["Société d'import-export", 'Sourcing international', 'Représentation commerciale & agent', 'Domiciliation bancaire import', 'Conseil commerce extérieur & douane', 'Inspection & contrôle qualité', 'Traduction commerciale & technique'] },
-  { id: 16, c: 'vert', icon: '🗂️', fr: 'Services Généraux & Support', ar: 'الخدمات العامة والدعم', subs: ['Secrétariat & assistance administrative', "Centre d'appels & relation client", 'Numérisation & archivage', 'Coursier & service de pli', 'Imprimerie & reprographie', 'Location de matériel bureautique', 'Gestion du courrier & domiciliation', 'Interprétariat & traduction'] },
-];
-
-const FAM_KEYS: FamKey[] = ['NOIR', 'BLEU', 'VERT', 'ROUGE'];
-const FAM_COLOR: Record<FamKey, string> = { NOIR: '#232838', BLEU: '#2F9BE0', VERT: '#2FA86A', ROUGE: '#E7464E' };
-const FAM_LABEL: Record<FamKey, string> = { NOIR: 'Noir', BLEU: 'Bleu', VERT: 'Vert', ROUGE: 'Rouge' };
-
-function catObj(id: number | string): TaxoCat | null {
-  return TAXO.find((c) => c.id === Number(id)) ?? null;
-}
-function famForCat(id: number | string): FamKey | null {
-  const c = catObj(id);
-  return c ? (c.c.toUpperCase() as FamKey) : null;
-}
-
-// logic.ts serviceCat — service → taxonomy category (ctx pre-filter)
-const SERVICE_CAT: Record<string, number> = {
-  'Nettoyage médical': 6,
-  Plomberie: 9,
-  Jardinage: 6,
-  Électricité: 9,
-  'Sécurité incendie': 7,
-  Climatisation: 9,
-  'Maintenance industrielle': 10,
-  'Nettoyage vitres': 6,
-  'Nettoyage bureaux': 6,
-};
-
-// logic.ts _wcom/presCommunes — deterministic wilaya → communes derivation
-const WCOM: Record<string, string[]> = {
-  Alger: ['Bab Ezzouar', 'Birkhadem', 'Dar El Beïda', 'Hydra', 'Kouba'],
-  Oran: ['Aïn El Turck', 'Bir El Djir', 'Es Sénia'],
-  Blida: ['Boufarik', 'Mouzaïa'],
-  Constantine: ['El Khroub', 'Hamma Bouziane'],
-  Sétif: ['Aïn Arnat', 'El Eulma'],
-  Annaba: ['El Bouni', 'Sidi Amar'],
-  Skikda: ['Azzaba', 'Filfila'],
-  Boumerdès: ['Bordj Menäiel', 'Boudouaou'],
-  Tipaza: ['Cherchell', 'Koléa'],
-  Tlemcen: ['Maghnia', 'Mansourah'],
-};
-
-function presCommunes(p: Prestataire): { w: string; c: string }[] {
-  const n = parseInt(String(p.id).slice(1), 10) || 1;
-  const out: { w: string; c: string }[] = [];
-  p.wilayas.forEach((w) => {
-    const list = WCOM[w] ?? [];
-    const k = list.length ? 1 + (n % list.length) : 0;
-    list.slice(0, k).forEach((c) => out.push({ w, c }));
-  });
-  return out;
-}
-
-const tarifLabel = (lvl: number): string => '€'.repeat(lvl);
-
-/* ===================== rating stats from reviews (logic.ts presStats) ===================== */
-
-interface PresStats {
-  count: number;
-  avg: number;
-  nClient: number;
-  nDe9: number;
-}
-
-function buildStats(reviews: Review[]): Map<string, PresStats> {
-  const sums = new Map<string, { sum: number; count: number; nClient: number; nDe9: number }>();
-  for (const r of reviews) {
-    const cur = sums.get(r.presId) ?? { sum: 0, count: 0, nClient: 0, nDe9: 0 };
-    cur.sum += r.note;
-    cur.count += 1;
-    if (r.source === 'client') cur.nClient += 1;
-    else cur.nDe9 += 1;
-    sums.set(r.presId, cur);
-  }
-  const out = new Map<string, PresStats>();
-  sums.forEach((v, k) => out.set(k, { count: v.count, avg: v.count ? v.sum / v.count : 0, nClient: v.nClient, nDe9: v.nDe9 }));
-  return out;
-}
-
-/* ===================== filters & sort (logic.ts buildPrestataires) ===================== */
+/* ===================== filters ===================== */
 
 type SortKey = 'rating' | 'proximite' | 'tarif' | 'missions' | 'dispo';
 
@@ -137,8 +47,6 @@ interface Filters {
   dispoNow: boolean;
   kycOnly: boolean;
   certifOnly: boolean;
-  tarif: string;
-  langue: string;
 }
 
 const DEFAULT_FILTERS: Filters = {
@@ -153,52 +61,33 @@ const DEFAULT_FILTERS: Filters = {
   dispoNow: false,
   kycOnly: false,
   certifOnly: false,
-  tarif: 'all',
-  langue: 'all',
 };
 
-function applyFilters(all: Prestataire[], F: Filters): Prestataire[] {
-  let list = all.slice();
-  const q = F.q.trim().toLowerCase();
-  if (q) {
-    list = list.filter(
-      (p) =>
-        p.name.toLowerCase().includes(q) ||
-        p.email.toLowerCase().includes(q) ||
-        p.phone.replace(/\s/g, '').includes(q.replace(/\s/g, '')),
-    );
-  }
-  if (F.families.length) list = list.filter((p) => F.families.includes(famForCat(p.cat) as FamKey));
-  if (F.cat !== 'all') list = list.filter((p) => p.cat === Number(F.cat));
-  if (F.sub !== 'all') list = list.filter((p) => p.subs.includes(F.sub));
-  if (F.wilaya !== 'all') list = list.filter((p) => p.wilayas.includes(F.wilaya));
-  if (F.commune !== 'all') list = list.filter((p) => presCommunes(p).some((x) => x.c === F.commune));
-  if (F.minRating) list = list.filter((p) => p.rating >= F.minRating);
-  if (F.minEffectif) list = list.filter((p) => p.effectif >= F.minEffectif);
-  if (F.dispoNow) list = list.filter((p) => p.dispo === 'now');
-  if (F.kycOnly) list = list.filter((p) => p.kyc);
-  if (F.certifOnly) list = list.filter((p) => p.certs.length > 0);
-  if (F.tarif !== 'all') list = list.filter((p) => String(p.tarif) === F.tarif);
-  if (F.langue !== 'all') list = list.filter((p) => p.langues.includes(F.langue));
-  return list;
+const PAGE_SIZE = 12;
+const SEARCH_DEBOUNCE_MS = 300;
+
+/* ===================== display helpers ===================== */
+
+const fmtDa = (n: number): string => n.toLocaleString('fr-FR');
+
+function delaiLabel(heures: number | null | undefined): string {
+  if (heures == null) return '—';
+  return heures >= 24 ? `${Math.round(heures / 24)} j` : `${heures} h`;
 }
 
-function sortList(list: Prestataire[], sort: SortKey, stats: Map<string, PresStats>, ctxW: string | null): Prestataire[] {
-  const avgOf = (p: Prestataire) => {
-    const s = stats.get(p.id);
-    return s?.avg || p.rating;
-  };
-  return [...list].sort((a, b) => {
-    if (sort === 'tarif') return a.tarif - b.tarif || b.rating - a.rating;
-    if (sort === 'missions') return b.missions - a.missions;
-    if (sort === 'dispo') return (a.dispo === 'now' ? 0 : 1) - (b.dispo === 'now' ? 0 : 1) || b.rating - a.rating;
-    if (sort === 'proximite') {
-      const am = ctxW && a.wilayas.includes(ctxW) ? 0 : 1;
-      const bm = ctxW && b.wilayas.includes(ctxW) ? 0 : 1;
-      return am - bm || b.wilayas.length - a.wilayas.length || b.rating - a.rating;
-    }
-    return avgOf(b) - avgOf(a);
-  });
+function tarifLabel(p: PrestataireSearchItem): string {
+  if (p.tarifMinDzd != null && p.tarifMaxDzd != null) return `${fmtDa(p.tarifMinDzd)}–${fmtDa(p.tarifMaxDzd)} DA`;
+  if (p.tarifMinDzd != null) return `≥ ${fmtDa(p.tarifMinDzd)} DA`;
+  return '—';
+}
+
+function initialsOf(nom: string): string {
+  return nom
+    .split(/\s+/)
+    .map((w) => w[0] ?? '')
+    .join('')
+    .slice(0, 2)
+    .toUpperCase();
 }
 
 /* ===================== small UI primitives ===================== */
@@ -209,13 +98,16 @@ interface Opt {
 }
 
 function FilterSelect({ value, options, onChange }: { value: string; options: Opt[]; onChange: (v: string) => void }) {
+  // Radix Select needs the active value to exist as an item, even when the
+  // option list no longer contains it (dictionary still loading, ctx value).
+  const opts = options.some((o) => o.v === value) ? options : [...options, { v: value, l: value }];
   return (
     <Select value={value} onValueChange={onChange}>
       <SelectTrigger className="h-auto max-w-full cursor-pointer gap-1.5 rounded-[11px] border-[1.5px] border-de9-line bg-card px-[13px] py-[10px] text-[12.5px] font-semibold text-de9-slate shadow-none">
         <SelectValue />
       </SelectTrigger>
       <SelectContent>
-        {options.map((op) => (
+        {opts.map((op) => (
           <SelectItem key={op.v} value={op.v} className="text-[12.5px]">
             {op.l}
           </SelectItem>
@@ -274,21 +166,36 @@ function SearchPageContent({ ctxCmd }: { ctxCmd: CtxCommande | null }) {
   const [searchParams, setSearchParams] = useSearchParams();
   const reviewId = searchParams.get('review');
 
-  const presQ = usePrestataires();
-  const reviewsQ = useReviews();
-
   const selected = useSelectionStore((s) => s.selected);
-  // logic.ts openSearchFor — ctx commande pre-filters catégorie & wilaya
+  const selNames = useSelectionStore((s) => s.names);
+
+  // logic.ts openSearchFor — ctx commande pre-filters catégorie & wilaya.
+  // The taxonomy id doubles as the server's category code (see taxonomy.ts).
   const [filters, setFilters] = useState<Filters>(() => {
     if (!ctxCmd) return DEFAULT_FILTERS;
-    const cat = SERVICE_CAT[ctxCmd.service];
+    // Live context rows carry the taxonomy label as `service`, mock ones a service name.
+    const cat = TAXO.find((c) => c.fr === ctxCmd.service)?.id ?? SERVICE_CAT[ctxCmd.service ?? ''];
     return { ...DEFAULT_FILTERS, cat: cat ? String(cat) : 'all', wilaya: ctxCmd.wilaya || 'all' };
   });
   const [sort, setSort] = useState<SortKey>('rating');
+  const [page, setPage] = useState(1);
+  const [qInput, setQInput] = useState('');
   const [briefOpen, setBriefOpen] = useState(false);
 
-  const all = useMemo(() => presQ.data ?? [], [presQ.data]);
-  const stats = useMemo(() => buildStats(reviewsQ.data ?? []), [reviewsQ.data]);
+  // Debounce the search box into the filters. Every filter change re-opens the
+  // results at page 1.
+  useEffect(() => {
+    const id = setTimeout(() => {
+      setFilters((f) => (f.q === qInput ? f : { ...f, q: qInput }));
+      setPage(1);
+    }, SEARCH_DEBOUNCE_MS);
+    return () => clearTimeout(id);
+  }, [qInput]);
+
+  const setField = (patch: Partial<Filters>): void => {
+    setFilters((f) => ({ ...f, ...patch }));
+    setPage(1);
+  };
 
   // Entering a search context resets the selection (prototype openSearchFor).
   const hasCtx = !!ctxCmd;
@@ -296,31 +203,43 @@ function SearchPageContent({ ctxCmd }: { ctxCmd: CtxCommande | null }) {
     if (hasCtx) selectionActions.clear();
   }, [hasCtx]);
 
-  const list = useMemo(
-    () => sortList(applyFilters(all, filters), sort, stats, ctxCmd?.wilaya ?? null),
-    [all, filters, sort, stats, ctxCmd?.wilaya],
+  const params = useMemo<RechercheParams>(() => {
+    const p: RechercheParams = { tri: sort, page, pageSize: PAGE_SIZE };
+    if (filters.q.trim()) p.q = filters.q.trim();
+    // The API's codes (verified live): familles are lowercase ('noir'),
+    // categories/sous-categories are slugs of the French labels.
+    if (filters.families.length) p.familles = filters.families.map((k) => k.toLowerCase());
+    if (filters.cat !== 'all') {
+      const co = catObj(filters.cat);
+      p.categories = [co ? slugify(co.fr) : filters.cat];
+    }
+    if (filters.sub !== 'all') p.sousCategories = [slugify(filters.sub)];
+    if (filters.wilaya !== 'all') p.wilaya = filters.wilaya;
+    if (filters.commune !== 'all') p.commune = filters.commune;
+    if (filters.minRating) p.noteMin = filters.minRating;
+    if (filters.minEffectif) p.effectifMin = filters.minEffectif;
+    if (filters.dispoNow) p.dispoNow = true;
+    if (filters.kycOnly) p.kycOnly = true;
+    if (filters.certifOnly) p.certifieOnly = true;
+    return p;
+  }, [filters, sort, page]);
+
+  const searchQ = useRecherchePrestataires(params);
+  const rows = useMemo(() => searchQ.data?.data ?? [], [searchQ.data]);
+  const meta = searchQ.data?.meta;
+
+  const selectedPres = useMemo(
+    () => selected.map((id) => ({ id, name: selNames[id] ?? id })),
+    [selected, selNames],
   );
 
-  const selectedPres = useMemo(() => all.filter((p) => selected.includes(p.id)), [all, selected]);
+  /* -------- option lists -------- */
+  const { data: wilayasDict } = useWilayas();
+  const selectedWilaya = filters.wilaya !== 'all' ? wilayasDict?.find((w) => w.nom === filters.wilaya) : undefined;
+  const { data: communesDict } = useCommunes(selectedWilaya?.code ?? null);
+  const wilayaOpts: Opt[] = (wilayasDict ?? []).map((w) => ({ v: w.nom, l: l(w.nom, w.nomAr) }));
+  const communeOpts: Opt[] = (communesDict ?? []).map((c) => ({ v: c.nom, l: l(c.nom, c.nomAr) }));
 
-  /* -------- option lists (logic.ts presSelects) -------- */
-  const wilayas = useMemo(() => [...new Set(all.flatMap((p) => p.wilayas))].sort(), [all]);
-  const communes = useMemo(
-    () =>
-      [
-        ...new Set(
-          all
-            .filter((p) => filters.wilaya === 'all' || p.wilayas.includes(filters.wilaya))
-            .flatMap((p) =>
-              presCommunes(p)
-                .filter((x) => filters.wilaya === 'all' || x.w === filters.wilaya)
-                .map((x) => x.c),
-            ),
-        ),
-      ].sort((a, b) => a.localeCompare(b, 'fr')),
-    [all, filters.wilaya],
-  );
-  const langs = useMemo(() => [...new Set(all.flatMap((p) => p.langues))], [all]);
   const catOpts: Opt[] = TAXO.filter(
     (c) => !filters.families.length || filters.families.includes(c.c.toUpperCase() as FamKey),
   ).map((c) => ({ v: String(c.id), l: c.icon + ' ' + l(c.fr, c.ar) }));
@@ -334,8 +253,6 @@ function SearchPageContent({ ctxCmd }: { ctxCmd: CtxCommande | null }) {
     { v: 'dispo', l: l('Dispo', 'التوفر') },
   ];
 
-  const setField = (patch: Partial<Filters>) => setFilters((f) => ({ ...f, ...patch }));
-
   const stripParam = (key: string) =>
     setSearchParams((prev) => {
       const n = new URLSearchParams(prev);
@@ -343,6 +260,7 @@ function SearchPageContent({ ctxCmd }: { ctxCmd: CtxCommande | null }) {
       return n;
     });
 
+  /** The profile overlay and the review modal are keyed by COMPANY id. */
   const openProfile = (id: string) =>
     setSearchParams((prev) => {
       const n = new URLSearchParams(prev);
@@ -351,12 +269,15 @@ function SearchPageContent({ ctxCmd }: { ctxCmd: CtxCommande | null }) {
     });
 
   // logic.ts addCandidate — add to selection (if absent) + toast
-  const addCandidate = (id: string) => {
-    if (!selected.includes(id)) selectionActions.toggle(id);
+  const addCandidate = (p: PrestataireSearchItem) => {
+    const key = p.companyId ?? p.id;
+    if (!selected.includes(key)) selectionActions.toggle(key, p.nom);
     toast.success(t('presToastAjouteCandidats'));
   };
 
-  const reviewName = all.find((p) => p.id === reviewId)?.name ?? '';
+  const reviewName =
+    rows.find((p) => (p.companyId ?? p.id) === reviewId)?.nom ??
+    (reviewId ? (selNames[reviewId] ?? '') : '');
 
   return (
     <div className="animate-fade-in">
@@ -366,7 +287,7 @@ function SearchPageContent({ ctxCmd }: { ctxCmd: CtxCommande | null }) {
           <div className="text-[13px] text-[#92702A] dark:text-[#D9B36A]">
             🔎 {t('presContexte')}{' '}
             <b>
-              {ctxCmd.id} · {ctxCmd.client}
+              {ctxCmd.reference ?? ctxCmd.id} · {ctxCmd.clientName}
             </b>{' '}
             — {t('presPrefiltre')}
           </div>
@@ -388,15 +309,22 @@ function SearchPageContent({ ctxCmd }: { ctxCmd: CtxCommande | null }) {
         </div>
         <div className="flex items-center gap-2">
           <span className="text-[12px] font-semibold text-de9-gray">{l('Trier', 'ترتيب')}</span>
-          <FilterSelect value={sort} options={sortOptions} onChange={(v) => setSort(v as SortKey)} />
+          <FilterSelect
+            value={sort}
+            options={sortOptions}
+            onChange={(v) => {
+              setSort(v as SortKey);
+              setPage(1);
+            }}
+          />
         </div>
       </div>
 
       {/* ---- text search ---- */}
       <div className="mt-4 flex flex-wrap items-center gap-2.5">
         <Input
-          value={filters.q}
-          onChange={(e) => setField({ q: e.target.value })}
+          value={qInput}
+          onChange={(e) => setQInput(e.target.value)}
           placeholder={t('presSearchPh')}
           className="h-auto min-w-0 flex-[1_1_320px] rounded-xl border-[1.5px] border-de9-line bg-card px-[15px] py-[11px] text-[13px] text-de9-ink shadow-none outline-none"
         />
@@ -423,7 +351,7 @@ function SearchPageContent({ ctxCmd }: { ctxCmd: CtxCommande | null }) {
         <FilterSelect
           value={filters.cat}
           options={[{ v: 'all', l: l('Catégorie', 'الفئة') }, ...catOpts]}
-          onChange={(v) => setField({ cat: v })}
+          onChange={(v) => setField({ cat: v, sub: 'all' })}
         />
         <FilterSelect
           value={filters.sub}
@@ -432,12 +360,12 @@ function SearchPageContent({ ctxCmd }: { ctxCmd: CtxCommande | null }) {
         />
         <FilterSelect
           value={filters.wilaya}
-          options={[{ v: 'all', l: t('fWilaya') }, ...wilayas.map((w) => ({ v: w, l: w }))]}
+          options={[{ v: 'all', l: t('fWilaya') }, ...wilayaOpts]}
           onChange={(v) => setField({ wilaya: v, commune: 'all' })}
         />
         <FilterSelect
           value={filters.commune}
-          options={[{ v: 'all', l: t('fCommune') }, ...communes.map((c) => ({ v: c, l: c }))]}
+          options={[{ v: 'all', l: t('fCommune') }, ...communeOpts]}
           onChange={(v) => setField({ commune: v })}
         />
         <FilterSelect
@@ -458,21 +386,6 @@ function SearchPageContent({ ctxCmd }: { ctxCmd: CtxCommande | null }) {
             { v: '30', l: '30+' },
           ]}
           onChange={(v) => setField({ minEffectif: parseInt(v, 10) || 0 })}
-        />
-        <FilterSelect
-          value={filters.tarif}
-          options={[
-            { v: 'all', l: t('presTarifF') },
-            { v: '1', l: '€' },
-            { v: '2', l: '€€' },
-            { v: '3', l: '€€€' },
-          ]}
-          onChange={(v) => setField({ tarif: v })}
-        />
-        <FilterSelect
-          value={filters.langue}
-          options={[{ v: 'all', l: t('presLangueF') }, ...langs.map((lg) => ({ v: lg, l: lg }))]}
-          onChange={(v) => setField({ langue: v })}
         />
         <TogglePill
           active={filters.dispoNow}
@@ -495,13 +408,13 @@ function SearchPageContent({ ctxCmd }: { ctxCmd: CtxCommande | null }) {
       </div>
 
       {/* ---- results ---- */}
-      {presQ.isError && (
+      {searchQ.isError && (
         <div className="mt-4 rounded-[13px] bg-[#FDEBEC] px-4 py-3 text-[13px] font-semibold text-de9-red dark:bg-[#E7464E]/15">
-          {presQ.error instanceof Error ? presQ.error.message : 'Erreur'}
+          {searchQ.error instanceof Error ? searchQ.error.message : 'Erreur'}
         </div>
       )}
 
-      {presQ.isLoading ? (
+      {searchQ.isPending ? (
         <div className="mt-6 grid grid-cols-1 gap-[14px] md:grid-cols-2 xl:grid-cols-3">
           {[0, 1, 2, 3].map((i) => (
             <div key={i} className="h-[280px] animate-pulse rounded-[18px] border-[1.5px] border-de9-line bg-card" />
@@ -510,19 +423,26 @@ function SearchPageContent({ ctxCmd }: { ctxCmd: CtxCommande | null }) {
       ) : (
         <>
           <div className="mt-4 text-[12.5px] font-semibold text-de9-gray">
-            {list.length} {t('presResultats')}
+            {meta?.total ?? rows.length} {t('presResultats')}
           </div>
-          <div className="mt-3 grid grid-cols-1 gap-[14px] md:grid-cols-2 xl:grid-cols-3">
-            {list.map((p) => {
-              const co = catObj(p.cat);
-              const fk = famForCat(p.cat) ?? 'NOIR';
-              const famColor = FAM_COLOR[fk];
-              const st = stats.get(p.id);
-              const hasReal = (st?.count ?? 0) > 0;
-              const rating = hasReal && st ? st.avg : p.rating;
-              const reviewCount = hasReal && st ? st.count : p.reviews;
-              const dn = p.dispo === 'now';
-              const isSel = selected.includes(p.id);
+          <div
+            className={cn(
+              'mt-3 grid grid-cols-1 gap-[14px] transition-opacity md:grid-cols-2 xl:grid-cols-3',
+              searchQ.isPlaceholderData && 'opacity-60',
+            )}
+          >
+            {rows.map((p) => {
+              const famColor = p.familles[0]?.hex ?? '#232838';
+              const catLabel = p.categories[0]?.label ?? '';
+              const subsLabel = p.sousCategories.map((s) => s.label).join(' · ') || (p.pitch ?? '');
+              const zonesLabel = [
+                ...new Set([...(p.wilaya ? [p.wilaya] : []), ...p.zones.map((z) => z.wilaya)]),
+              ].join(', ');
+              const dn = p.dispoNow;
+              const selKey = p.companyId ?? p.id;
+              const isSel = selected.includes(selKey);
+              const whatsAppHref = p.whatsAppUrl ?? (p.whatsAppPhone ? 'https://wa.me/' + p.whatsAppPhone : null);
+              const hasRefs = p.referencesDe9de9 > 0 || p.referencesClient > 0;
               return (
                 <div
                   key={p.id}
@@ -536,7 +456,7 @@ function SearchPageContent({ ctxCmd }: { ctxCmd: CtxCommande | null }) {
                   <div className="flex items-start gap-3">
                     <button
                       type="button"
-                      onClick={() => selectionActions.toggle(p.id)}
+                      onClick={() => selectionActions.toggle(selKey, p.nom)}
                       className={
                         'mt-0.5 flex size-6 flex-none cursor-pointer items-center justify-center rounded-[7px] border-2 text-[14px] font-extrabold text-white ' +
                         (isSel ? 'border-de9-teal bg-de9-teal' : 'border-[#CBD3DB] bg-card')
@@ -544,42 +464,50 @@ function SearchPageContent({ ctxCmd }: { ctxCmd: CtxCommande | null }) {
                     >
                       {isSel ? '✓' : ''}
                     </button>
-                    <div
-                      className="flex size-[46px] flex-none items-center justify-center rounded-[13px] text-[15px] font-extrabold text-white"
-                      style={{ background: famColor }}
-                    >
-                      {p.init}
-                    </div>
+                    {p.logoUrl ? (
+                      <img src={p.logoUrl} alt="" className="size-[46px] flex-none rounded-[13px] object-cover" />
+                    ) : (
+                      <div
+                        className="flex size-[46px] flex-none items-center justify-center rounded-[13px] text-[15px] font-extrabold text-white"
+                        style={{ background: famColor }}
+                      >
+                        {initialsOf(p.nom)}
+                      </div>
+                    )}
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-[7px]">
                         <button
                           type="button"
-                          onClick={() => openProfile(p.id)}
+                          onClick={() => openProfile(p.companyId ?? p.id)}
                           className="cursor-pointer text-[15.5px] font-extrabold text-de9-ink"
                         >
-                          {p.name}
+                          {p.nom}
                         </button>
                         <span className="size-[9px] rounded-full" style={{ background: famColor }} />
-                        {p.kyc && (
+                        {p.kycVerifie && (
                           <span className="rounded-full bg-[#E7F6EE] px-2 py-[3px] text-[10px] font-extrabold text-[#2FA86A] dark:bg-[#2FA86A]/15 dark:text-[#6FCF97]">
                             ✓ KYC
                           </span>
                         )}
                       </div>
-                      <div className="mt-[3px] text-[12px] font-bold" style={{ color: famColor }}>
-                        {co?.icon} {co ? l(co.fr, co.ar) : ''}
-                      </div>
-                      <div className="mt-0.5 text-[11.5px] text-de9-slate">{p.subs.join(' · ')}</div>
-                      <div className="mt-px text-[11.5px] text-de9-gray">📍 {p.wilayas.join(', ')}</div>
+                      {catLabel && (
+                        <div className="mt-[3px] text-[12px] font-bold" style={{ color: famColor }}>
+                          {catLabel}
+                        </div>
+                      )}
+                      <div className="mt-0.5 text-[11.5px] text-de9-slate">{subsLabel}</div>
+                      {zonesLabel && <div className="mt-px text-[11.5px] text-de9-gray">📍 {zonesLabel}</div>}
                     </div>
                     <div className="flex-none text-end">
-                      <div className="text-[15px] font-extrabold text-de9-ink">★ {rating.toFixed(1)}</div>
-                      <div className="text-[10.5px] text-[#B0B8C2]">
-                        {reviewCount} {t('surNAvis')}
+                      <div className="text-[15px] font-extrabold text-de9-ink">
+                        ★ {p.note == null ? '—' : p.note.toFixed(1)}
                       </div>
-                      {hasReal && st && (
+                      <div className="text-[10.5px] text-[#B0B8C2]">
+                        {p.nombreAvis} {t('surNAvis')}
+                      </div>
+                      {hasRefs && (
                         <div className="mt-px whitespace-nowrap text-[9px] text-[#C0C8D0]">
-                          {st.nDe9} de9de9 · {st.nClient} {l('client', 'عميل')}
+                          {p.referencesDe9de9} de9de9 · {p.referencesClient} {l('client', 'عميل')}
                         </div>
                       )}
                     </div>
@@ -591,15 +519,17 @@ function SearchPageContent({ ctxCmd }: { ctxCmd: CtxCommande | null }) {
                       <div className="text-[9.5px] text-de9-gray">{t('presMissionsCount')}</div>
                     </div>
                     <div className="rounded-[10px] bg-secondary p-[9px] text-center">
-                      <div className="text-[14px] font-extrabold text-[#2FA86A] dark:text-[#6FCF97]">{p.sat}%</div>
+                      <div className="text-[14px] font-extrabold text-[#2FA86A] dark:text-[#6FCF97]">
+                        {p.satisfactionPercent != null ? p.satisfactionPercent + '%' : '—'}
+                      </div>
                       <div className="text-[9.5px] text-de9-gray">{t('presSatisfaction')}</div>
                     </div>
                     <div className="rounded-[10px] bg-secondary p-[9px] text-center">
-                      <div className="text-[14px] font-extrabold text-de9-ink">{p.delai}</div>
+                      <div className="text-[14px] font-extrabold text-de9-ink">{delaiLabel(p.delaiReponseHeures)}</div>
                       <div className="text-[9.5px] text-de9-gray">{t('presDelaiMoyen')}</div>
                     </div>
                     <div className="rounded-[10px] bg-secondary p-[9px] text-center">
-                      <div className="text-[14px] font-extrabold text-de9-ink">{p.effectif}</div>
+                      <div className="text-[14px] font-extrabold text-de9-ink">{p.effectif ?? '—'}</div>
                       <div className="text-[9.5px] text-de9-gray">{t('presPers')}</div>
                     </div>
                   </div>
@@ -613,13 +543,15 @@ function SearchPageContent({ ctxCmd }: { ctxCmd: CtxCommande | null }) {
                           : 'bg-[#FBF1DF] text-[#C77C1F] dark:bg-[#C77C1F]/15 dark:text-[#D9B36A]')
                       }
                     >
-                      {dn ? '●' : '📅'} {dn ? t('presDispoNow') : t('presDispoLe') + ' ' + p.dispo}
+                      {dn
+                        ? '● ' + t('presDispoNow')
+                        : '⏱ ' + l('Répond sous', 'يرد خلال') + ' ' + delaiLabel(p.delaiReponseHeures)}
                     </span>
                   </div>
 
                   <div className="mt-2.5 flex min-h-[26px] flex-wrap items-center justify-between gap-2">
                     <div className="flex flex-wrap items-center gap-1.5">
-                      {p.certs.map((c) => (
+                      {p.certifications.map((c) => (
                         <span
                           key={c}
                           className="rounded-full bg-secondary px-[9px] py-1 text-[10.5px] font-bold text-de9-slate"
@@ -628,43 +560,49 @@ function SearchPageContent({ ctxCmd }: { ctxCmd: CtxCommande | null }) {
                         </span>
                       ))}
                     </div>
-                    <span className="text-[14px] font-extrabold text-de9-ink">{tarifLabel(p.tarif)}</span>
+                    <span className="text-[12.5px] font-extrabold text-de9-ink">{tarifLabel(p)}</span>
                   </div>
 
                   <div className="mt-[13px] flex flex-wrap gap-2">
-                    <a
-                      href={'tel:+213' + p.phone.replace(/^0/, '')}
-                      className="flex-[1_1_30%] rounded-[11px] border-[1.5px] border-de9-line bg-card p-2.5 text-center text-[12px] font-bold text-de9-slate no-underline"
-                    >
-                      📞 {t('tel')}
-                    </a>
-                    <a
-                      href={'https://wa.me/' + p.wa}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="flex-[1_1_30%] rounded-[11px] border-[1.5px] border-de9-line bg-card p-2.5 text-center text-[12px] font-bold text-de9-slate no-underline"
-                    >
-                      💬 WhatsApp
-                    </a>
-                    <a
-                      href={'mailto:' + p.email}
-                      className="flex-[1_1_30%] rounded-[11px] border-[1.5px] border-de9-line bg-card p-2.5 text-center text-[12px] font-bold text-de9-slate no-underline"
-                    >
-                      ✉️ Email
-                    </a>
+                    {p.contactPhone && (
+                      <a
+                        href={'tel:' + p.contactPhone}
+                        className="flex-[1_1_30%] rounded-[11px] border-[1.5px] border-de9-line bg-card p-2.5 text-center text-[12px] font-bold text-de9-slate no-underline"
+                      >
+                        📞 {t('tel')}
+                      </a>
+                    )}
+                    {whatsAppHref && (
+                      <a
+                        href={whatsAppHref}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="flex-[1_1_30%] rounded-[11px] border-[1.5px] border-de9-line bg-card p-2.5 text-center text-[12px] font-bold text-de9-slate no-underline"
+                      >
+                        💬 WhatsApp
+                      </a>
+                    )}
+                    {p.contactEmail && (
+                      <a
+                        href={'mailto:' + p.contactEmail}
+                        className="flex-[1_1_30%] rounded-[11px] border-[1.5px] border-de9-line bg-card p-2.5 text-center text-[12px] font-bold text-de9-slate no-underline"
+                      >
+                        ✉️ Email
+                      </a>
+                    )}
                   </div>
 
                   <div className="mt-2 flex gap-2">
                     <button
                       type="button"
-                      onClick={() => openProfile(p.id)}
+                      onClick={() => openProfile(p.companyId ?? p.id)}
                       className="flex-1 cursor-pointer rounded-[11px] bg-secondary p-2.5 text-center text-[12px] font-bold text-de9-slate"
                     >
                       {t('presVoirProfil')}
                     </button>
                     <button
                       type="button"
-                      onClick={() => addCandidate(p.id)}
+                      onClick={() => addCandidate(p)}
                       className="flex-1 cursor-pointer rounded-[11px] bg-[#232838] p-2.5 text-center text-[12px] font-bold text-white"
                     >
                       {t('presDemanderDevis')}
@@ -674,15 +612,52 @@ function SearchPageContent({ ctxCmd }: { ctxCmd: CtxCommande | null }) {
               );
             })}
           </div>
-          {list.length === 0 && (
+          {rows.length === 0 && (
             <div className="p-[50px] text-center text-[14px] text-de9-gray">{t('presAucun')}</div>
+          )}
+
+          {/* ---- pagination ---- */}
+          {meta && meta.total_pages > 1 && (
+            <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
+              <div className="text-[12.5px] font-semibold text-de9-gray">
+                {t('worklistPageInfo')
+                  .replace('{n}', String(meta.current_page))
+                  .replace('{m}', String(meta.total_pages))}
+                {' · '}
+                {meta.total} {t('presResultats')}
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  disabled={page <= 1}
+                  onClick={() => setPage((n) => Math.max(1, n - 1))}
+                  className="cursor-pointer rounded-[11px] border-[1.5px] border-de9-line bg-card px-[13px] py-2 text-[12.5px] font-bold text-de9-slate disabled:cursor-default disabled:opacity-40"
+                >
+                  {t('pagePrecedent')}
+                </button>
+                <button
+                  type="button"
+                  disabled={!meta.has_more_pages}
+                  onClick={() => setPage((n) => n + 1)}
+                  className="cursor-pointer rounded-[11px] border-[1.5px] border-de9-line bg-card px-[13px] py-2 text-[12.5px] font-bold text-de9-slate disabled:cursor-default disabled:opacity-40"
+                >
+                  {t('pageSuivant')}
+                </button>
+              </div>
+            </div>
           )}
         </>
       )}
 
       {/* ---- overlays ---- */}
-      <SelectionBar prestataires={all} onRequestQuotes={() => setBriefOpen(true)} />
-      <BriefModal open={briefOpen} onOpenChange={setBriefOpen} selected={selectedPres} ctx={ctxCmd} />
+      <SelectionBar onRequestQuotes={() => setBriefOpen(true)} />
+      <BriefModal
+        open={briefOpen}
+        onOpenChange={setBriefOpen}
+        selected={selectedPres}
+        ctx={ctxCmd}
+        filters={{ cat: filters.cat, sub: filters.sub, wilaya: filters.wilaya, commune: filters.commune }}
+      />
       <ReviewModal
         presId={reviewId ?? ''}
         presName={reviewName}

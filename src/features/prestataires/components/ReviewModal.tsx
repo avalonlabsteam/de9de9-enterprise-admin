@@ -5,7 +5,7 @@ import { useT } from '@/lib/i18n';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { usePrestataire } from '../api/prestataires';
+import { usePrestataireFiche } from '../api/prestataires';
 import { useSubmitReview } from '../api/reviews';
 import { reviewInputSchema } from '../schemas/review';
 import type { ReviewInput } from '../schemas/review';
@@ -20,7 +20,7 @@ export interface ReviewModalProps {
 /** Avis de9de9 — évaluer un prestataire (logic.ts openReviewPres/submitReview, ReviewAndNotes.tsx design). */
 export function ReviewModal({ presId, presName, open, onOpenChange }: ReviewModalProps) {
   const t = useT();
-  const { data: pres } = usePrestataire(open ? presId : '');
+  const { data: pres } = usePrestataireFiche(open ? presId : '');
   const submitReview = useSubmitReview();
 
   const { register, handleSubmit, reset, setValue, watch, formState } = useForm<ReviewInput>({
@@ -33,10 +33,11 @@ export function ReviewModal({ presId, presName, open, onOpenChange }: ReviewModa
   // logic.ts openReviewPres — service defaults to the prestataire's first sub.
   useEffect(() => {
     if (!open) return;
-    reset({ presId, presName, cmd: '', occ: '', service: pres?.subs[0] ?? '', note: 0, comment: '' });
+    const service = pres?.fiche.sousCategories[0]?.label ?? '';
+    reset({ presId, presName, cmd: '', occ: '', service, note: 0, comment: '' });
     submitReview.reset();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, presId, presName, pres?.id]);
+  }, [open, presId, presName, pres?.fiche.id]);
 
   const onSubmit = handleSubmit(async (values) => {
     try {

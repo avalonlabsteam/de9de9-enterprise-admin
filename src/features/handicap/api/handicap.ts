@@ -1,14 +1,25 @@
-import { useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useInfiniteQuery } from '@tanstack/react-query';
 import { apiClient } from '@/api/apiClient';
-import { handicapWorkerSchema, type HandicapWorker } from '../schemas/handicap';
+import { handicapListSchema, type HandicapParams } from '../schemas/handicap';
 
-/** GET /handicap — the waitlist of companies ready to employ persons with disabilities. */
-export function useHandicapWorkers() {
-  return useQuery<HandicapWorker[]>({
-    queryKey: ['handicap'],
-    queryFn: async () => {
-      const res = await apiClient.get('/handicap');
-      return handicapWorkerSchema.array().parse(res.data);
+const PAGE_SIZE = 20;
+
+/**
+ * GET /handicap — paginated waitlist of companies ready to employ persons
+ * with disabilities. Pages accumulate via `fetchNextPage` (the « Charger
+ * plus » button); a filter change restarts at page 1.
+ */
+export function useHandicapList(params: HandicapParams) {
+  return useInfiniteQuery({
+    queryKey: ['handicap', 'list', params],
+    queryFn: async ({ pageParam }) => {
+      const res = await apiClient.get('/handicap', {
+        params: { ...params, pageSize: params.pageSize ?? PAGE_SIZE, page: pageParam },
+      });
+      return handicapListSchema.parse(res.data);
     },
+    initialPageParam: 1,
+    getNextPageParam: (last) => (last.meta.has_more_pages ? last.meta.current_page + 1 : undefined),
+    placeholderData: keepPreviousData,
   });
 }

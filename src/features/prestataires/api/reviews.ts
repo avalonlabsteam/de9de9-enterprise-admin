@@ -25,6 +25,8 @@ export function useSubmitReview() {
     },
     onSuccess: (_review, input) => {
       void queryClient.invalidateQueries({ queryKey: ['reviews'] });
+      // The profile overlay reads its avis from GET /prestataires/{companyId}.
+      void queryClient.invalidateQueries({ queryKey: ['prestataires'] });
       if (input.cmd) void queryClient.invalidateQueries({ queryKey: ['commandes'] });
       toast.success(t('reviewToastEnregistre').replace('{n}', input.presName ?? input.presId));
     },

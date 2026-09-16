@@ -23,10 +23,16 @@ function SelectGroup({
   )
 }
 
+// Radix portals the selected item's label into this span as a bare text node
+// (SelectItemText → createPortal(children, valueNode)). Browser page
+// translation swaps text nodes for <font> wrappers, so when the Select later
+// unmounts React can't find its node and throws "Failed to execute 'removeChild'
+// on 'Node'". `translate="no"` (inherited by the portaled text) keeps the
+// translator out of the span; the rest of the page stays translatable.
 function SelectValue({
   ...props
 }: React.ComponentProps<typeof SelectPrimitive.Value>) {
-  return <SelectPrimitive.Value data-slot="select-value" {...props} />
+  return <SelectPrimitive.Value data-slot="select-value" translate="no" {...props} />
 }
 
 function SelectTrigger({

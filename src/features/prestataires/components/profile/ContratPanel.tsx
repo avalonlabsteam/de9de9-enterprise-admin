@@ -1,18 +1,34 @@
 // Contrat de partenariat tab — ported from src/admin/views/PresProfile.tsx (tContrat)
 // and logic.ts buildContractVM / setContractFile / toggleContractStatus / removeContract.
+//
+// The signed contract comes from GET /prestataires/{companyId} (dossier.contrat).
+// Uploading, toggling and removing have no API route, so those still write to the
+// client-side store, which then shadows the server value for this session.
 import type { ChangeEvent } from 'react';
 import { toast } from 'sonner';
 import { useT } from '@/lib/i18n';
 import { contractsActions, useContractsStore } from './contractsStore';
+import type { ContratView } from './fromFiche';
 
 interface ContratPanelProps {
   presId: string;
+  contrat: ContratView | null;
   onOpenPiece: (title: string, fileName: string) => void;
 }
 
-export function ContratPanel({ presId, onOpenPiece }: ContratPanelProps) {
+export function ContratPanel({ presId, contrat, onOpenPiece }: ContratPanelProps) {
   const t = useT();
-  const contract = useContractsStore((s) => s.contracts[presId]);
+  const local = useContractsStore((s) => s.contracts[presId]);
+  const contract =
+    local ??
+    (contrat
+      ? {
+          fileName: contrat.fileName,
+          signedDate: contrat.signedDate,
+          validUntil: '',
+          status: contrat.signed ? ('signed' as const) : ('unsigned' as const),
+        }
+      : undefined);
 
   const has = !!contract?.fileName;
   const signed = contract?.status === 'signed';

@@ -1,25 +1,28 @@
-import { useState } from 'react';
+// CRÉDITS — ledger page, driven by GET /credits. The server filters (Q/Type)
+// and paginates; this page maps UI state to query params and renders rows.
+// The mock twin lives in src/api/mock/handlers.ts.
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useT, useL, type TKey } from '@/lib/i18n';
 import { useLangStore, type Lang } from '@/stores/langStore';
 import { cn } from '@/lib/utils';
-import type { CreditEntry, CreditType, PieceFile } from '../schemas/credit';
-import { useCredits } from '../api/credits';
+import type { CreditLedgerItem, CreditsLedgerParams, CreditType, PieceFile } from '../schemas/credit';
+import { useCreditsLedger } from '../api/credits';
 import { RechargeModal, type RechargeDocs, type RechargeModalState } from './RechargeModal';
 import { PieceViewer, type PieceView } from './PieceViewer';
 
-/* ---- date helper ported from logic.ts dayName()/withDay() ---- */
+/* ---- date helper (logic.ts dayName/withDay, re-derived from occurredAt so
+   the day name follows the UI language — the server's `date` string is
+   pre-formatted in French) ---- */
 const DAYS_FR = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
 const DAYS_AR = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
 
-function withDay(s: string, lang: Lang): string {
-  const m = s.match(/(\d{2}\/\d{2}\/\d{4})/);
-  if (!m) return s;
-  const p = m[1].split('/');
-  const dt = new Date(Number(p[2]), Number(p[1]) - 1, Number(p[0]));
-  if (Number.isNaN(dt.getTime())) return s;
+function dateLabel(iso: string, lang: Lang): string {
+  const dt = new Date(iso);
+  if (Number.isNaN(dt.getTime())) return iso;
   const day = (lang === 'ar' ? DAYS_AR : DAYS_FR)[dt.getDay()];
-  return day ? s.replace(m[1], day + ' ' + m[1]) : s;
+  const p = (n: number) => String(n).padStart(2, '0');
+  return `${day} ${p(dt.getDate())}/${p(dt.getMonth() + 1)}/${dt.getFullYear()}`;
 }
 
 /* ---- static derivations ported from logic.ts buildCredits() ---- */
@@ -31,6 +34,7 @@ const TYPE_BADGE: Record<CreditType, { labelKey: TKey; cls: string }> = {
   vers: { labelKey: 'creditsVersement', cls: 'bg-[#EAF2FD] text-[#2F7FD0]' },
 };
 
+// Placeholder amounts — the API has no credits stats endpoint yet.
 const TOTALS: ReadonlyArray<{ labelKey: TKey; value: string; subKey: TKey; colorCls: string }> = [
   { labelKey: 'creditsVendus', value: '250 000', subKey: 'creditsCeMois', colorCls: 'text-[#2FA86A] dark:text-[#6FCF97]' },
   { labelKey: 'creditsDepenses', value: '85 000', subKey: 'creditsCeMois', colorCls: 'text-de9-red' },
@@ -47,6 +51,9 @@ const FILTERS: ReadonlyArray<{ key: CreditFilter; labelKey: TKey }> = [
 
 const GRID_COLS = 'grid-cols-[1fr_1.2fr_1.8fr_1.4fr_1fr_1.1fr_1fr]';
 
+const PAGE_SIZE = 25;
+const SEARCH_DEBOUNCE_MS = 300;
+
 /** Ledger page — historique des crédits (recharges, débits facture, versements pro). */
 export function CreditsPage() {
   const t = useT();
@@ -56,29 +63,39 @@ export function CreditsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
 
   const [filter, setFilter] = useState<CreditFilter>('all');
-  const [search, setSearch] = useState('');
+  const [searchInput, setSearchInput] = useState('');
+  const [q, setQ] = useState('');
+  const [page, setPage] = useState(1);
   const [modal, setModal] = useState<RechargeModalState | null>(null);
   const [piece, setPiece] = useState<PieceView | null>(null);
   // client-side pieces edited via the docs mode (prototype state.rechargeDocs)
   const [docsOverride, setDocsOverride] = useState<Record<string, RechargeDocs>>({});
 
-  const { data, isPending, isError } = useCredits();
+  useEffect(() => {
+    const id = setTimeout(() => {
+      setQ(searchInput.trim());
+      setPage(1);
+    }, SEARCH_DEBOUNCE_MS);
+    return () => clearTimeout(id);
+  }, [searchInput]);
 
-  // ---- filters (logic.ts buildCredits) ----
-  let rows = data ?? [];
-  if (filter !== 'all') rows = rows.filter((r) => r.type === filter);
-  const q = search.trim().toLowerCase();
-  if (q) {
-    const qc = q.replace(/\s/g, '');
-    rows = rows.filter(
-      (r) =>
-        r.client.toLowerCase().includes(q) ||
-        r.email.toLowerCase().includes(q) ||
-        r.phone.replace(/\s/g, '').includes(qc),
-    );
-  }
+  const params = useMemo<CreditsLedgerParams>(() => {
+    const p: CreditsLedgerParams = { page, pageSize: PAGE_SIZE };
+    if (q) p.q = q;
+    if (filter !== 'all') p.type = filter;
+    return p;
+  }, [q, filter, page]);
 
-  const docsOf = (e: CreditEntry): RechargeDocs =>
+  const ledgerQ = useCreditsLedger(params);
+  const rows = ledgerQ.data?.data ?? [];
+  const meta = ledgerQ.data?.meta;
+
+  const setFilterKey = (key: CreditFilter): void => {
+    setFilter(key);
+    setPage(1);
+  };
+
+  const docsOf = (e: CreditLedgerItem): RechargeDocs =>
     docsOverride[e.ref] ?? { justif: e.justif ?? null, facture: e.facture ?? null };
 
   // ---- overlays that survive navigation (client fiche / prestataire profile) ----
@@ -104,7 +121,7 @@ export function CreditsPage() {
 
   /* ---- pieces chip (🧾 present / ⚠ manquant) ---- */
   const pieceChip = (
-    e: CreditEntry,
+    e: CreditLedgerItem,
     file: PieceFile | null,
     kindLabel: string,
     title: string,
@@ -162,7 +179,7 @@ export function CreditsPage() {
         ⚠ {t('donneesAVenir')}
       </div>
 
-      {isPending ? (
+      {ledgerQ.isPending ? (
         <div className="mt-4 animate-pulse">
           <div className="grid grid-cols-2 gap-3.5 md:grid-cols-4">
             {[0, 1, 2, 3].map((i) => (
@@ -171,7 +188,7 @@ export function CreditsPage() {
           </div>
           <div className="mt-3.5 h-64 rounded-[18px] border border-de9-line bg-card" />
         </div>
-      ) : isError ? (
+      ) : ledgerQ.isError ? (
         <div className="mt-4 rounded-xl border border-[#F3C9CB] bg-[#FDECEC] px-4 py-3 text-[12.5px] font-semibold text-de9-red dark:border-[#E7464E]/40 dark:bg-[#E7464E]/15">
           {l('Erreur de chargement des crédits', 'خطأ في تحميل الرصيد')}
         </div>
@@ -196,8 +213,8 @@ export function CreditsPage() {
           {/* search + filters */}
           <div className="mt-4 flex flex-wrap items-center gap-[9px]">
             <input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
               placeholder={t('facSearch')}
               className="min-w-0 flex-1 rounded-[11px] border-[1.5px] border-de9-line bg-card px-[15px] py-2.5 text-[12.5px] text-de9-ink outline-none sm:flex-[0_0_300px]"
             />
@@ -207,7 +224,7 @@ export function CreditsPage() {
                 <button
                   key={f.key}
                   type="button"
-                  onClick={() => setFilter(f.key)}
+                  onClick={() => setFilterKey(f.key)}
                   className={cn(
                     'cursor-pointer rounded-full border-[1.5px] px-[15px] py-[9px] text-[12.5px] font-bold',
                     active
@@ -223,7 +240,7 @@ export function CreditsPage() {
 
           {/* ledger */}
           <div className="mt-3.5 overflow-hidden rounded-[18px] border border-de9-line bg-card shadow-[0_10px_30px_rgba(38,50,69,.06)]">
-            <div className="overflow-x-auto">
+            <div className={cn('overflow-x-auto transition-opacity', ledgerQ.isPlaceholderData && 'opacity-60')}>
               <div className="min-w-[840px]">
                 <div
                   className={cn(
@@ -241,21 +258,23 @@ export function CreditsPage() {
                 </div>
                 {rows.map((e) => {
                   const badge = TYPE_BADGE[e.type];
+                  const benef = e.benef ?? '—';
+                  const cmdRef = e.cmdRef && e.cmdRef !== '—' ? e.cmdRef : '';
                   const isRech = e.type === 'rech';
-                  const isVers = e.type === 'vers' && !!e.cmdRef;
-                  const hasFacture = e.type === 'deb' && !!e.cmdRef;
+                  const isVers = e.type === 'vers' && !!cmdRef;
+                  const hasFacture = e.type === 'deb' && !!cmdRef;
                   const docs = docsOf(e);
-                  const versTitle = `${t('factureServicePresta')} — ${e.benef}`;
-                  const versFile = `facture-service-F-${e.cmdRef.replace(/[^0-9]/g, '')}-${e.benef}.pdf`;
+                  const versTitle = `${t('factureServicePresta')} — ${benef}`;
+                  const versFile = `facture-service-F-${cmdRef.replace(/[^0-9]/g, '')}-${benef}.pdf`;
                   return (
                     <div
-                      key={e.ref}
+                      key={e.id}
                       className={cn(
                         'grid items-center gap-3 border-b border-de9-line px-[22px] py-3.5',
                         GRID_COLS,
                       )}
                     >
-                      <div className="text-[12.5px] text-de9-slate">{withDay(e.date, lang)}</div>
+                      <div className="text-[12.5px] text-de9-slate">{dateLabel(e.occurredAt, lang)}</div>
                       <div>
                         <span
                           className={cn(
@@ -276,10 +295,10 @@ export function CreditsPage() {
                       </div>
                       <div className="text-[12.5px] text-de9-slate">
                         <span
-                          onClick={() => openPresByName(e.benef)}
+                          onClick={() => openPresByName(benef)}
                           className="cursor-pointer underline decoration-[#C7CFD7] decoration-dotted underline-offset-[3px]"
                         >
-                          {e.benef}
+                          {benef}
                         </span>
                       </div>
                       <div className="text-[11.5px] text-de9-gray">
@@ -315,7 +334,7 @@ export function CreditsPage() {
                       >
                         {(e.credits > 0 ? '+' : '') + e.credits.toLocaleString('fr-FR')}
                       </div>
-                      <div className="text-end text-[12.5px] text-de9-slate">{e.solde}</div>
+                      <div className="text-end text-[12.5px] text-de9-slate">{e.solde ?? '—'}</div>
                     </div>
                   );
                 })}
@@ -324,6 +343,37 @@ export function CreditsPage() {
             {rows.length === 0 && (
               <div className="px-[22px] py-8 text-center text-[12.5px] text-de9-gray">
                 {t('aucuneDonnee')}
+              </div>
+            )}
+
+            {/* pagination footer */}
+            {meta && meta.total_pages > 1 && (
+              <div className="flex flex-wrap items-center justify-between gap-3 border-t border-de9-line px-[22px] py-3">
+                <div className="text-[12.5px] font-semibold text-de9-gray">
+                  {t('worklistPageInfo')
+                    .replace('{n}', String(meta.current_page))
+                    .replace('{m}', String(meta.total_pages))}
+                  {' · '}
+                  {meta.total} {t('operationsCount')}
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    disabled={page <= 1}
+                    onClick={() => setPage((n) => Math.max(1, n - 1))}
+                    className="cursor-pointer rounded-[11px] border-[1.5px] border-de9-line bg-card px-[13px] py-2 text-[12.5px] font-bold text-de9-slate disabled:cursor-default disabled:opacity-40"
+                  >
+                    {t('pagePrecedent')}
+                  </button>
+                  <button
+                    type="button"
+                    disabled={!meta.has_more_pages}
+                    onClick={() => setPage((n) => n + 1)}
+                    className="cursor-pointer rounded-[11px] border-[1.5px] border-de9-line bg-card px-[13px] py-2 text-[12.5px] font-bold text-de9-slate disabled:cursor-default disabled:opacity-40"
+                  >
+                    {t('pageSuivant')}
+                  </button>
+                </div>
               </div>
             )}
           </div>
@@ -337,7 +387,7 @@ export function CreditsPage() {
           onSaveDocs={saveDocs}
           onCreated={() => {
             setModal(null);
-            setFilter('all');
+            setFilterKey('all');
           }}
         />
       )}

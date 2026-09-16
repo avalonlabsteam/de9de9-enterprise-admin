@@ -1,5 +1,8 @@
 import { createBrowserRouter, Navigate } from 'react-router-dom';
+import { RootLayout } from '@/components/layout/RootLayout';
 import { AppLayout } from '@/components/layout/AppLayout';
+import { RequireAuth } from '@/features/auth/components/RequireAuth';
+import { authRoutes } from '@/features/auth/routes';
 import { commandesRoutes } from '@/features/commandes/routes';
 import { prestatairesRoutes } from '@/features/prestataires/routes';
 import { soustraitanceRoutes } from '@/features/soustraitance/routes';
@@ -11,17 +14,31 @@ import { analyticsRoutes } from '@/features/analytics/routes';
 export const router = createBrowserRouter([
   {
     path: '/',
-    element: <AppLayout />,
+    element: <RootLayout />,
     children: [
-      { index: true, element: <Navigate to="/commandes" replace /> },
-      ...commandesRoutes,
-      ...prestatairesRoutes,
-      ...soustraitanceRoutes,
-      ...handicapRoutes,
-      ...facturesRoutes,
-      ...creditsRoutes,
-      ...analyticsRoutes,
-      { path: '*', element: <Navigate to="/commandes" replace /> },
+      // ---- public ----
+      ...authRoutes,
+
+      // ---- authenticated ----
+      {
+        element: <RequireAuth />,
+        children: [
+          {
+            element: <AppLayout />,
+            children: [
+              { index: true, element: <Navigate to="/commandes" replace /> },
+              ...commandesRoutes,
+              ...prestatairesRoutes,
+              ...soustraitanceRoutes,
+              ...handicapRoutes,
+              ...facturesRoutes,
+              ...creditsRoutes,
+              ...analyticsRoutes,
+              { path: '*', element: <Navigate to="/commandes" replace /> },
+            ],
+          },
+        ],
+      },
     ],
   },
 ]);
