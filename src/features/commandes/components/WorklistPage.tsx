@@ -16,7 +16,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { useWorklist, useWorklistKpis } from '../api/commandes';
+import { useWorklist, useWorklistKpis, useToggleTraite } from '../api/commandes';
+import { toast } from 'sonner';
+import { problemMessage } from '@/api/problem';
 import { useCommunes, useWilayas } from '@/features/geo/api/geo';
 import type { WorklistItem, WorklistParams, WorklistStatut } from '../schemas/worklist';
 import { BALL_COLOR, ballLabel, formatDuration, statusBadge, visitLabel } from '../lib/worklistDisplay';
@@ -85,8 +87,10 @@ export function WorklistPage() {
   const [filter, setFilter] = useState<WorklistFilter>(INITIAL_FILTER);
   const [page, setPage] = useState(1);
   const [searchInput, setSearchInput] = useState('');
-  /** Local overrides of the server `traite` flag — no toggle endpoint yet. */
+  // Server-confirmed overrides of the row's `traite` flag: PATCH answers with
+  // the new value, so the cell can flip before the list is refetched.
   const [handled, setHandled] = useState<Record<string, boolean>>({});
+  const toggleTraite = useToggleTraite();
   const [notesFor, setNotesFor] = useState<string | null>(null);
 
   // Debounce the search box into the filter. Every filter change re-opens the
@@ -432,9 +436,15 @@ export function WorklistPage() {
                 <div
                   onClick={(e) => {
                     e.stopPropagation();
-                    setHandled((h) => ({ ...h, [c.id]: !isHandled }));
+                    if (toggleTraite.isPending) return;
+                    toggleTraite.mutate(c.id, {
+                      // Trust the server's value rather than assuming the flip.
+                      onSuccess: (res) => setHandled((h) => ({ ...h, [res.id]: res.traite })),
+                      onError: (err) => toast.error(problemMessage(err)),
+                    });
                   }}
-                  className="flex cursor-pointer items-center gap-[7px]"
+                  className="flex cursor-pointer items-center gap-[7px] aria-disabled:opacity-60"
+                  aria-disabled={toggleTraite.isPending}
                 >
                   <div
                     className={cn(

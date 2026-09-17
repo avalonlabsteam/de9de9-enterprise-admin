@@ -4,7 +4,16 @@ import { paginationMetaSchema } from '@/api/pagination';
 export const creditTypeSchema = z.enum(['rech', 'deb', 'vers']);
 export type CreditType = z.infer<typeof creditTypeSchema>;
 
-export const pieceFileSchema = z.object({ name: z.string() });
+/**
+ * A stored document on a recharge row. The live payload carries `url` next to
+ * the name — a `/documents/{id}/download` link — and z.object strips keys it
+ * does not declare, so it must be listed here or it never reaches the viewer.
+ * The mock twin emits `name` only, hence nullish.
+ */
+export const pieceFileSchema = z.object({
+  name: z.string(),
+  url: z.string().nullish(),
+});
 export type PieceFile = z.infer<typeof pieceFileSchema>;
 
 // ============================================================================

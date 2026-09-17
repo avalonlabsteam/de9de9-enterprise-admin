@@ -14,7 +14,15 @@ import {
   type NoteInput,
 } from '../schemas/commande';
 import { commandeDetailSchema, type CommandeDetail } from '../schemas/commandeDetail';
-import { worklistDetailSchema, type WorklistDetail } from '../schemas/worklistDetail';
+import {
+  worklistDetailSchema,
+  type WorklistDetail,
+  worklistNotesResponseSchema,
+  worklistTraiteResponseSchema,
+  type WorklistNotesResponse,
+  type WorklistNoteInput,
+  type WorklistTraiteResponse,
+} from '../schemas/worklistDetail';
 import {
   worklistKpisSchema,
   worklistResponseSchema,
@@ -393,5 +401,68 @@ export function useToggleNoteHandled(id: string) {
       return commandeEnvelopeSchema.parse(res.data).commande;
     },
     onSuccess: () => invalidateCommande(id),
+  });
+}
+
+// ===================== notes + traité (live worklist) =====================
+// These replace the mock console's /commandes/:id/notes routes for live rows.
+// The note's `aFaire` flag is read-only here: the API documents no endpoint to
+// toggle it, only create, list and delete.
+
+/** GET /commandes/worklist/:id/notes — `limit` caps the list and sets `truncated`. */
+export function useWorklistNotes(id: string, enabled: boolean, limit?: number) {
+  return useQuery({
+    queryKey: ['commandes', 'worklist-notes', id, limit ?? null],
+    enabled: enabled && !!id,
+    queryFn: async (): Promise<WorklistNotesResponse> => {
+      const res = await apiClient.get(`/commandes/worklist/${encodeURIComponent(id)}/notes`, {
+        params: limit ? { limit } : undefined,
+      });
+      return worklistNotesResponseSchema.parse(res.data);
+    },
+  });
+}
+
+/** POST /commandes/worklist/:id/notes — 201 with the created note. */
+export function useAddWorklistNote(id: string) {
+  return useMutation({
+    mutationFn: async (input: WorklistNoteInput): Promise<void> => {
+      await apiClient.post(`/commandes/worklist/${encodeURIComponent(id)}/notes`, input);
+    },
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: ['commandes', 'worklist-notes', id] });
+      // The row's noteCount lives on the list and detail payloads.
+      void queryClient.invalidateQueries({ queryKey: ['commandes'] });
+    },
+  });
+}
+
+/** DELETE /commandes/worklist/:id/notes/:noteId — 204, no body. */
+export function useDeleteWorklistNote(id: string) {
+  return useMutation({
+    mutationFn: async (noteId: string): Promise<void> => {
+      await apiClient.delete(`/commandes/worklist/${encodeURIComponent(id)}/notes/${encodeURIComponent(noteId)}`);
+    },
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: ['commandes', 'worklist-notes', id] });
+      void queryClient.invalidateQueries({ queryKey: ['commandes'] });
+    },
+  });
+}
+
+/**
+ * PATCH /commandes/worklist/:id/traite — flips the row's traité flag and answers
+ * with its new value. The id travels in the mutation so one hook serves every
+ * row of the worklist table.
+ */
+export function useToggleTraite() {
+  return useMutation({
+    mutationFn: async (id: string): Promise<WorklistTraiteResponse> => {
+      const res = await apiClient.patch(`/commandes/worklist/${encodeURIComponent(id)}/traite`);
+      return worklistTraiteResponseSchema.parse(res.data);
+    },
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: ['commandes'] });
+    },
   });
 }

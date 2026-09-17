@@ -3,14 +3,33 @@ import { Dialog as DialogPrimitive } from 'radix-ui';
 import { toast } from 'sonner';
 import { Dialog, DialogOverlay, DialogPortal, DialogTitle } from '@/components/ui/dialog';
 import { useT } from '@/lib/i18n';
+import { documentIdFrom, useDownloadDocument } from '@/api/documents';
 
 export interface PieceView {
   title: string;
   fileName: string;
+  /**
+   * Document id, or the `/documents/{id}/download` URL the API supplies next to
+   * it. Absent when nothing is stored for this piece, which disables the button.
+   */
+  documentId?: string | null;
 }
 
 export function PieceViewer({ piece, onClose }: { piece: PieceView | null; onClose: () => void }) {
   const t = useT();
+  const download = useDownloadDocument();
+  // kycView substitutes the piece `kind` ('KycRc') when none was uploaded, so a
+  // non-uuid here correctly reads as « nothing to download ».
+  const docId = documentIdFrom(piece?.documentId);
+
+  const onDownload = (): void => {
+    if (!docId) return;
+    download.mutate(
+      { id: docId, fileName: piece?.fileName, fallbackMessage: t('docTelechargementErreur') },
+      { onError: (err) => toast.error(err.message) },
+    );
+  };
+
   return (
     <Dialog
       open={!!piece}
@@ -33,10 +52,12 @@ export function PieceViewer({ piece, onClose }: { piece: PieceView | null; onClo
                 <div className="flex gap-2">
                   <button
                     type="button"
-                    onClick={() => toast.success(t('docToastTelechargement'))}
-                    className="flex cursor-pointer items-center gap-1.5 rounded-[10px] bg-de9-ink px-3.5 py-[9px] text-xs font-bold text-white dark:text-[#151923]"
+                    onClick={onDownload}
+                    disabled={!docId || download.isPending}
+                    title={docId ? undefined : t('docIndisponible')}
+                    className="flex cursor-pointer items-center gap-1.5 rounded-[10px] bg-de9-ink px-3.5 py-[9px] text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-50 dark:text-[#151923]"
                   >
-                    ⤓ {t('telecharger')}
+                    ⤓ {download.isPending ? t('docTelechargementEnCours') : t('telecharger')}
                   </button>
                   <button
                     type="button"

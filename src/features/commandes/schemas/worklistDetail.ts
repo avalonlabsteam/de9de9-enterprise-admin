@@ -89,6 +89,36 @@ export const worklistNoteSchema = z.object({
 });
 export type WorklistNote = z.infer<typeof worklistNoteSchema>;
 
+// ============================================================================
+// Notes + traité — GET/POST {VITE_API_URL}/commandes/worklist/{id}/notes,
+// DELETE …/notes/{noteId}, PATCH …/traite.
+// ============================================================================
+
+/** GET …/notes?limit=N — `truncated` says the list was capped by `limit`. */
+export const worklistNotesResponseSchema = z.object({
+  count: z.number(),
+  notes: z.array(worklistNoteSchema),
+  truncated: z.boolean().nullish(),
+});
+export type WorklistNotesResponse = z.infer<typeof worklistNotesResponseSchema>;
+
+/**
+ * POST …/notes — note the asymmetry with the response, which calls the same
+ * person `authorDisplayName`: the request field really is `auteurNom`.
+ */
+export const worklistNoteInputSchema = z.object({
+  body: z.string().min(1),
+  auteurNom: z.string().optional(),
+});
+export type WorklistNoteInput = z.infer<typeof worklistNoteInputSchema>;
+
+/** PATCH …/traite — answers with the flag's new value, so it is a toggle. */
+export const worklistTraiteResponseSchema = z.object({
+  id: z.string(),
+  traite: z.boolean(),
+});
+export type WorklistTraiteResponse = z.infer<typeof worklistTraiteResponseSchema>;
+
 export const worklistOccurrenceFactureSchema = z.object({
   id: z.string().nullish(),
   reference: z.string().nullish(),

@@ -131,7 +131,7 @@ export function CreditsPage() {
       <button
         type="button"
         onClick={() => {
-          if (present && file) setPiece({ title, fileName: file.name });
+          if (present && file) setPiece({ title, fileName: file.name, documentId: file.url });
           else {
             const d = docsOf(e);
             setModal({ mode: 'docs', ref: e.ref, client: e.client, justif: d.justif, facture: d.facture });
@@ -313,6 +313,8 @@ export function CreditsPage() {
                         )}
                         {isVers && (
                           <span
+                            /* No documentId: versFile is a constructed name, not a stored
+                               document, so the viewer's download button stays disabled. */
                             onClick={() => setPiece({ title: versTitle, fileName: versFile })}
                             className="mt-[2px] block cursor-pointer text-[10.5px] font-bold text-[#2F7FD0] dark:text-[#7EB5EC]"
                           >

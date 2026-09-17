@@ -9,6 +9,13 @@ import type { WorklistItem, WorklistKpis, WorklistResponse } from '@/features/co
 import type { MockHandler } from './router';
 import { db, currentOcc, toISO } from './db';
 
+/**
+ * Traité flags for PATCH /commandes/worklist/:id/traite. The mock db has no
+ * per-commande field for it, so the twin keeps them here: module state lives as
+ * long as the page, which is what the rest of the mock does too.
+ */
+export const traiteFlags = new Map<string, { traite: boolean; at: string | null }>();
+
 interface Proj {
   ball: Ball;
   badgeKey: TKey;
@@ -202,8 +209,8 @@ export function toRow(c: Commande): WorklistItem {
     slaCode: flow?.sla?.[0] ?? null,
     slaLabel: flow?.sla?.[1] ?? null,
     slaDueAt: callbackSla ? new Date(Date.now() + c.sla.mins * 60_000).toISOString() : null,
-    traite: false, // not tracked per commande in the mock db
-    traiteAt: null,
+    traite: traiteFlags.get(c.id)?.traite ?? false,
+    traiteAt: traiteFlags.get(c.id)?.at ?? null,
     traiteParUserId: null,
     noteCount: c.notes.length,
     noteIds: c.notes.map((_, i) => `${c.id}:note:${i}`),

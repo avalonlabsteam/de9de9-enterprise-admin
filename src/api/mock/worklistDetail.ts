@@ -15,8 +15,8 @@ import type { Ball, Commande } from '@/features/commandes/schemas/commande';
 import type { WorklistItem } from '@/features/commandes/schemas/worklist';
 import type { WorklistDetailInput } from '@/features/commandes/schemas/worklistDetail';
 import type { MockHandler, MockResponse } from './router';
-import { addAudit, cmdById, currentOcc, db, fromISO } from './db';
-import { flowKey, occStatus, projectCommande, toRow } from './worklist';
+import { addAudit, cmdById, currentOcc, db, fromISO, nowStamp } from './db';
+import { flowKey, occStatus, projectCommande, toRow, traiteFlags } from './worklist';
 
 /** The mock's ball shorthand → the API's audience names. */
 const API_BALL: Record<Ball, string> = {
@@ -431,4 +431,73 @@ export const deposerFactureHandler: MockHandler = (req) => {
     'pro',
   );
   return { data: worklistDetailOf(cmd) };
+};
+
+// ===================== notes + traité =====================
+// Twins of the live worklist note routes. Mock note ids are
+// `<commandeId>:note:<index>`, matching the ids worklistDetailOf emits.
+
+/** Shape one mock note the way the live API returns it. */
+function noteOf(cmdId: string, n: { author: string; text: string; date: string; handled: boolean }, i: number) {
+  return {
+    id: `${cmdId}:note:${i}`,
+    body: n.text,
+    authorUserId: null,
+    authorDisplayName: n.author,
+    createdAt: stampToIso(n.date) ?? n.date,
+    aFaire: !n.handled,
+    aFaireAt: null,
+    aFaireParUserId: null,
+  };
+}
+
+/** GET /commandes/worklist/:id/notes — `limit` caps the list and sets `truncated`. */
+export const worklistNotesHandler: MockHandler = (req) => {
+  const id = req.pathParams['id'] ?? '';
+  const cmd = cmdById(id);
+  if (!cmd) return problem(404, 'Not Found', `Ligne introuvable dans la file : ${id}`);
+  const all = cmd.notes.map((n, i) => noteOf(cmd.id, n, i));
+  // MockRequest.query is the merged query string + axios `params`. With no
+  // limit the whole list is returned, which is what the console asks for.
+  const limit = Number(req.query['limit']);
+  const capped = Number.isFinite(limit) && limit > 0 ? all.slice(0, limit) : all;
+  return { data: { count: all.length, notes: capped, truncated: capped.length < all.length } };
+};
+
+/** POST /commandes/worklist/:id/notes — 201 with the created note. */
+export const worklistAddNoteHandler: MockHandler = (req) => {
+  const id = req.pathParams['id'] ?? '';
+  const cmd = cmdById(id);
+  if (!cmd) return problem(404, 'Not Found', `Ligne introuvable dans la file : ${id}`);
+  const body = (req.body ?? {}) as { body?: unknown; auteurNom?: unknown };
+  const text = typeof body.body === 'string' ? body.body.trim() : '';
+  if (!text) return problem(400, 'Bad Request', 'Le corps de la note est requis.');
+  const author = typeof body.auteurNom === 'string' && body.auteurNom.trim() ? body.auteurNom.trim() : 'Vous';
+  cmd.notes = [...cmd.notes, { author, text, date: nowStamp(), handled: false }];
+  return { status: 201, data: noteOf(cmd.id, cmd.notes[cmd.notes.length - 1]!, cmd.notes.length - 1) };
+};
+
+/** DELETE /commandes/worklist/:id/notes/:noteId — 204, no body. */
+export const worklistDeleteNoteHandler: MockHandler = (req) => {
+  const id = req.pathParams['id'] ?? '';
+  const cmd = cmdById(id);
+  if (!cmd) return problem(404, 'Not Found', `Ligne introuvable dans la file : ${id}`);
+  const noteId = req.pathParams['noteId'] ?? '';
+  const at = noteId.lastIndexOf(':note:');
+  const index = at < 0 ? NaN : Number(noteId.slice(at + ':note:'.length));
+  if (!Number.isInteger(index) || !cmd.notes[index]) {
+    return problem(404, 'Not Found', `Note introuvable : ${noteId}`);
+  }
+  cmd.notes = cmd.notes.filter((_, i) => i !== index);
+  return { status: 204, data: null };
+};
+
+/** PATCH /commandes/worklist/:id/traite — flips the flag, answers with its new value. */
+export const worklistTraiteHandler: MockHandler = (req) => {
+  const id = req.pathParams['id'] ?? '';
+  const cmd = cmdById(id);
+  if (!cmd) return problem(404, 'Not Found', `Ligne introuvable dans la file : ${id}`);
+  const next = !(traiteFlags.get(cmd.id)?.traite ?? false);
+  traiteFlags.set(cmd.id, { traite: next, at: next ? new Date().toISOString() : null });
+  return { data: { id: cmd.id, traite: next } };
 };

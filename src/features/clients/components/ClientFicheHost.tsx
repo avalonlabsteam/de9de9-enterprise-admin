@@ -176,7 +176,8 @@ function ClientFiche({ name, onClose }: { name: string; onClose: () => void }) {
     toast.success(t('docToastAjoute'));
   };
 
-  const openPiece = (title: string, fileName: string) => setPiece({ title, fileName });
+  const openPiece = (title: string, fileName: string, documentId?: string | null) =>
+    setPiece({ title, fileName, documentId });
 
   const tel = first?.phone ? 'tel:+213' + first.phone.replace(/^0/, '') : '#';
   const wa = first?.phone ? 'https://wa.me/213' + first.phone.replace(/^0/, '') : '#';

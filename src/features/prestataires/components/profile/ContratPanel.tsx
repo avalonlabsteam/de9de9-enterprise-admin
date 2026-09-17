@@ -7,17 +7,23 @@
 import type { ChangeEvent } from 'react';
 import { toast } from 'sonner';
 import { useT } from '@/lib/i18n';
+import { documentIdFrom, useDownloadDocument } from '@/api/documents';
 import { contractsActions, useContractsStore } from './contractsStore';
 import type { ContratView } from './fromFiche';
 
 interface ContratPanelProps {
   presId: string;
   contrat: ContratView | null;
-  onOpenPiece: (title: string, fileName: string) => void;
+  onOpenPiece: (title: string, fileName: string, documentId?: string | null) => void;
 }
 
 export function ContratPanel({ presId, contrat, onOpenPiece }: ContratPanelProps) {
   const t = useT();
+  const download = useDownloadDocument();
+  // The signed contract's id rides on `contrat.url` from the dossier. The local
+  // store shadow below keeps only display fields, so read it from the prop: a
+  // contract uploaded this session has no server document to fetch yet.
+  const docId = documentIdFrom(contrat?.url);
   const local = useContractsStore((s) => s.contracts[presId]);
   const contract =
     local ??
@@ -98,17 +104,25 @@ export function ContratPanel({ presId, contrat, onOpenPiece }: ContratPanelProps
           <div className="flex flex-wrap gap-2 px-4 py-3">
             <button
               type="button"
-              onClick={() => onOpenPiece(t('contratSection'), contract.fileName)}
+              onClick={() => onOpenPiece(t('contratSection'), contract.fileName, contrat?.url)}
               className="cursor-pointer rounded-[10px] bg-de9-ink px-[15px] py-[9px] text-xs font-bold text-white dark:text-[#151923]"
             >
               👁 {t('voir')}
             </button>
             <button
               type="button"
-              onClick={() => toast.success(t('docToastTelechargement'))}
-              className="cursor-pointer rounded-[10px] bg-secondary px-[15px] py-[9px] text-xs font-bold text-de9-slate"
+              onClick={() => {
+                if (!docId) return;
+                download.mutate(
+                  { id: docId, fileName: contract.fileName, fallbackMessage: t('docTelechargementErreur') },
+                  { onError: (err) => toast.error(err.message) },
+                );
+              }}
+              disabled={!docId || download.isPending}
+              title={docId ? undefined : t('docIndisponible')}
+              className="cursor-pointer rounded-[10px] bg-secondary px-[15px] py-[9px] text-xs font-bold text-de9-slate disabled:cursor-not-allowed disabled:opacity-50"
             >
-              ⤓ {t('telecharger')}
+              ⤓ {download.isPending ? t('docTelechargementEnCours') : t('telecharger')}
             </button>
             <label className="cursor-pointer rounded-[10px] border-[1.5px] border-de9-line bg-card px-[15px] py-[9px] text-xs font-bold text-de9-slate">
               {t('remplacer')}

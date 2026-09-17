@@ -191,7 +191,8 @@ function PresProfile({ presParam, onClose }: { presParam: string; onClose: () =>
     toast.success(t('docToastSupprime'));
   };
 
-  const openPiece = (title: string, fileName: string) => setPiece({ title, fileName });
+  const openPiece = (title: string, fileName: string, documentId?: string | null) =>
+    setPiece({ title, fileName, documentId });
 
   // logic.ts viewAsPres
   const viewAsPres = () => {

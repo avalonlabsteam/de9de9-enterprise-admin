@@ -1,10 +1,16 @@
 import { toast } from 'sonner';
 import { useT } from '@/lib/i18n';
+import { documentIdFrom, useDownloadDocument } from '@/api/documents';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 
 export interface PieceView {
   title: string;
   fileName: string;
+  /**
+   * Document id, or the `/documents/{id}/download` URL the API supplies next to
+   * it. Absent when nothing is stored for this piece, which disables the button.
+   */
+  documentId?: string | null;
 }
 
 interface PieceViewerProps {
@@ -15,6 +21,16 @@ interface PieceViewerProps {
 /** Document preview dialog — title bar + download row + file preview placeholder. */
 export function PieceViewer({ piece, onClose }: PieceViewerProps) {
   const t = useT();
+  const download = useDownloadDocument();
+  const docId = documentIdFrom(piece.documentId);
+
+  const onDownload = (): void => {
+    if (!docId) return;
+    download.mutate(
+      { id: docId, fileName: piece.fileName, fallbackMessage: t('docTelechargementErreur') },
+      { onError: (err) => toast.error(err.message) },
+    );
+  };
 
   return (
     <Dialog
@@ -34,10 +50,12 @@ export function PieceViewer({ piece, onClose }: PieceViewerProps) {
           <div className="flex gap-2">
             <button
               type="button"
-              onClick={() => toast.success(t('docToastTelechargement'))}
-              className="flex cursor-pointer items-center gap-1.5 rounded-[10px] bg-[#232838] px-3.5 py-[9px] text-xs font-bold text-white"
+              onClick={onDownload}
+              disabled={!docId || download.isPending}
+              title={docId ? undefined : t('docIndisponible')}
+              className="flex cursor-pointer items-center gap-1.5 rounded-[10px] bg-[#232838] px-3.5 py-[9px] text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-50"
             >
-              ⤓ {t('telecharger')}
+              ⤓ {download.isPending ? t('docTelechargementEnCours') : t('telecharger')}
             </button>
             <button
               type="button"

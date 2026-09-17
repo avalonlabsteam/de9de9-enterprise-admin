@@ -24,7 +24,7 @@ interface KycPanelProps {
   onAddDoc: (label: string, fileName: string) => void;
   onReplaceDoc: (docId: string, fileName: string) => void;
   onRemoveDoc: (docId: string) => void;
-  onOpenPiece: (title: string, fileName: string) => void;
+  onOpenPiece: (title: string, fileName: string, documentId?: string | null) => void;
 }
 
 export function KycPanel({
@@ -123,7 +123,7 @@ export function KycPanel({
               </div>
               <button
                 type="button"
-                onClick={() => onOpenPiece(kd.label, kd.name)}
+                onClick={() => onOpenPiece(kd.label, kd.name, kd.id)}
                 className="flex-none cursor-pointer rounded-[9px] bg-de9-ink px-2.5 py-[7px] text-[11px] font-bold text-white dark:text-[#151923]"
               >
                 {t('voir')}

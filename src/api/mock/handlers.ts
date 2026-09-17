@@ -20,6 +20,10 @@ import {
   planifierOccurrenceHandler,
   worklistDetailHandler,
   worklistNextActionHandler,
+  worklistNotesHandler,
+  worklistAddNoteHandler,
+  worklistDeleteNoteHandler,
+  worklistTraiteHandler,
 } from './worklistDetail';
 import { prestatairesRechercheHandler } from './prestatairesRecherche';
 import { prestataireFicheHandler } from './prestataireFiche';
@@ -123,6 +127,19 @@ register('POST', '/commandes/worklist/:id/deposer-facture', deposerFactureHandle
 passthrough('POST', '/commandes/worklist/:id/choisir-prestataire');
 
 register('POST', '/commandes/worklist/:id/choisir-prestataire', choisirPrestataireHandler);
+
+// ===================== notes + traité on a worklist row =====================
+// Integrated with the real API — served by the network, not the mock. Comment
+// these out to fall back to the twins below (offline dev).
+passthrough('GET', '/commandes/worklist/:id/notes');
+passthrough('POST', '/commandes/worklist/:id/notes');
+passthrough('DELETE', '/commandes/worklist/:id/notes/:noteId');
+passthrough('PATCH', '/commandes/worklist/:id/traite');
+
+register('GET', '/commandes/worklist/:id/notes', worklistNotesHandler);
+register('POST', '/commandes/worklist/:id/notes', worklistAddNoteHandler);
+register('DELETE', '/commandes/worklist/:id/notes/:noteId', worklistDeleteNoteHandler);
+register('PATCH', '/commandes/worklist/:id/traite', worklistTraiteHandler);
 
 // ===================== devis =====================
 // Integrated with the real API — served by the network, not the mock. Comment
