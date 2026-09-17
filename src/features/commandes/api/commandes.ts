@@ -29,6 +29,9 @@ import {
   type WorklistKpis,
   type WorklistParams,
   type WorklistResponse,
+  worklistFiltersResponseSchema,
+  worklistQuery,
+  type WorklistFiltersResponse,
 } from '../schemas/worklist';
 
 const commandeEnvelopeSchema = z.object({ commande: commandeSchema });
@@ -51,7 +54,7 @@ export function useWorklist(params: WorklistParams) {
   return useQuery({
     queryKey: ['commandes', 'worklist', params],
     queryFn: async (): Promise<WorklistResponse> => {
-      const res = await apiClient.get('/commandes/worklist', { params });
+      const res = await apiClient.get('/commandes/worklist', { params: worklistQuery(params) });
       return worklistResponseSchema.parse(res.data);
     },
     placeholderData: keepPreviousData,
@@ -463,6 +466,30 @@ export function useToggleTraite() {
     },
     onSettled: () => {
       void queryClient.invalidateQueries({ queryKey: ['commandes'] });
+    },
+  });
+}
+
+/**
+ * GET /commandes/worklist/filters — the dropdown contents (clients,
+ * prestataires, wilayas, communes, statuts, balles, cadences, SLA legend).
+ *
+ * `q` narrows company names only, so it is debounced by the caller; `limit`
+ * defaults to 100 server-side (max 500) and applies per list. A `truncated`
+ * response means a list was cut and the user should type to narrow.
+ */
+export function useWorklistFilters(q?: string, limit?: number) {
+  return useQuery({
+    queryKey: ['commandes', 'worklist-filters', q ?? '', limit ?? null],
+    staleTime: 5 * 60_000,
+    queryFn: async (): Promise<WorklistFiltersResponse> => {
+      const res = await apiClient.get('/commandes/worklist/filters', {
+        params: {
+          ...(q && q.trim() ? { q: q.trim() } : {}),
+          ...(limit ? { limit } : {}),
+        },
+      });
+      return worklistFiltersResponseSchema.parse(res.data);
     },
   });
 }

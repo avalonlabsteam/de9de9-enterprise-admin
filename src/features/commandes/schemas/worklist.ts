@@ -122,23 +122,134 @@ export const worklistResponseSchema = z.object({
 export type WorklistResponse = z.infer<typeof worklistResponseSchema>;
 
 // ---------- query params ----------
-/** Every filter is optional — omitted keys are simply not sent. */
+/**
+ * The `statut` filter domain — exactly the codes the API accepts. An unknown
+ * value is refused with 400 « statut inconnu » rather than returning an empty
+ * list, so this must not drift: the KPI cards used to send their own vocabulary
+ * ('arappeler', 'litige', 'regler', 'actif', 'devis') and every one of those
+ * requests failed.
+ *
+ * `V5·C` carries a middle dot (U+00B7) — axios encodes it to `V5%C2%B7C`.
+ * `V5.C` and `V5C` are rejected.
+ *
+ * `V7` (réglée) and `VX` (annulée) are accepted but always answer an empty
+ * list: a finished row leaves the file and is reachable only by id.
+ */
+export const WORKLIST_STATUTS = [
+  'S1',
+  'S2',
+  'S3',
+  'S4',
+  'S5',
+  'V0',
+  'V1',
+  'V2',
+  'V3',
+  'V4',
+  'V5',
+  'V5·C',
+  'V6',
+  'V7',
+  'VX',
+] as const;
+export type WorklistStatut = (typeof WORKLIST_STATUTS)[number];
+
+/** `balle` filter domain — the API's own vocabulary, not the internal `Ball`. */
+export const WORKLIST_BALLES = ['de9de9', 'client', 'prestataire'] as const;
+export type WorklistBalle = (typeof WORKLIST_BALLES)[number];
+
+/**
+ * Internal ball → wire value. `worklistBallSchema` aliases the API's names to
+ * short ones on the way in; sending those back ('de9', 'pro') is a 400, so the
+ * mapping has to be reversed on the way out.
+ */
+export const BALL_TO_PARAM: Record<'de9' | 'client' | 'pro', WorklistBalle> = {
+  de9: 'de9de9',
+  client: 'client',
+  pro: 'prestataire',
+};
+
+export const WORKLIST_CADENCES = ['ponctuel', 'recurrent'] as const;
+export type WorklistCadence = (typeof WORKLIST_CADENCES)[number];
+
+/** Every filter is optional and they combine with AND. */
 export interface WorklistParams {
   search?: string;
+  statut?: WorklistStatut;
+  balle?: WorklistBalle;
+  /** Shorthand for `balle=de9de9`; only meaningful as true. */
+  needsDe9de9?: boolean;
+  /** Rows past their SLA due date; only meaningful as true. */
+  enRetard?: boolean;
+  /** The one boolean that is also sent as false — « reste à traiter ». */
+  traite?: boolean;
+  cadence?: WorklistCadence;
   clientId?: string;
   prestataireId?: string;
   wilaya?: string;
   commune?: string;
-  statut?: string;
-  balle?: string;
-  needsDe9de9?: boolean;
   page?: number;
   pageSize?: number;
 }
 
-/** `statut` filter domain, mirrored by the KPI cards. */
-export const WORKLIST_STATUTS = ['arappeler', 'devis', 'litige', 'regler', 'actif'] as const;
-export type WorklistStatut = (typeof WORKLIST_STATUTS)[number];
+/**
+ * Serializes the filters for axios. Booleans other than `traite` only ever
+ * narrow the list, so false is omitted rather than sent — `traite=false`
+ * genuinely means « not yet handled » and must survive.
+ */
+export function worklistQuery(params: WorklistParams): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const [key, value] of Object.entries(params)) {
+    if (value === undefined || value === null || value === '') continue;
+    if (typeof value === 'boolean') {
+      if (key === 'traite') out[key] = String(value);
+      else if (value) out[key] = 'true';
+      continue;
+    }
+    out[key] = String(value);
+  }
+  return out;
+}
+
+// ============================================================================
+// Contract: GET {VITE_API_URL}/commandes/worklist/filters?q=&limit=
+// Real path: /api/v1/commandes/worklist/filters
+// Fills the dropdowns. `q` filters company names only (not wilayas); `limit`
+// defaults to 100, max 500, and applies per list.
+// ============================================================================
+
+export const worklistFilterOptionSchema = z.object({
+  value: z.string(),
+  label: z.string(),
+});
+export type WorklistFilterOption = z.infer<typeof worklistFilterOptionSchema>;
+
+/** The SLA legend: how long each status is allowed before it counts as late. */
+export const worklistSlaTargetSchema = z.object({
+  status: worklistStatusSchema,
+  code: z.string().nullish(),
+  label: z.string().nullish(),
+  minutes: z.number().nullish(),
+});
+export type WorklistSlaTarget = z.infer<typeof worklistSlaTargetSchema>;
+
+export const worklistFiltersResponseSchema = z.object({
+  filters: z.object({
+    clients: z.array(worklistFilterOptionSchema).nullish(),
+    prestataires: z.array(worklistFilterOptionSchema).nullish(),
+    wilayas: z.array(z.string()).nullish(),
+    communes: z.array(z.string()).nullish(),
+    statuts: z.array(worklistFilterOptionSchema).nullish(),
+    balles: z.array(z.string()).nullish(),
+    cadences: z.array(worklistFilterOptionSchema).nullish(),
+    slaTargets: z.array(worklistSlaTargetSchema).nullish(),
+  }),
+  gaps: z.array(z.unknown()).nullish(),
+  /** True when a list was cut at `limit` — prompt the user to type to narrow. */
+  truncated: z.boolean().nullish(),
+  limit: z.number().nullish(),
+});
+export type WorklistFiltersResponse = z.infer<typeof worklistFiltersResponseSchema>;
 
 // ============================================================================
 // Contract: GET {VITE_API_URL}/commandes/worklist/kpis

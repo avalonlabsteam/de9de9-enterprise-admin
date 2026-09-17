@@ -16,6 +16,13 @@ import { db, currentOcc, toISO } from './db';
  */
 export const traiteFlags = new Map<string, { traite: boolean; at: string | null }>();
 
+/** API ball vocabulary → the internal one the projection uses. */
+const PARAM_TO_BALL: Record<string, string | undefined> = {
+  de9de9: 'de9',
+  client: 'client',
+  prestataire: 'pro',
+};
+
 interface Proj {
   ball: Ball;
   badgeKey: TKey;
@@ -74,12 +81,15 @@ function urgencyRank(cmd: Commande): number {
   return ball === 'de9' ? 5 : 6;
 }
 
+/**
+ * The row's status code in the API's own vocabulary (S1…V7, V5·C, VX), read
+ * from the same FLOW table that builds `currentStatus`. The twin used to
+ * answer its own keys ('arappeler', 'litige', …), which the live API refuses
+ * with 400 — so the filter now compares like for like.
+ */
 function statutKey(c: Commande): string {
-  if (c.setup === 'arappeler') return 'arappeler';
-  if (c.setup === 'contacte' || c.setup === 'devis') return 'devis';
-  if (c.occurrences.some((o) => o.status === 'doneDisputed')) return 'litige';
-  if (c.occurrences.some((o) => o.status === 'doneApproved')) return 'regler';
-  return 'actif';
+  const key = flowKey(c, projectCommande(c));
+  return FLOW[key]?.code ?? '';
 }
 
 /** The server-computed status fields, shared with the commande-detail mock. */
@@ -241,10 +251,22 @@ export const worklistHandler: MockHandler = (req) => {
   if (q['commune']) list = list.filter((c) => c.commune === q['commune']);
   if (q['statut']) list = list.filter((c) => statutKey(c) === q['statut']);
   if (q['balle']) {
-    list = list.filter((c) => (cmdState(c).proj?.ball ?? 'done') === q['balle']);
+    // The API's vocabulary, aliased to the internal one for the comparison.
+    const wanted = PARAM_TO_BALL[q['balle']];
+    list = wanted ? list.filter((c) => (cmdState(c).proj?.ball ?? 'done') === wanted) : [];
   }
   if (q['needsDe9de9'] === 'true') {
     list = list.filter((c) => cmdState(c).proj?.ball === 'de9');
+  }
+  if (q['cadence']) {
+    list = list.filter((c) => (c.type === 'recurrent' ? 'recurrent' : 'ponctuel') === q['cadence']);
+  }
+  if (q['traite'] === 'true' || q['traite'] === 'false') {
+    const want = q['traite'] === 'true';
+    list = list.filter((c) => (traiteFlags.get(c.id)?.traite ?? false) === want);
+  }
+  if (q['enRetard'] === 'true') {
+    list = list.filter((c) => c.sla.mins < 0);
   }
   const search = (q['search'] ?? '').trim().toLowerCase();
   if (search) {
@@ -291,4 +313,75 @@ export const worklistKpisHandler: MockHandler = () => {
     commandesActives: count('actif'),
   };
   return { data };
+};
+
+/**
+ * GET /commandes/worklist/filters — twin of the dropdown source. Built from the
+ * mock db so the page fills the same selects with VITE_API_MOCK on or off.
+ * `q` narrows company names only (not wilayas); `limit` caps each list and sets
+ * `truncated`, exactly as the live route documents.
+ */
+export const worklistFiltersHandler: MockHandler = (req) => {
+  const q = (req.query['q'] ?? '').trim().toLowerCase();
+  const limit = Math.min(Math.max(1, Number(req.query['limit']) || 100), 500);
+  const match = (label: string): boolean => !q || label.toLowerCase().includes(q);
+
+  const uniq = (pairs: [string, string][]): { value: string; label: string }[] => {
+    const seen = new Map<string, string>();
+    for (const [value, label] of pairs) if (value && label && !seen.has(value)) seen.set(value, label);
+    return [...seen].map(([value, label]) => ({ value, label })).sort((a, b) => a.label.localeCompare(b.label));
+  };
+
+  const clients = uniq(db.commandes.map((c) => [c.client, c.client] as [string, string])).filter((o) =>
+    match(o.label),
+  );
+  const prestataires = uniq(
+    db.commandes.filter((c) => c.prestataire).map((c) => [c.prestataire!.name, c.prestataire!.name] as [string, string]),
+  ).filter((o) => match(o.label));
+  const wilayas = [...new Set(db.commandes.map((c) => c.wilaya).filter(Boolean))].sort();
+  const communes = [...new Set(db.commandes.map((c) => c.commune).filter(Boolean))].sort();
+
+  // Only the statuses the file actually shows, in the documented order.
+  const VISIBLE = ['S1', 'S2', 'S3', 'S4', 'S5', 'V0', 'V1', 'V2', 'V3', 'V4', 'V5', 'V5·C', 'V6'];
+  const labelOf = (code: string): string => {
+    for (const step of Object.values(FLOW)) {
+      if (step.code === code) return step.next?.label ?? code;
+    }
+    return code;
+  };
+  const statuts = VISIBLE.map((code) => ({ value: code, label: labelOf(code) }));
+
+  const slaTargets = Object.values(FLOW)
+    .filter((f) => f.sla)
+    .map((f) => ({
+      status: { code: f.code, label: f.next?.label ?? f.code },
+      code: f.sla?.[0] ?? null,
+      label: f.sla?.[1] ?? null,
+      minutes: 60,
+    }));
+
+  const cut = <T,>(xs: T[]): T[] => xs.slice(0, limit);
+  const truncated =
+    clients.length > limit || prestataires.length > limit || wilayas.length > limit || communes.length > limit;
+
+  return {
+    data: {
+      filters: {
+        clients: cut(clients),
+        prestataires: cut(prestataires),
+        wilayas: cut(wilayas),
+        communes: cut(communes),
+        statuts,
+        balles: ['de9de9', 'client', 'prestataire'],
+        cadences: [
+          { value: 'ponctuel', label: 'Ponctuel' },
+          { value: 'recurrent', label: 'Récurrent' },
+        ],
+        slaTargets,
+      },
+      gaps: [],
+      truncated,
+      limit,
+    },
+  };
 };

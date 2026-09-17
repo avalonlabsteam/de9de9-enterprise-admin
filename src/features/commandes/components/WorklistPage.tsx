@@ -16,11 +16,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { useWorklist, useWorklistKpis, useToggleTraite } from '../api/commandes';
+import { useWorklist, useWorklistKpis, useToggleTraite, useWorklistFilters } from '../api/commandes';
 import { toast } from 'sonner';
 import { problemMessage } from '@/api/problem';
 import { useCommunes, useWilayas } from '@/features/geo/api/geo';
-import type { WorklistItem, WorklistParams, WorklistStatut } from '../schemas/worklist';
+import type { WorklistItem, WorklistParams, WorklistStatut, WorklistCadence } from '../schemas/worklist';
+import { BALL_TO_PARAM, WORKLIST_STATUTS } from '../schemas/worklist';
 import { BALL_COLOR, ballLabel, formatDuration, statusBadge, visitLabel } from '../lib/worklistDisplay';
 import { NotesModal } from './NotesModal';
 
@@ -29,8 +30,11 @@ import { NotesModal } from './NotesModal';
 
 interface WorklistFilter {
   needsDe9de9: boolean;
-  /** Client-side refinement of the current page — the API has no `kind` param. */
-  kind: 'all' | 'recurrent' | 'ponctuel';
+  /** Server-side now: the API filters by `cadence`. */
+  cadence: 'all' | WorklistCadence;
+  /** Tri-state — `traite` is the one boolean the API also accepts as false. */
+  traite: 'all' | 'true' | 'false';
+  enRetard: boolean;
   prestataireId: string;
   wilaya: string;
   commune: string;
@@ -42,7 +46,9 @@ interface WorklistFilter {
 
 const INITIAL_FILTER: WorklistFilter = {
   needsDe9de9: false,
-  kind: 'all',
+  cadence: 'all',
+  traite: 'all',
+  enRetard: false,
   prestataireId: 'all',
   wilaya: 'all',
   commune: 'all',
@@ -110,9 +116,14 @@ export function WorklistPage() {
     if (filter.prestataireId !== 'all') p.prestataireId = filter.prestataireId;
     if (filter.wilaya !== 'all') p.wilaya = filter.wilaya;
     if (filter.commune !== 'all') p.commune = filter.commune;
-    if (filter.statut !== 'all') p.statut = filter.statut;
-    if (filter.balle !== 'all') p.balle = filter.balle;
+    if (filter.statut !== 'all') p.statut = filter.statut as WorklistStatut;
+    // The internal ball names ('de9', 'pro') are refused with 400 — send the
+    // API's own vocabulary.
+    if (filter.balle !== 'all') p.balle = BALL_TO_PARAM[filter.balle as 'de9' | 'client' | 'pro'];
     if (filter.needsDe9de9) p.needsDe9de9 = true;
+    if (filter.enRetard) p.enRetard = true;
+    if (filter.cadence !== 'all') p.cadence = filter.cadence;
+    if (filter.traite !== 'all') p.traite = filter.traite === 'true';
     return p;
   }, [filter, page]);
 
@@ -120,17 +131,24 @@ export function WorklistPage() {
   const rows = useMemo(() => data?.data ?? [], [data]);
   const meta = data?.meta;
 
-  // The API has no `kind` param, so the recurrent/ponctuel chips refine the
-  // fetched page only.
-  const list = filter.kind === 'all' ? rows : rows.filter((r) => r.kind === filter.kind);
+  // `cadence` is a server filter now, so the page renders what came back.
+  const list = rows;
 
   // ===== KPIs (all four counts in one server request; clicking toggles the statut filter) =====
   const { data: counts } = useWorklistKpis();
-  const kpis: { statut: WorklistStatut; label: string; value: number | undefined; color: string; alert: boolean }[] = [
-    { statut: 'arappeler', label: t('fSArappeler'), value: counts?.aRappeler, color: '#E7464E', alert: (counts?.aRappeler ?? 0) > 0 },
-    { statut: 'litige', label: t('worklistKpiLitiges'), value: counts?.litigesAResoudre, color: '#E7464E', alert: false },
-    { statut: 'regler', label: t('worklistKpiFacturesARegler'), value: counts?.facturesARegler, color: '#2FA86A', alert: false },
-    { statut: 'actif', label: t('worklistKpiCommandesActives'), value: counts?.commandesActives, color: '#2F7FD0', alert: false },
+  // Each card maps to the status code the API accepts. « Commandes actives »
+  // counts distinct contracts, which is not one status, so it does not filter.
+  const kpis: {
+    statut: WorklistStatut | null;
+    label: string;
+    value: number | undefined;
+    color: string;
+    alert: boolean;
+  }[] = [
+    { statut: 'S1', label: t('fSArappeler'), value: counts?.aRappeler, color: '#E7464E', alert: (counts?.aRappeler ?? 0) > 0 },
+    { statut: 'V5·C', label: t('worklistKpiLitiges'), value: counts?.litigesAResoudre, color: '#E7464E', alert: false },
+    { statut: 'V6', label: t('worklistKpiFacturesARegler'), value: counts?.facturesARegler, color: '#2FA86A', alert: false },
+    { statut: null, label: t('worklistKpiCommandesActives'), value: counts?.commandesActives, color: '#2F7FD0', alert: false },
   ];
 
   const toggleStatut = (statut: string): void => {
@@ -139,35 +157,74 @@ export function WorklistPage() {
   };
 
   // ===== filter chips =====
-  const filterChips: { key: string; val: WorklistFilter['kind'] | ''; label: string; icon: string; active: boolean }[] = [
-    { key: 'needsDe9de9', val: '', label: t('worklistNecessiteDe9'), icon: '◆', active: filter.needsDe9de9 },
-    { key: 'kind', val: 'all', label: t('tous'), icon: '≡', active: filter.kind === 'all' },
-    { key: 'kind', val: 'recurrent', label: t('commonRecurrent'), icon: '↻', active: filter.kind === 'recurrent' },
-    { key: 'kind', val: 'ponctuel', label: t('commonPonctuel'), icon: '•', active: filter.kind === 'ponctuel' },
-  ];
-
-  const toggleChip = (key: string, val: WorklistFilter['kind'] | ''): void => {
-    if (key === 'needsDe9de9') setFilter((f) => ({ ...f, needsDe9de9: !f.needsDe9de9 }));
-    else if (val !== '') setFilter((f) => ({ ...f, kind: val }));
+  const setField = <K extends keyof WorklistFilter>(key: K, value: WorklistFilter[K]): void => {
+    setFilter((f) => ({ ...f, [key]: value }));
     setPage(1);
   };
+  /** Clicking an active chip clears it, so every chip is its own toggle. */
+  const cadenceChip = (value: WorklistCadence) => ({
+    label: value === 'recurrent' ? t('commonRecurrent') : t('commonPonctuel'),
+    icon: value === 'recurrent' ? '↻' : '•',
+    active: filter.cadence === value,
+    onClick: () => setField('cadence', filter.cadence === value ? 'all' : value),
+  });
+  const traiteChip = (value: 'true' | 'false', label: string, icon: string) => ({
+    label,
+    icon,
+    active: filter.traite === value,
+    onClick: () => setField('traite', filter.traite === value ? 'all' : value),
+  });
+  const filterChips: { label: string; icon: string; active: boolean; onClick: () => void }[] = [
+    {
+      label: t('worklistNecessiteDe9'),
+      icon: '◆',
+      active: filter.needsDe9de9,
+      onClick: () => setField('needsDe9de9', !filter.needsDe9de9),
+    },
+    {
+      label: t('worklistFiltreEnRetard'),
+      icon: '⏱',
+      active: filter.enRetard,
+      onClick: () => setField('enRetard', !filter.enRetard),
+    },
+    traiteChip('false', t('worklistFiltreATraiter'), '○'),
+    traiteChip('true', t('worklistFiltreTraitees'), '✓'),
+    cadenceChip('recurrent'),
+    cadenceChip('ponctuel'),
+  ];
 
   // ===== select filters =====
   // Wilayas/communes come from the geo dictionary endpoints (localized labels,
   // French nom as the value — that's what the worklist params and rows carry).
   // The commune list cascades from the selected wilaya's code.
+  // Dropdown contents come from the API, not from the rows on screen: a client
+  // that only appears on page 3 must still be selectable from page 1.
+  const filtersQ = useWorklistFilters();
+  const opts = filtersQ.data?.filters;
   const { data: wilayas } = useWilayas();
   const selectedWilaya = filter.wilaya !== 'all' ? wilayas?.find((w) => w.nom === filter.wilaya) : undefined;
   const { data: communes } = useCommunes(selectedWilaya?.code ?? null);
   const wilayaOpts = toOpts((wilayas ?? []).map((w) => [w.nom, l(w.nom, w.nomAr)]));
   const communeOpts = toOpts((communes ?? []).map((c) => [c.nom, l(c.nom, c.nomAr)]));
 
-  // Client/prestataire options are still derived from the rows currently
-  // loaded — good enough until the API exposes dictionary endpoints for them.
+  // Fall back to the loaded rows only while the dictionary request is in
+  // flight or failed, so the selects are never empty.
   const presOpts = toOpts(
-    rows.map((r) => (r.prestataireCompanyId && r.prestataireName ? [r.prestataireCompanyId, r.prestataireName] : null)),
+    opts?.prestataires?.length
+      ? opts.prestataires.map((o) => [o.value, o.label] as [string, string])
+      : rows.map((r) => (r.prestataireCompanyId && r.prestataireName ? [r.prestataireCompanyId, r.prestataireName] : null)),
   );
-  const clientOpts = toOpts(rows.map((r) => (r.clientCompanyId ? [r.clientCompanyId, r.clientName] : null)));
+  const clientOpts = toOpts(
+    opts?.clients?.length
+      ? opts.clients.map((o) => [o.value, o.label] as [string, string])
+      : rows.map((r) => (r.clientCompanyId ? [r.clientCompanyId, r.clientName] : null)),
+  );
+  // Server order is meaningful (S1→S4, S5, V0→V6 with V5·C before V6), so this
+  // one is not sorted by label like the others.
+  const statutOpts = (opts?.statuts?.length
+    ? opts.statuts
+    : WORKLIST_STATUTS.map((code) => ({ value: code, label: code }))
+  ).map((o) => ({ v: o.value, l: o.label }));
 
   const mkSelect = (
     field: SelectField,
@@ -191,13 +248,7 @@ export function WorklistPage() {
       { v: 'client', l: t('fClient') },
       { v: 'pro', l: t('fPrestataire') },
     ]),
-    mkSelect('statut', t('fStatut'), [
-      { v: 'arappeler', l: t('fSArappeler') },
-      { v: 'devis', l: t('fSDevis') },
-      { v: 'litige', l: t('fSLitige') },
-      { v: 'regler', l: t('fSRegler') },
-      { v: 'actif', l: t('fSActif') },
-    ]),
+    mkSelect('statut', t('fStatut'), statutOpts),
   ];
 
   const setFilterField = (field: SelectField, value: string): void => {
@@ -242,10 +293,11 @@ export function WorklistPage() {
       <div className="mt-[18px] grid grid-cols-2 gap-3.5 md:grid-cols-4">
         {kpis.map((k) => (
           <div
-            key={k.statut}
-            onClick={() => toggleStatut(k.statut)}
+            key={k.label}
+            onClick={() => k.statut && toggleStatut(k.statut)}
             className={cn(
-              'cursor-pointer rounded-2xl border-[1.5px] bg-card px-[17px] py-[15px] shadow-[0_6px_18px_rgba(38,50,69,.04)]',
+              'rounded-2xl border-[1.5px] bg-card px-[17px] py-[15px] shadow-[0_6px_18px_rgba(38,50,69,.04)]',
+              k.statut ? 'cursor-pointer' : 'cursor-default',
               k.alert ? 'border-[#F6D2D4] dark:border-[#E7464E]/40' : 'border-de9-line',
             )}
             style={filter.statut === k.statut ? { borderColor: k.color } : undefined}
@@ -266,7 +318,7 @@ export function WorklistPage() {
         {filterChips.map((f, i) => (
           <div
             key={i}
-            onClick={() => toggleChip(f.key, f.val)}
+            onClick={f.onClick}
             className={cn(
               'flex cursor-pointer items-center gap-1.5 rounded-full border-[1.5px] px-[15px] py-[9px] text-[12.5px] font-bold',
               f.active ? 'border-[#232838] bg-[#232838] text-white' : 'border-de9-line bg-card text-de9-slate',

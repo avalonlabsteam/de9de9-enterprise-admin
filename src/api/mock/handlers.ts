@@ -8,7 +8,7 @@ import type { ZodError } from 'zod';
 import { passthrough, register } from './router';
 import type { MockResponse } from './router';
 import { commandeDetailOf } from './commandeDetail';
-import { worklistHandler, worklistKpisHandler } from './worklist';
+import { worklistFiltersHandler, worklistHandler, worklistKpisHandler } from './worklist';
 import { demanderDevisHandler } from './demandeDevis';
 import {
   devisProposerHandler,
@@ -85,6 +85,12 @@ passthrough('GET', '/commandes/worklist');
 
 // Must be registered before '/commandes/:id' — routes match in registration
 // order, and ':id' would otherwise capture the literal segment 'worklist'.
+// Dropdown source for the list filters. Registered before ':id' would match,
+// like the kpis route — 'filters' is a literal segment, not an id.
+passthrough('GET', '/commandes/worklist/filters');
+
+register('GET', '/commandes/worklist/filters', worklistFiltersHandler);
+
 register('GET', '/commandes/worklist', worklistHandler);
 
 // Integrated with the real API — served by the network, not the mock. Comment
