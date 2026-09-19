@@ -532,6 +532,19 @@ register('POST', '/reviews', (req) => {
 // offline fallback: same meta/data envelope, rows mapped from the legacy db
 // seed shape (id from ref, occurredAt from the dd/mm/yyyy date).
 passthrough('GET', '/credits');
+// Credits family — served by the network (literal segments such as 'kpis'
+// outrank ':movementId', so they are not captured as an id).
+passthrough('GET', '/credits/kpis');
+passthrough('GET', '/credits/filtres');
+passthrough('GET', '/credits/export');
+passthrough('GET', '/credits/clients');
+passthrough('GET', '/credits/clients/:clientId');
+passthrough('GET', '/credits/:movementId');
+passthrough('POST', '/credits/recharges');
+passthrough('POST', '/credits/recharges/:rechargeId/pieces');
+// Stored documents (KYC pieces, contracts, recharge pieces) — the download
+// every document's `url` points at.
+passthrough('GET', '/documents/:documentId/download');
 
 register('GET', '/credits', (req) => {
   const q = req.query;
@@ -611,6 +624,19 @@ register('GET', '/factures', () => {
 // factures (Du/Au/ClientId/PrestataireId are not implemented: the UI never
 // sends them yet).
 passthrough('GET', '/factures/console');
+// Factures console family — served by the network. Without these the calls
+// reach the mock adapter, which answers 404 for any unregistered route.
+passthrough('GET', '/factures/console/kpis');
+passthrough('GET', '/factures/console/filtres');
+passthrough('GET', '/factures/console/:invoiceId');
+passthrough('GET', '/factures/console/:invoiceId/fichiers');
+passthrough('POST', '/factures/console/:invoiceId/fichiers');
+passthrough('GET', '/factures/console/:invoiceId/telecharger');
+passthrough('GET', '/factures/console/:invoiceId/fichiers/:documentId/telecharger');
+passthrough('POST', '/factures/console/:invoiceId/approuver');
+passthrough('POST', '/factures/console/:invoiceId/contester');
+passthrough('POST', '/factures/console/:invoiceId/resoudre-litige');
+passthrough('POST', '/factures/console/:invoiceId/regler');
 
 register('GET', '/factures/console', (req) => {
   const q = req.query;

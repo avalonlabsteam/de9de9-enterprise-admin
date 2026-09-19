@@ -63,31 +63,90 @@ async function messageFor(err: unknown, fallback: string): Promise<string> {
  * Fetch one document and hand it to the browser to save. Rejects with an Error
  * whose message is already readable, so callers can toast `err.message`.
  */
-export async function downloadDocument(id: string, fileName?: string, fallbackMessage?: string): Promise<void> {
+export interface BlobOptions {
+  params?: Record<string, unknown>;
+  /** Used only when the response carries no Content-Disposition filename. */
+  fallbackName?: string;
+  /** Localized message for a failure the server did not explain. */
+  fallbackMessage?: string;
+}
+
+export interface BlobResult {
+  blob: Blob;
+  fileName: string;
+}
+
+/**
+ * GET any binary route through apiClient — documents, facture files, the
+ * credits CSV export. Rejects with an Error whose message is already readable.
+ */
+export async function fetchBlob(url: string, opts: BlobOptions = {}): Promise<BlobResult> {
   let res;
   try {
-    res = await apiClient.get(`/documents/${encodeURIComponent(id)}/download`, {
+    res = await apiClient.get(url, {
+      params: opts.params,
       responseType: 'blob',
-      // A scanned PDF over a slow link outlives the 15s default.
+      // A scanned PDF or a 5 000-row export over a slow link outlives 15s.
       timeout: 120_000,
     });
   } catch (err) {
     // Rethrown with a readable message, keeping the original as `cause` so the
     // axios error (status, response) survives for anyone inspecting it.
-    throw new Error(await messageFor(err, fallbackMessage ?? 'Téléchargement impossible'), { cause: err });
+    throw new Error(await messageFor(err, opts.fallbackMessage ?? 'Téléchargement impossible'), { cause: err });
   }
+  return {
+    blob: res.data as Blob,
+    fileName: filenameFrom(res.headers?.['content-disposition'], opts.fallbackName || 'document'),
+  };
+}
 
-  const name = filenameFrom(res.headers?.['content-disposition'], fileName || 'document');
-  const href = URL.createObjectURL(res.data as Blob);
+/** Hand a blob to the browser to save under `fileName`. */
+export function saveBlob(blob: Blob, fileName: string): void {
+  const href = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = href;
-  link.download = name;
+  link.download = fileName;
   link.rel = 'noopener';
   document.body.appendChild(link);
   link.click();
   link.remove();
   // Revoking immediately can cancel the save in Safari — let the click settle.
   setTimeout(() => URL.revokeObjectURL(href), 10_000);
+}
+
+/** Fetch a binary route and save it. */
+export async function downloadFromApi(url: string, opts: BlobOptions = {}): Promise<void> {
+  const { blob, fileName } = await fetchBlob(url, opts);
+  saveBlob(blob, fileName);
+}
+
+export interface PreviewResult {
+  /** An object URL for <iframe>/<img> — the caller MUST revoke it on close. */
+  url: string;
+  contentType: string;
+  fileName: string;
+}
+
+/**
+ * Fetch a binary route with `inline=true` and return an object URL for an
+ * in-page preview. A direct <iframe src> or <img src> would get a 401: those
+ * cannot carry the bearer token either.
+ */
+export async function previewFromApi(url: string, opts: BlobOptions = {}): Promise<PreviewResult> {
+  const { blob, fileName } = await fetchBlob(url, { ...opts, params: { ...opts.params, inline: true } });
+  return { url: URL.createObjectURL(blob), contentType: blob.type, fileName };
+}
+
+export async function downloadDocument(id: string, fileName?: string, fallbackMessage?: string): Promise<void> {
+  await downloadFromApi(`/documents/${encodeURIComponent(id)}/download`, {
+    fallbackName: fileName,
+    fallbackMessage,
+  });
+}
+
+/** Inline preview of a stored document (`?inline=true`). */
+export async function previewDocument(id: string, fallbackMessage?: string): Promise<PreviewResult> {
+  return previewFromApi(`/documents/${encodeURIComponent(id)}/download`, { fallbackMessage });
 }
 
 export interface DownloadDocumentInput {
