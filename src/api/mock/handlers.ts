@@ -762,7 +762,24 @@ register('GET', '/analytics', () => ok(analyticsSeed));
 // Real-only: no mock twin — the platform overview section hides when this 404s.
 passthrough('GET', '/admin/dashboard');
 
-// ===================== KYC =====================
+// ===================== KYC review (admin, per-document) =====================
+// Integrated with the real API, served by the network — no mock twin. The
+// literal /kyc/kpis outranks the client fiche's mock '/kyc/:key' below, so it
+// is not captured as a key.
+passthrough('GET', '/kyc');
+passthrough('GET', '/kyc/kpis');
+passthrough('GET', '/companies/:companyId/kyc/revue');
+passthrough('POST', '/companies/:companyId/kyc/documents');
+passthrough('POST', '/companies/:companyId/kyc/documents/:documentId/valider');
+passthrough('POST', '/companies/:companyId/kyc/documents/:documentId/refuser');
+passthrough('POST', '/companies/:companyId/kyc/soumettre');
+// Correcting a number: read the company, PUT the full body back.
+passthrough('GET', '/companies/:companyId');
+passthrough('PUT', '/companies/:companyId');
+// The dossier's history.
+passthrough('GET', '/audit/Company/:companyId');
+
+// ===================== KYC (client fiche, mock) =====================
 register('GET', '/kyc/:key', (req) => ok(kycOf(req.pathParams['key'] ?? '')));
 
 // POST /kyc/:key/docs — addKycDoc (+ journal entry)

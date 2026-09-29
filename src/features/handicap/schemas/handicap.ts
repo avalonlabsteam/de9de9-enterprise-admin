@@ -12,6 +12,8 @@ import { paginationMetaSchema } from '@/api/pagination';
 /** One waitlist row. Contact/location fields are nullable in live data. */
 export const handicapItemSchema = z.object({
   id: z.string(),
+  /** Keys the prestataire profile (`?pres=`) — null when no company matched. */
+  companyId: z.string().nullish(),
   companyName: z.string(),
   contactName: z.string().nullish(),
   contactPhone: z.string().nullish(),
@@ -26,6 +28,8 @@ export const handicapItemSchema = z.object({
   contactNote: z.string().nullish(),
   registeredAt: z.string(), // ISO 8601
   updatedAt: z.string().nullish(),
+  /** False when `companyName` couldn't be matched to a registered company. */
+  companyIdMatched: z.boolean().nullish(),
 });
 export type HandicapItem = z.infer<typeof handicapItemSchema>;
 
