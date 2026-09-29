@@ -6,6 +6,7 @@ import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/s
 import { PresProfileHost } from "@/features/prestataires/components/ProfileHost";
 import { ClientFicheHost } from "@/features/clients/components/ClientFicheHost";
 import { WorkerViewHost } from "@/features/commandes/components/console/WorkerViewHost";
+import { useKycKpis } from "@/features/kyc/api/kyc";
 import { logout } from "@/features/auth/api/auth";
 import { cn } from "@/lib/utils";
 import { useT, type TKey } from "@/lib/i18n";
@@ -17,6 +18,7 @@ import { themeActions, useThemeStore, type ThemeMode } from "@/stores/themeStore
 const NAV_ITEMS: ReadonlyArray<{ to: string; labelKey: TKey }> = [
   { to: "/commandes", labelKey: "navCommandes" },
   { to: "/prestataires", labelKey: "navPrestataires" },
+  { to: "/kyc", labelKey: "navKyc" },
   { to: "/soustraitance", labelKey: "navSoustraitance" },
   { to: "/handicap", labelKey: "navHandicap" },
   { to: "/factures", labelKey: "navFactures" },
@@ -49,25 +51,39 @@ function Logo() {
 
 function NavList({ onNavigate }: { onNavigate?: () => void }) {
   const t = useT();
+  // KYC dossiers submitted and waiting on de9de9 — the red badge.
+  const { data: kycKpis } = useKycKpis();
+  const badges: Partial<Record<string, number>> = { "/kyc": kycKpis?.aExaminer };
   return (
     <nav className="flex flex-col gap-1">
-      {NAV_ITEMS.map((item) => (
-        <NavLink
-          key={item.to}
-          to={item.to}
-          onClick={onNavigate}
-          className={({ isActive }) =>
-            cn(
-              "cursor-pointer whitespace-nowrap rounded-[11px] px-3.5 py-[11px] text-[13.5px] font-bold",
-              isActive
-                ? "bg-[#E9F6F5] text-de9-teal-dark dark:bg-[#14322E]"
-                : "bg-transparent text-de9-gray hover:text-de9-slate",
-            )
-          }
-        >
-          {t(item.labelKey)}
-        </NavLink>
-      ))}
+      {NAV_ITEMS.map((item) => {
+        const badge = badges[item.to] ?? 0;
+        return (
+          <NavLink
+            key={item.to}
+            to={item.to}
+            onClick={onNavigate}
+            className={({ isActive }) =>
+              cn(
+                "flex cursor-pointer items-center justify-between gap-2 whitespace-nowrap rounded-[11px] px-3.5 py-[11px] text-[13.5px] font-bold",
+                isActive
+                  ? "bg-[#E9F6F5] text-de9-teal-dark dark:bg-[#14322E]"
+                  : "bg-transparent text-de9-gray hover:text-de9-slate",
+              )
+            }
+          >
+            {t(item.labelKey)}
+            {badge > 0 && (
+              <span
+                aria-label={t("kycBadgeAria").replace("{n}", String(badge))}
+                className="min-w-[20px] rounded-full bg-de9-red px-1.5 py-[2px] text-center text-[10.5px] leading-[1.4] font-extrabold text-white"
+              >
+                {badge > 99 ? "99+" : badge}
+              </span>
+            )}
+          </NavLink>
+        );
+      })}
     </nav>
   );
 }
