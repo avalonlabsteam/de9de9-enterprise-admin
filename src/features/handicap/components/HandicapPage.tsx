@@ -81,11 +81,11 @@ export function HandicapPage() {
     setContactedOverrides((s) => ({ ...s, [w.id]: !(s[w.id] ?? w.isContacted) }));
   };
 
-  const openPresByName = (name: string): void => {
-    if (!name || name === '—') return;
+  /** The profile overlay is keyed by company id — GET /prestataires/{companyId}. */
+  const openPres = (companyId: string): void => {
     setSearchParams((prev) => {
       const next = new URLSearchParams(prev);
-      next.set('pres', name);
+      next.set('pres', companyId);
       return next;
     });
   };
@@ -202,12 +202,16 @@ export function HandicapPage() {
                   className={`grid ${GRID_COLS} items-center gap-[10px] border-b border-de9-line px-5 py-[13px]`}
                 >
                   <div className="text-[12.5px] font-bold">
-                    <span
-                      onClick={() => openPresByName(w.companyName)}
-                      className="cursor-pointer underline decoration-[#C7CFD7] decoration-dotted underline-offset-[3px]"
-                    >
-                      {w.companyName}
-                    </span>
+                    {w.companyId ? (
+                      <span
+                        onClick={() => openPres(w.companyId!)}
+                        className="cursor-pointer underline decoration-[#C7CFD7] decoration-dotted underline-offset-[3px]"
+                      >
+                        {w.companyName}
+                      </span>
+                    ) : (
+                      w.companyName
+                    )}
                   </div>
                   <div className="text-[12px] text-de9-slate">
                     {w.contactName ?? '—'}
