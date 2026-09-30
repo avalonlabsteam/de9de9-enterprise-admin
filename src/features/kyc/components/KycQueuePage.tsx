@@ -36,7 +36,7 @@ const TABS: ReadonlyArray<{ key: KycTab; labelKey: TKey; count: (k: KycKpis) => 
   { key: 'tous', labelKey: 'tous', count: (k) => k.total },
 ];
 
-const DEFAULT_TAB: KycTab = 'aExaminer';
+const DEFAULT_TAB: KycTab = 'tous';
 
 function tabOf(value: string | null): KycTab {
   return TABS.find((x) => x.key === value)?.key ?? DEFAULT_TAB;
