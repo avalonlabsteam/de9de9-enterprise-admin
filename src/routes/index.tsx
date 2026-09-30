@@ -11,6 +11,8 @@ import { handicapRoutes } from '@/features/handicap/routes';
 import { facturesRoutes } from '@/features/factures/routes';
 import { creditsRoutes } from '@/features/credits/routes';
 import { analyticsRoutes } from '@/features/analytics/routes';
+import { entreprisesRoutes } from '@/features/entreprises/routes';
+import { contractuelsRoutes } from '@/features/contractuels/routes';
 
 export const router = createBrowserRouter([
   {
@@ -36,6 +38,9 @@ export const router = createBrowserRouter([
               ...facturesRoutes,
               ...creditsRoutes,
               ...analyticsRoutes,
+              // Screens only an alert opens (guide 11a §6) — no nav entry.
+              ...entreprisesRoutes,
+              ...contractuelsRoutes,
               { path: '*', element: <Navigate to="/commandes" replace /> },
             ],
           },

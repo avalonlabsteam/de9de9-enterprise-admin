@@ -7,6 +7,8 @@ import { PresProfileHost } from "@/features/prestataires/components/ProfileHost"
 import { ClientFicheHost } from "@/features/clients/components/ClientFicheHost";
 import { WorkerViewHost } from "@/features/commandes/components/console/WorkerViewHost";
 import { useKycKpis } from "@/features/kyc/api/kyc";
+import { AlertesBell } from "@/features/alertes/components/AlertesBell";
+import { useAlertesHub } from "@/features/alertes/lib/useAlertesHub";
 import { logout } from "@/features/auth/api/auth";
 import { cn } from "@/lib/utils";
 import { useT, type TKey } from "@/lib/i18n";
@@ -129,6 +131,8 @@ export function AppLayout() {
   const userEmail = useAuthStore((s) => s.user?.email ?? null);
   const dir = dirOf(lang);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  // Live alerts: one hub connection for as long as the signed-in shell is up.
+  useAlertesHub();
 
   const onLogout = (): void => {
     logout();
@@ -191,6 +195,8 @@ export function AppLayout() {
             >
               {lang === "fr" ? "ع" : "FR"}
             </button>
+
+            <AlertesBell />
 
             {userEmail && (
               <span

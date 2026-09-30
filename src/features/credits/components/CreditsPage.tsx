@@ -252,7 +252,16 @@ export function CreditsPage() {
   const [tri, setTri] = useState('');
   const [modal, setModal] = useState<RechargeModalState | null>(null);
   const [piece, setPiece] = useState<PieceView | null>(null);
-  const [detailId, setDetailId] = useState<string | null>(null);
+  // One movement's detail is addressable (?mouvement=<id>): an alert opens it (guide 11a §6, adm.credits).
+  const detailId = searchParams.get('mouvement');
+  const setDetailId = (movementId: string | null): void => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      if (movementId) next.set('mouvement', movementId);
+      else next.delete('mouvement');
+      return next;
+    });
+  };
   const [exporting, setExporting] = useState(false);
 
   useEffect(() => {

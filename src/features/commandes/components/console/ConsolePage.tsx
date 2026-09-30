@@ -6,10 +6,16 @@ import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { useT, useL, type TKey } from '@/lib/i18n';
 import { useUiStore } from '@/stores/uiStore';
-import { cn } from '@/lib/utils';
+import { cn, isLiveId } from '@/lib/utils';
 import { problemMessage } from '@/api/problem';
 import axios from 'axios';
-import { useCommande, useCommandeAction, useDevisAction, useWorklistDetail } from '../../api/commandes';
+import {
+  useCommande,
+  useCommandeAction,
+  useContractVisites,
+  useDevisAction,
+  useWorklistDetail,
+} from '../../api/commandes';
 import type {
   Ball,
   Commande,
@@ -29,6 +35,7 @@ import {
 } from './ActionModals';
 import { DocViewer, type DocState } from './DocViewer';
 import { WorklistSummary } from './WorklistSummary';
+import { DEVIS_ANCHOR } from '../../lib/worklistDisplay';
 
 type Tr = (key: TKey) => string;
 
@@ -391,12 +398,53 @@ export function ConsolePage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const roleView = useUiStore((s) => s.roleView);
 
-  const { data: cmd, isPending, isError, error, refetch: refetchCommande } = useCommande(id);
+  // A live id (UUID) never has a mock commande: skip straight to its worklist
+  // detail instead of waiting for the mock's 404 (and its retry).
+  const live = isLiveId(id);
+  const commandeQ = useCommande(live ? '' : id);
+  const { data: cmd, isError, error, refetch: refetchCommande } = commandeQ;
+  const isPending = !live && commandeQ.isPending;
   // No mock commande for this id — a live commande id from the worklist (appel
   // d'offres or visit) — so show its worklist detail, where the next action can
   // run. Idle on the normal path, where the mock commande loads.
-  const needsFallback = isError || (!isPending && !cmd);
-  const detailQ = useWorklistDetail(id, needsFallback);
+  const needsFallback = live || isError || (!isPending && !cmd);
+
+  // Alert deep links (guide 11a §6, adm.commande): `occ` names the visit — the
+  // worklist row to show, since `id` may be its contract — `facture` that
+  // visit's facture, `onglet=devis` the devis block.
+  const occParam = searchParams.get('occ');
+  const factureParam = searchParams.get('facture');
+  const ongletParam = searchParams.get('onglet');
+  const detailId = live && isLiveId(occParam) ? (occParam ?? id) : id;
+  const detailQ = useWorklistDetail(detailId, needsFallback);
+  // A contract with no `occ` (« Prestataire choisi ») is no worklist row: find
+  // its first visit and show that one.
+  const detailMissing = axios.isAxiosError(detailQ.error) && detailQ.error.response?.status === 404;
+  const contractQ = useContractVisites(id, live && !occParam && detailMissing);
+  // Only while no visit is named yet: the lookup's cached answer outlives the redirect.
+  const firstVisite = occParam ? undefined : contractQ.data?.[0];
+  useEffect(() => {
+    if (!firstVisite) return;
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        next.set('occ', firstVisite);
+        return next;
+      },
+      { replace: true },
+    );
+  }, [firstVisite, setSearchParams]);
+
+  // `onglet=devis`: bring the devis block into view once it has rendered.
+  const devisFocused = useRef<string | null>(null);
+  const hasDevisData = !!(cmd ?? detailQ.data);
+  useEffect(() => {
+    if (ongletParam !== 'devis' || !hasDevisData || devisFocused.current === detailId) return;
+    const el = document.getElementById(DEVIS_ANCHOR);
+    if (!el) return;
+    devisFocused.current = detailId;
+    el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, [ongletParam, hasDevisData, detailId]);
   // Prefer the server's RFC 7807 `detail` over axios' English message — the UI is fr/ar.
   const errMsg = (err: unknown): string => (err == null ? l('Erreur', 'خطأ') : problemMessage(err));
 
@@ -556,7 +604,7 @@ export function ConsolePage() {
   }
 
   if (needsFallback) {
-    if (detailQ.isPending) {
+    if (detailQ.isPending || (detailMissing && (contractQ.isFetching || !!firstVisite))) {
       return (
         <div className="mx-auto max-w-[980px]">
           {backLink}
@@ -568,6 +616,18 @@ export function ConsolePage() {
       return (
         <div className="mx-auto max-w-[980px]">
           {backLink}
+          {factureParam && (
+            <div className={cn(CARD, 'mb-4 flex flex-wrap items-center gap-3 border-s-4 border-s-[#7C5CE0]')}>
+              <div className="min-w-0 flex-1 text-[13px] font-semibold text-de9-slate">{t('alerteFactureConcernee')}</div>
+              <button
+                type="button"
+                onClick={() => navigate('/factures?invoice=' + encodeURIComponent(factureParam))}
+                className="cursor-pointer rounded-[10px] bg-de9-ink px-3.5 py-2 text-[12.5px] font-bold text-white dark:text-[#151923]"
+              >
+                {t('alerteOuvrirFacture')}
+              </button>
+            </div>
+          )}
           <WorklistSummary
             detail={detailQ.data}
             onRefresh={refreshDetail}
@@ -843,7 +903,7 @@ export function ConsolePage() {
 
       {/* ===== devis — demande de devis détaillée ===== */}
       {showDevis && (
-        <div className={cn(CARD, 'mt-4')}>
+        <div id={DEVIS_ANCHOR} className={cn(CARD, 'mt-4 scroll-mt-24')}>
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="text-base font-extrabold">{t('devisSection')}</div>
             {!proposed && (

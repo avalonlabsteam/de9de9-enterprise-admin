@@ -284,18 +284,21 @@ export function FacturesPage() {
     setPage(1);
   };
 
-  // ---- « Voir » is addressable (?invoice=<id>) so the credits ledger can deep-link it ----
-  const viewId = searchParams.get('invoice');
+  // ---- « Voir » is addressable (?invoice=<id>) so the credits ledger can deep-link it;
+  // an alert names the same facture ?facture=<id> (guide 11a §6, adm.factures) ----
+  const viewId = searchParams.get('invoice') ?? searchParams.get('facture');
   const detailQ = useFactureDetail(viewId);
   const detail = detailQ.data;
   const openView = (invoiceId: string): void => {
     const sp = new URLSearchParams(searchParams);
     sp.set('invoice', invoiceId);
+    sp.delete('facture');
     setSearchParams(sp);
   };
   const closeView = (): void => {
     const sp = new URLSearchParams(searchParams);
     sp.delete('invoice');
+    sp.delete('facture');
     setSearchParams(sp);
   };
 

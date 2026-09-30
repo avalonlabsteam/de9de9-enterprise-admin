@@ -7,6 +7,8 @@ interface ImportMetaEnv {
   readonly VITE_API_MOCK?: string;
   /** Base URL of the real auth API, including the version segment. */
   readonly VITE_AUTH_API_URL?: string;
+  /** Alerts hub. Defaults to same-origin `/hubs/notifications` (proxied like /api). */
+  readonly VITE_HUB_URL?: string;
 }
 
 interface ImportMeta {
