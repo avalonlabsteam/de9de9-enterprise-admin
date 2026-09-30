@@ -5,6 +5,7 @@
 // confirmSalarie, kycOf/addKycDoc/removeKycDoc/logKyc).
 // Audit texts are stored in French (handlers are not language-aware).
 import type { ZodError } from 'zod';
+import { isLiveId } from '@/lib/utils';
 import { passthrough, register } from './router';
 import type { MockResponse } from './router';
 import { commandeDetailOf } from './commandeDetail';
@@ -176,6 +177,7 @@ register('POST', '/appels-offres/:rfqId/demander-devis', demanderDevisHandler);
 // detail endpoints) first. `useCommandeDetail` already matches the contract
 // payload; it is the mock below that serves it until then.
 //   passthrough('GET', '/commandes/:id');
+// (Live ids do pass through, for one reader only: see the contract lookup below.)
 
 // One payload, both shapes: the legacy console commande (occurrences, devis,
 // notes, brief) merged with the projection envelope the real endpoint answers.
@@ -187,9 +189,11 @@ register('GET', '/commandes/:id', (req) => {
   return ok({ ...cmd, ...commandeDetailOf(cmd) });
 });
 
-/** A real backend id (UUID), as opposed to a mock one like 'C-2041' or a mock company name. */
-const isLiveId = (id: string | undefined): boolean =>
-  /^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i.test(id ?? '');
+// Live ids only: an alert opens /commandes/{contractId} (« Prestataire
+// choisi »), which the worklist does not know — the console reads the contract
+// here to find its visits. Mock ids keep the mock route above, and the console
+// never asks this route for a worklist id (it goes to /commandes/worklist/:id).
+passthrough('GET', '/commandes/:id', ({ id }) => isLiveId(id));
 
 // Not passed through: every visit roadmap step moved to its own
 // /commandes/worklist/:id/… route, so this one now serves the mock console only.
@@ -778,6 +782,19 @@ passthrough('GET', '/companies/:companyId');
 passthrough('PUT', '/companies/:companyId');
 // The dossier's history.
 passthrough('GET', '/audit/Company/:companyId');
+
+// ===================== Alertes (admin bell) =====================
+// Real-only, no mock twin: platform rows, their shared read state and the
+// counters live on the server and are pushed over /hubs/notifications.
+passthrough('GET', '/admin/alertes');
+passthrough('GET', '/admin/alertes/compteurs');
+passthrough('POST', '/admin/alertes/:id/lue');
+passthrough('POST', '/admin/alertes/lues');
+
+// ===================== Contractuels (admin) =====================
+// Real-only: the screen an alert « Demande de contractuels » opens.
+passthrough('GET', '/admin/contractuels/demandes/:demandeId');
+passthrough('GET', '/admin/contractuels/demandes/:demandeId/candidates');
 
 // ===================== KYC (client fiche, mock) =====================
 register('GET', '/kyc/:key', (req) => ok(kycOf(req.pathParams['key'] ?? '')));

@@ -45,10 +45,22 @@ type ProfileTab =
   | 'equipe'
   | 'stats';
 
+/**
+ * An alert's `?onglet=` (guide 11a §6, adm.entreprise) → the tab the profile
+ * opens on. Legal documents live in the KYC panel; `b2c` and `sync` have no
+ * tab here, and another page's `onglet` (devis, demandes…) maps to nothing.
+ */
+const TAB_BY_ONGLET: Partial<Record<string, ProfileTab>> = {
+  avis: 'avis',
+  contrat: 'contrat',
+  documents: 'kyc',
+};
+
 /** Reads '?pres=' and renders the profile overlay; closing clears the param. */
 export function PresProfileHost() {
   const [searchParams, setSearchParams] = useSearchParams();
   const presParam = searchParams.get('pres');
+  const initialTab = TAB_BY_ONGLET[searchParams.get('onglet') ?? ''] ?? 'infos';
 
   const close = () => {
     setSearchParams((prev) => {
@@ -59,7 +71,7 @@ export function PresProfileHost() {
   };
 
   if (!presParam) return null;
-  return <PresProfile key={presParam} presParam={presParam} onClose={close} />;
+  return <PresProfile key={presParam} presParam={presParam} initialTab={initialTab} onClose={close} />;
 }
 
 // ---------- shared bits ----------
@@ -110,12 +122,20 @@ function InfoField({ label, value }: { label: string; value: string }) {
 
 // ---------- profile ----------
 
-function PresProfile({ presParam, onClose }: { presParam: string; onClose: () => void }) {
+function PresProfile({
+  presParam,
+  initialTab,
+  onClose,
+}: {
+  presParam: string;
+  initialTab: ProfileTab;
+  onClose: () => void;
+}) {
   const t = useT();
   const l = useL();
   const navigate = useNavigate();
 
-  const [tab, setTab] = useState<ProfileTab>('infos');
+  const [tab, setTab] = useState<ProfileTab>(initialTab);
   const [piece, setPiece] = useState<PieceView | null>(null);
   const [reviewOpen, setReviewOpen] = useState(false);
 

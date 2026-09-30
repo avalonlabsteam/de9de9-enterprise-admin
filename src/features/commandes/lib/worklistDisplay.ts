@@ -99,3 +99,6 @@ export function visitLabel(iso: string, t: Tr): string {
   const day = dayKey ? t(dayKey) : '';
   return `${day} ${p(d.getDate())}/${p(d.getMonth() + 1)}/${d.getFullYear()}`.trim();
 }
+
+/** The devis block, in the console and in the live summary — `?onglet=devis` scrolls to it. */
+export const DEVIS_ANCHOR = 'commande-devis';

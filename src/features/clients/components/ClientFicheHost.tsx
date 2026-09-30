@@ -29,10 +29,21 @@ import type { PieceView } from './PieceViewer';
 
 type ClientTab = 'infos' | 'kyc' | 'commandes' | 'factures' | 'credits' | 'documents';
 
+/**
+ * An alert's `?onglet=` (guide 11a §6, adm.entreprise) → the tab the fiche
+ * opens on. Legal documents live in the KYC tab (the « Documents » tab holds
+ * recharge proofs); another page's `onglet` maps to nothing.
+ */
+const TAB_BY_ONGLET: Partial<Record<string, ClientTab>> = {
+  credits: 'credits',
+  documents: 'kyc',
+};
+
 /** Reads '?client=' and renders the client fiche overlay; closing clears the param. */
 export function ClientFicheHost() {
   const [searchParams, setSearchParams] = useSearchParams();
   const client = searchParams.get('client');
+  const initialTab = TAB_BY_ONGLET[searchParams.get('onglet') ?? ''] ?? 'infos';
 
   const close = () => {
     setSearchParams((prev) => {
@@ -43,7 +54,7 @@ export function ClientFicheHost() {
   };
 
   if (!client) return null;
-  return <ClientFiche key={client} name={client} onClose={close} />;
+  return <ClientFiche key={client} name={client} initialTab={initialTab} onClose={close} />;
 }
 
 // ---------- shared bits ----------
@@ -91,11 +102,19 @@ function ErrorBlock() {
 
 // ---------- fiche ----------
 
-function ClientFiche({ name, onClose }: { name: string; onClose: () => void }) {
+function ClientFiche({
+  name,
+  initialTab,
+  onClose,
+}: {
+  name: string;
+  initialTab: ClientTab;
+  onClose: () => void;
+}) {
   const t = useT();
   const navigate = useNavigate();
 
-  const [tab, setTab] = useState<ClientTab>('infos');
+  const [tab, setTab] = useState<ClientTab>(initialTab);
   const [piece, setPiece] = useState<PieceView | null>(null);
 
   // KYC status / motif / replaced doc names have no API endpoint — they stay

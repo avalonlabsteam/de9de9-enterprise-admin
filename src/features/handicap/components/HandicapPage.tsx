@@ -6,6 +6,7 @@ import { useSearchParams } from 'react-router-dom';
 import { useT, useL } from '@/lib/i18n';
 import { useLangStore, type Lang } from '@/stores/langStore';
 import { cn } from '@/lib/utils';
+import { FOCUS_ROW_CLASS, useFocusScroll } from '@/lib/useFocusScroll';
 import {
   Select,
   SelectContent,
@@ -40,7 +41,10 @@ export function HandicapPage() {
   const t = useT();
   const L = useL();
   const lang = useLangStore((s) => s.lang);
-  const [, setSearchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
+  // Deep link (guide 11a §6, adm.handicap): ?inscription=<id> marks that row.
+  const focusInscription = searchParams.get('inscription');
+  const focusRef = useFocusScroll();
 
   const [searchInput, setSearchInput] = useState('');
   const [search, setSearch] = useState('');
@@ -199,7 +203,11 @@ export function HandicapPage() {
               return (
                 <div
                   key={w.id}
-                  className={`grid ${GRID_COLS} items-center gap-[10px] border-b border-de9-line px-5 py-[13px]`}
+                  ref={w.id === focusInscription ? focusRef : undefined}
+                  className={cn(
+                    `grid ${GRID_COLS} items-center gap-[10px] border-b border-de9-line px-5 py-[13px]`,
+                    w.id === focusInscription && FOCUS_ROW_CLASS,
+                  )}
                 >
                   <div className="text-[12.5px] font-bold">
                     {w.companyId ? (

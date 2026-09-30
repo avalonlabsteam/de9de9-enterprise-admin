@@ -7,7 +7,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { useT, type TKey } from '@/lib/i18n';
-import { useKycKpis, useKycQueue, type KycQueueParams, type KycTab } from '../api/kyc';
+import { KYC_TAB_QUERY, useKycKpis, useKycQueue, type KycQueueParams, type KycTab } from '../api/kyc';
 import { KYC_KINDS, type KycDossier, type KycKpis } from '../schemas/kyc';
 import {
   TONES,
@@ -38,8 +38,21 @@ const TABS: ReadonlyArray<{ key: KycTab; labelKey: TKey; count: (k: KycKpis) => 
 
 const DEFAULT_TAB: KycTab = 'tous';
 
-function tabOf(value: string | null): KycTab {
-  return TABS.find((x) => x.key === value)?.key ?? DEFAULT_TAB;
+/**
+ * `?tab=`, else the API's own filters — an alert's fallback path is
+ * `/kyc?statut=pending&soumis=true` (guide 11a §6, adm.kyc), i.e. « À examiner ».
+ */
+function tabOf(params: URLSearchParams): KycTab {
+  const byKey = TABS.find((x) => x.key === params.get('tab'))?.key;
+  if (byKey) return byKey;
+  const statut = params.get('statut');
+  if (!statut) return DEFAULT_TAB;
+  const soumis = params.get('soumis');
+  const byFilters = TABS.find(({ key }) => {
+    const f = KYC_TAB_QUERY[key];
+    return f.statut === statut && (f.soumis === undefined || String(f.soumis) === soumis);
+  });
+  return byFilters?.key ?? DEFAULT_TAB;
 }
 
 interface Card {
@@ -106,7 +119,7 @@ const DOC_GLYPH: Record<string, string> = { valide: '✓', refuse: '✕', a_veri
 export function KycQueuePage() {
   const t = useT();
   const [searchParams, setSearchParams] = useSearchParams();
-  const tab = tabOf(searchParams.get('tab'));
+  const tab = tabOf(searchParams);
   const q = searchParams.get('q') ?? '';
   const page = Math.max(1, Number(searchParams.get('page')) || 1);
   const [searchInput, setSearchInput] = useState(q);
@@ -154,7 +167,9 @@ export function KycQueuePage() {
   const rows = listQ.data?.data ?? [];
   const meta = listQ.data?.meta;
 
-  const setTab = (key: KycTab): void => patchParams({ tab: key === DEFAULT_TAB ? null : key, page: null });
+  // Picking a tab drops an alert's `statut`/`soumis`, which would otherwise win over « Tous ».
+  const setTab = (key: KycTab): void =>
+    patchParams({ tab: key === DEFAULT_TAB ? null : key, page: null, statut: null, soumis: null });
   const setPage = (n: number): void => patchParams({ page: n > 1 ? String(n) : null });
 
   return (

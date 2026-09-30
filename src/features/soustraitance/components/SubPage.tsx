@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { useT, useL } from '@/lib/i18n';
 import { useLangStore, type Lang } from '@/stores/langStore';
 import { cn } from '@/lib/utils';
+import { FOCUS_ROW_CLASS, useFocusScroll } from '@/lib/useFocusScroll';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
@@ -140,9 +141,14 @@ export function SubPage() {
   const t = useT();
   const l = useL();
   const lang = useLangStore((s) => s.lang);
-  const [, setSearchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
 
-  const [tab, setTab] = useState<'demandes' | 'pros'>('demandes');
+  // Deep link (guide 11a §6, adm.sous_traitance): ?onglet=demandes&demande=<id>.
+  const [tab, setTab] = useState<'demandes' | 'pros'>(() =>
+    searchParams.get('onglet') === 'pros' ? 'pros' : 'demandes',
+  );
+  const focusDemande = searchParams.get('demande');
+  const focusRef = useFocusScroll();
   const [ctx, setCtx] = useState<SubContext | null>(null);
   const [f, setF] = useState<SubFilters>(INITIAL_FILTERS);
   const [salarieTarget, setSalarieTarget] = useState<{ id: string; name: string } | null>(null);
@@ -269,7 +275,12 @@ export function SubPage() {
               {(demandesQ.data ?? []).map((dm) => (
                 <div
                   key={dm.id}
-                  className={cn(demandesGrid, 'items-center border-b border-de9-line py-3.5')}
+                  ref={dm.id === focusDemande ? focusRef : undefined}
+                  className={cn(
+                    demandesGrid,
+                    'items-center border-b border-de9-line py-3.5',
+                    dm.id === focusDemande && FOCUS_ROW_CLASS,
+                  )}
                 >
                   <div className="text-[13px] font-bold">
                     <span className={presLink} onClick={() => openPresByName(dm.entreprise)}>

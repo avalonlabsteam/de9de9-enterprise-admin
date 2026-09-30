@@ -25,7 +25,15 @@ import {
 } from '../../api/commandes';
 import type { Ball } from '../../schemas/commande';
 import type { WorklistDetail, WorklistDevis, WorklistPartyState } from '../../schemas/worklistDetail';
-import { BALL_COLOR, ballLabel, formatDuration, statusBadge, visitLabel, type Tr } from '../../lib/worklistDisplay';
+import {
+  BALL_COLOR,
+  DEVIS_ANCHOR,
+  ballLabel,
+  formatDuration,
+  statusBadge,
+  visitLabel,
+  type Tr,
+} from '../../lib/worklistDisplay';
 import { ReprogramModal } from './ActionModals';
 import { AssignTeamModal } from './AssignTeamModal';
 import { DepositInvoiceModal } from './DepositInvoiceModal';
@@ -482,7 +490,7 @@ export function WorklistSummary({ detail: d, onRefresh, refreshing = false }: Wo
 
         {/* devis */}
         {devis.length > 0 && (
-          <div className="mt-5">
+          <div id={DEVIS_ANCHOR} className="mt-5 scroll-mt-24">
             <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
               <div className={SECTION_LABEL}>
                 {t('apercuDevis')} ({devis.length})

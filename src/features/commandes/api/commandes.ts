@@ -343,6 +343,29 @@ export function useCommande(id: string) {
   });
 }
 
+/** The contract's visits, as the live console DTO lists them — only their ids are read. */
+const contractVisitesSchema = z.object({
+  occurrences: z.array(z.object({ visiteId: z.string().nullish() })).nullish(),
+});
+
+/**
+ * GET /commandes/{contractId} (live) — an alert such as « Prestataire choisi »
+ * opens a contract, which is no worklist row: the console reads the contract's
+ * visit ids and shows the first visit instead. Answers [] when it has none.
+ */
+export function useContractVisites(contractId: string, enabled: boolean) {
+  return useQuery({
+    queryKey: ['commandes', 'contract-visites', contractId],
+    enabled: enabled && contractId.length > 0,
+    queryFn: async (): Promise<string[]> => {
+      const res = await apiClient.get(`/commandes/${encodeURIComponent(contractId)}`);
+      const { occurrences } = contractVisitesSchema.parse(res.data);
+      return (occurrences ?? []).flatMap((o) => (o.visiteId ? [o.visiteId] : []));
+    },
+    retry: false,
+  });
+}
+
 /**
  * GET /commandes/:id — the real API's status projection envelope (per-role
  * canonicalStatus / statusLabel / ball / allowedActions, plus money).

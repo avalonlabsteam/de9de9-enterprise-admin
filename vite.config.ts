@@ -91,6 +91,14 @@ export default defineConfig(({ mode, command }) => {
               secure: true,
               rewrite: (p: string) => p.replace(/^\/api(?=\/|$)/, "/api/v1"),
             },
+            // Alerts hub (SignalR): same origin, no /api/v1 prefix. `ws` lets
+            // the WebSocket upgrade through; negotiate is a plain POST.
+            "/hubs": {
+              target: authOrigin,
+              changeOrigin: true,
+              secure: true,
+              ws: true,
+            },
           },
         }
       : {},
