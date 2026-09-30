@@ -1,4 +1,3 @@
-import { toast } from 'sonner';
 import { useT } from '@/lib/i18n';
 import { useSelectionStore, selectionActions } from '../stores/selectionStore';
 
@@ -15,11 +14,6 @@ export function SelectionBar({ onRequestQuotes }: SelectionBarProps) {
 
   const names = selected.map((id) => storedNames[id] ?? id).join(', ');
 
-  // logic.ts proposeClient — toast '{n} prestataire(s) proposé(s) au client'
-  const proposeClient = () => {
-    toast.success(t('presToastProposesClient').replace('{n}', String(selected.length)));
-  };
-
   return (
     <div className="fixed inset-x-3 bottom-[22px] z-[80] flex flex-wrap items-center gap-x-3.5 gap-y-2 rounded-2xl border-[1.5px] border-de9-line bg-card px-4 py-3 shadow-[0_18px_44px_rgba(20,30,45,.22)] sm:inset-x-auto sm:left-1/2 sm:max-w-[94vw] sm:-translate-x-1/2 sm:flex-nowrap">
       <div className="flex-none text-[13px] font-extrabold text-de9-ink">
@@ -34,13 +28,6 @@ export function SelectionBar({ onRequestQuotes }: SelectionBarProps) {
         className="flex-none cursor-pointer text-[12px] font-bold text-de9-gray"
       >
         {t('presVider')}
-      </button>
-      <button
-        type="button"
-        onClick={proposeClient}
-        className="flex-none cursor-pointer rounded-xl bg-[#EAF2FD] px-4 py-[11px] text-[12.5px] font-bold text-[#2F7FD0] dark:bg-[#2F7FD0]/15 dark:text-[#7EB5EC]"
-      >
-        {t('proposerClient')}
       </button>
       <button
         type="button"

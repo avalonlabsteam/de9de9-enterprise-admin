@@ -767,7 +767,6 @@ export const fr = {
   presToastAjouteCandidats: 'Ajouté aux candidats',
   presToastVuePrestataire: 'Vue prestataire activée',
   presAuditProposesClient: '{n} prestataire(s) proposé(s) au client — par de9de9.',
-  presToastProposesClient: '{n} prestataire(s) proposé(s) au client',
 
   // ---- commun ----
   commonTermine: 'Terminé',
@@ -1719,7 +1718,6 @@ export const ar: Record<TKey, string> = {
   presToastAjouteCandidats: 'أُضيف للمرشحين',
   presToastVuePrestataire: 'تم تفعيل عرض المزود',
   presAuditProposesClient: '{n} مزود مقترح للعميل.',
-  presToastProposesClient: '{n} مزود مقترح للعميل',
 
   // ---- commun ----
   commonTermine: 'منتهي',
