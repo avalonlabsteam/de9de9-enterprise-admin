@@ -650,7 +650,7 @@ function SearchPageContent({ ctxCmd }: { ctxCmd: CtxCommande | null }) {
       )}
 
       {/* ---- overlays ---- */}
-      <SelectionBar onRequestQuotes={() => setBriefOpen(true)} />
+      {!briefOpen && <SelectionBar onRequestQuotes={() => setBriefOpen(true)} />}
       <BriefModal
         open={briefOpen}
         onOpenChange={setBriefOpen}
