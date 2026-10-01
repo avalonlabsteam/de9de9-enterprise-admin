@@ -9,11 +9,12 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Dialog as DialogPrimitive } from 'radix-ui';
 import { toast } from 'sonner';
 import { Check, Circle, Eye, Mail, MapPin, MessageCircle, Phone, ReceiptText, Star } from 'lucide-react';
-import { cn, isInk } from '@/lib/utils';
+import { cn, isInk, isLiveId } from '@/lib/utils';
 import { Dialog, DialogOverlay, DialogPortal, DialogTitle } from '@/components/ui/dialog';
 import { Glyph } from '@/components/common/Glyph';
 import { useL, useT } from '@/lib/i18n';
 import { uiActions } from '@/stores/uiStore';
+import { SyncPanel } from '@/features/acces/components/SyncPanel';
 import { usePrestataireFiche } from '../api/prestataires';
 import type { KycAuditEntry, KycDoc, KycStatus } from '../schemas/prestataire';
 import { selectionActions, useSelectionStore } from '../stores/selectionStore';
@@ -45,17 +46,20 @@ type ProfileTab =
   | 'versements'
   | 'avis'
   | 'equipe'
-  | 'stats';
+  | 'stats'
+  | 'sync';
 
 /**
  * An alert's `?onglet=` (guide 11a §6, adm.entreprise) → the tab the profile
- * opens on. Legal documents live in the KYC panel; `b2c` and `sync` have no
- * tab here, and another page's `onglet` (devis, demandes…) maps to nothing.
+ * opens on. Legal documents live in the KYC panel; `sync` is the company's
+ * link to the de9de9 app (« Accès » and its alerts open it); `b2c` has no tab
+ * here, and another page's `onglet` (devis, demandes…) maps to nothing.
  */
 const TAB_BY_ONGLET: Partial<Record<string, ProfileTab>> = {
   avis: 'avis',
   contrat: 'contrat',
   documents: 'kyc',
+  sync: 'sync',
 };
 
 /** Reads '?pres=' and renders the profile overlay; closing clears the param. */
@@ -137,7 +141,7 @@ function PresProfile({
   const l = useL();
   const navigate = useNavigate();
 
-  const [tab, setTab] = useState<ProfileTab>(initialTab);
+  const [tabChosen, setTab] = useState<ProfileTab>(initialTab);
   const [piece, setPiece] = useState<PieceView | null>(null);
   const [reviewOpen, setReviewOpen] = useState(false);
 
@@ -176,6 +180,9 @@ function PresProfile({
 
   const companyId = vm?.companyId ?? presParam;
   const presName = vm?.name ?? '';
+  // The sync state exists on the real API only: a mock profile has no such tab.
+  const hasSync = isLiveId(companyId);
+  const tab: ProfileTab = tabChosen === 'sync' && !hasSync ? 'infos' : tabChosen;
 
   // ---------- kyc (server state + local overlay) ----------
   const kycStatus = kycStatusLocal ?? kycServer?.status ?? 'pending';
@@ -241,6 +248,8 @@ function PresProfile({
   const tabs: { key: ProfileTab; label: string }[] = [
     { key: 'infos', label: t('commonTabInfos') },
     { key: 'kyc', label: 'KYC' },
+    // Next to KYC: the de9de9 app account is activated by a verified KYC.
+    ...(hasSync ? [{ key: 'sync' as const, label: t('presTabSync') }] : []),
     { key: 'contrat', label: t('presTabContrat') },
     { key: 'missions', label: t('statMissionsL') },
     { key: 'factures', label: t('navFactures') },
@@ -625,6 +634,15 @@ function PresProfile({
                       </div>
                     ))}
                   </div>
+                )}
+
+                {/* SYNC — the company's access to the de9de9 app and what is queued for it */}
+                {tab === 'sync' && (
+                  <SyncPanel
+                    companyId={companyId}
+                    nom={presName}
+                    onOpenAcces={() => navigate('/acces?q=' + encodeURIComponent(presName))}
+                  />
                 )}
               </div>
 

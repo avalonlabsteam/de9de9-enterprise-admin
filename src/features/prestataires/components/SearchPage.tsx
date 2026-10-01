@@ -190,6 +190,9 @@ function SearchPageContent({ ctxCmd }: { ctxCmd: CtxCommande | null }) {
 
   const selected = useSelectionStore((s) => s.selected);
   const selNames = useSelectionStore((s) => s.names);
+  // Recipients a brief was refused for (B2B access suspended) — marked on the results still on screen.
+  const fermes = useSelectionStore((s) => s.fermes);
+  useEffect(() => () => selectionActions.forgetClosed(), []);
 
   // logic.ts openSearchFor — ctx commande pre-filters catégorie & wilaya.
   // The taxonomy id doubles as the server's category code (see taxonomy.ts).
@@ -460,6 +463,7 @@ function SearchPageContent({ ctxCmd }: { ctxCmd: CtxCommande | null }) {
               const dn = p.dispoNow;
               const selKey = p.companyId ?? p.id;
               const isSel = selected.includes(selKey);
+              const b2bClosed = fermes.includes(selKey.toLowerCase());
               const whatsAppHref = p.whatsAppUrl ?? (p.whatsAppPhone ? 'https://wa.me/' + p.whatsAppPhone : null);
               const hasRefs = p.referencesDe9de9 > 0 || p.referencesClient > 0;
               return (
@@ -476,8 +480,9 @@ function SearchPageContent({ ctxCmd }: { ctxCmd: CtxCommande | null }) {
                     <button
                       type="button"
                       onClick={() => selectionActions.toggle(selKey, p.nom)}
+                      disabled={b2bClosed}
                       className={
-                        'mt-0.5 flex size-6 flex-none cursor-pointer items-center justify-center rounded-full border-2 text-[14px] font-extrabold text-white ' +
+                        'mt-0.5 flex size-6 flex-none cursor-pointer items-center justify-center rounded-full border-2 text-[14px] font-extrabold text-white disabled:cursor-not-allowed disabled:opacity-40 ' +
                         (isSel ? 'border-de9-teal bg-de9-teal' : 'border-[#CBD3DB] bg-card')
                       }
                     >
@@ -512,6 +517,11 @@ function SearchPageContent({ ctxCmd }: { ctxCmd: CtxCommande | null }) {
                         {p.kycVerifie && (
                           <span className="rounded-full bg-[#E7F6EE] px-2 py-[3px] text-[10px] font-extrabold text-[#2FA86A] dark:bg-[#2FA86A]/15 dark:text-[#6FCF97]">
                             <Glyph icon={Check} /> KYC
+                          </span>
+                        )}
+                        {b2bClosed && (
+                          <span className="rounded-full bg-[#FBF4E4] px-2 py-[3px] text-[10px] font-extrabold text-[#B68A2E] dark:bg-[#B68A2E]/15 dark:text-[#D9B36A]">
+                            {t('accesChipB2bSuspendu')}
                           </span>
                         )}
                       </div>
@@ -630,7 +640,8 @@ function SearchPageContent({ ctxCmd }: { ctxCmd: CtxCommande | null }) {
                     <button
                       type="button"
                       onClick={() => addCandidate(p)}
-                      className="flex-1 cursor-pointer rounded-full bg-primary p-2.5 text-center text-[12px] font-bold text-primary-foreground"
+                      disabled={b2bClosed}
+                      className="flex-1 cursor-pointer rounded-full bg-primary p-2.5 text-center text-[12px] font-bold text-primary-foreground disabled:cursor-not-allowed disabled:opacity-45"
                     >
                       {t('presDemanderDevis')}
                     </button>

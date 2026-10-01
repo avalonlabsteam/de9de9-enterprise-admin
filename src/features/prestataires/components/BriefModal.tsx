@@ -10,7 +10,7 @@ import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { toast } from 'sonner';
-import { type LucideIcon, ClipboardList, ImageIcon, Lock, Paperclip, Plus, X } from 'lucide-react';
+import { type LucideIcon, ClipboardList, ImageIcon, Lock, Paperclip, Plus, TriangleAlert, X } from 'lucide-react';
 import { useL, useT } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 import { problemMessage } from '@/api/problem';
@@ -18,7 +18,7 @@ import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Glyph } from '@/components/common/Glyph';
-import { useDemanderDevis, type CtxCommande } from '../api/prestataires';
+import { b2bRefusalOf, useDemanderDevis, type CtxCommande } from '../api/prestataires';
 import { CADENCE, FREQUENCE, type DemandeDevisPayload } from '../schemas/demandeDevis';
 import { SERVICE_CAT, TAXO, catObj, slugify } from '../lib/taxonomy';
 import { selectionActions } from '../stores/selectionStore';
@@ -152,6 +152,8 @@ function BriefModalContent({ onOpenChange, selected, ctx, filters }: Omit<BriefM
   const demander = useDemanderDevis(ctx?.id ?? '');
   const [photos, setPhotos] = useState<File[]>([]);
   const [docs, setDocs] = useState<File[]>([]);
+  // Recipients a send refused (B2B access suspended): out of the selection, named here.
+  const [retires, setRetires] = useState<string[]>([]);
 
   const pick = (value: string): string => (value && value !== 'all' ? value : '');
   // Live context rows carry the taxonomy label as `service`, mock ones a service name.
@@ -219,6 +221,26 @@ function BriefModalContent({ onOpenChange, selected, ctx, filters }: Omit<BriefM
     try {
       await demander.mutateAsync({ payload, files: [...photos, ...docs] });
     } catch (err) {
+      const refusal = b2bRefusalOf(err);
+      if (refusal?.kind === 'prestataires') {
+        // All-or-nothing: nobody was contacted. The closed recipients leave the
+        // selection and the brief stays open, ready to go to the others.
+        const closed = refusal.fermes.map((id) => id.toLowerCase());
+        const names = selected.filter((p) => closed.includes(p.id.toLowerCase())).map((p) => p.name);
+        setRetires((prev) => [...new Set([...prev, ...names])]);
+        selectionActions.closeB2b(refusal.fermes);
+        toast.error(problemMessage(err, () => t('briefErrPrestatairesB2b')));
+        return;
+      }
+      if (refusal?.kind === 'client') {
+        // The client's own access is suspended: nothing was created, and only « Accès » can reopen it.
+        const client = ctx.clientName;
+        toast.error(problemMessage(err, () => t('briefErrClientB2b')), {
+          duration: 12_000,
+          action: { label: t('accesOuvrir'), onClick: () => navigate('/acces?q=' + encodeURIComponent(client)) },
+        });
+        return;
+      }
       toast.error(problemMessage(err));
       return;
     }
@@ -263,8 +285,17 @@ function BriefModalContent({ onOpenChange, selected, ctx, filters }: Omit<BriefM
         {/* même brief strip */}
         <div className="flex-none border-b border-[#D7EFEC] bg-[#ECFAF8] px-4 py-[13px] dark:border-[#2C9C94]/40 dark:bg-[#2C9C94]/15 sm:px-[26px]">
           <div className="text-[11px] font-extrabold uppercase tracking-[.04em] text-[#2C9C94] dark:text-[#65CBC4]">{t('memeBrief')}</div>
-          <div className="mt-1 text-[13px] font-bold text-de9-ink">{selected.map((p) => p.name).join(', ')}</div>
+          <div className="mt-1 text-[13px] font-bold text-de9-ink">{selected.map((p) => p.name).join(', ') || '—'}</div>
         </div>
+
+        {retires.length > 0 && (
+          <div
+            role="status"
+            className="flex-none border-b border-[#F0E2C0] bg-[#FBF4E4] px-4 py-[11px] text-[12.5px] font-semibold text-[#92702A] dark:border-[#B68A2E]/40 dark:bg-[#B68A2E]/15 dark:text-[#D9B36A] sm:px-[26px]"
+          >
+            <Glyph icon={TriangleAlert} /> {t('briefRetiresB2b')} <bdi className="font-extrabold">{retires.join(', ')}</bdi>
+          </div>
+        )}
 
         <form onSubmit={onSubmit} className="flex min-h-0 flex-1 flex-col">
           {/* body */}

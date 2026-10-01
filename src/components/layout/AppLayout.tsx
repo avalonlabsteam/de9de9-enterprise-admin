@@ -9,6 +9,7 @@ import {
   Eye,
   Handshake,
   History,
+  KeyRound,
   LogOut,
   Menu,
   Moon,
@@ -24,6 +25,7 @@ import { PresProfileHost } from "@/features/prestataires/components/ProfileHost"
 import { ClientFicheHost } from "@/features/clients/components/ClientFicheHost";
 import { WorkerViewHost } from "@/features/commandes/components/console/WorkerViewHost";
 import { useKycKpis } from "@/features/kyc/api/kyc";
+import { useAccesEchecsBadge } from "@/features/acces/api/acces";
 import { useComptaAVerifierBadge } from "@/features/comptabilite/api/comptabilite";
 import { AlertesBell } from "@/features/alertes/components/AlertesBell";
 import { useAlertesHub } from "@/features/alertes/lib/useAlertesHub";
@@ -41,6 +43,7 @@ const NAV_ITEMS: ReadonlyArray<{ to: string; labelKey: TKey; icon: LucideIcon }>
   { to: "/commandes", labelKey: "navCommandes", icon: ClipboardList },
   { to: "/prestataires", labelKey: "navPrestataires", icon: Users },
   { to: "/kyc", labelKey: "navKyc", icon: ShieldCheck },
+  { to: "/acces", labelKey: "navAcces", icon: KeyRound },
   { to: "/soustraitance", labelKey: "navSoustraitance", icon: Handshake },
   { to: "/handicap", labelKey: "navHandicap", icon: Accessibility },
   { to: "/factures", labelKey: "navFactures", icon: ReceiptText },
@@ -59,10 +62,20 @@ function NavList({ onNavigate }: { onNavigate?: () => void }) {
   const t = useT();
   // KYC dossiers submitted and waiting on de9de9 — the red badge.
   const { data: kycKpis } = useKycKpis();
+  // Companies whose sync with the de9de9 app is in « Échec ».
+  const syncEchecs = useAccesEchecsBadge();
   // Online payments « à vérifier » created this month.
   const aVerifier = useComptaAVerifierBadge();
-  const badges: Partial<Record<string, number>> = { "/kyc": kycKpis?.aExaminer, "/comptabilite": aVerifier };
-  const badgeAria: Partial<Record<string, TKey>> = { "/kyc": "kycBadgeAria", "/comptabilite": "comptaBadgeAria" };
+  const badges: Partial<Record<string, number>> = {
+    "/kyc": kycKpis?.aExaminer,
+    "/acces": syncEchecs,
+    "/comptabilite": aVerifier,
+  };
+  const badgeAria: Partial<Record<string, TKey>> = {
+    "/kyc": "kycBadgeAria",
+    "/acces": "accesBadgeAria",
+    "/comptabilite": "comptaBadgeAria",
+  };
   return (
     <nav className="flex flex-col">
       {NAV_ITEMS.map((item) => {

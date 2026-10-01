@@ -1,6 +1,8 @@
+import axios from 'axios';
 import { keepPreviousData, useMutation, useQuery } from '@tanstack/react-query';
 import { z } from 'zod';
 import { apiClient } from '@/api/apiClient';
+import { asRecord } from '@/lib/pick';
 import { queryClient } from '@/lib/queryClient';
 import type { DemandeDevisPayload } from '../schemas/demandeDevis';
 import { prestataireSchema } from '../schemas/prestataire';
@@ -155,4 +157,23 @@ export function useDemanderDevis(rfqId: string) {
       });
     },
   });
+}
+
+/**
+ * What a sourcing route answers once de9de9 suspended a company's B2B access
+ * (guide « Accès » §10) — both leave everything as it was:
+ *   403 `b2b_access_disabled` (cote: client)  the client: nothing was created;
+ *   422 `prestataire_b2b_disabled`            some recipients, named in
+ *       `prestatairesFermes`: all-or-nothing, nobody was contacted.
+ */
+export type B2bRefusal = { kind: 'client' } | { kind: 'prestataires'; fermes: string[] };
+
+export function b2bRefusalOf(err: unknown): B2bRefusal | null {
+  if (!axios.isAxiosError(err)) return null;
+  const body = asRecord(err.response?.data);
+  const code = body?.['code'];
+  if (code === 'b2b_access_disabled') return { kind: 'client' };
+  if (code !== 'prestataire_b2b_disabled') return null;
+  const ids = body?.['prestatairesFermes'];
+  return { kind: 'prestataires', fermes: Array.isArray(ids) ? ids.filter((x): x is string => typeof x === 'string') : [] };
 }

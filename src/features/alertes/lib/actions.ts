@@ -49,8 +49,10 @@ const QUEUE_KEYS: Record<string, (f: FileSignal) => QueryKey[]> = {
   soustraitance: () => [['sub', 'demandes']],
   contractuels: () => [['contractuels']],
   handicap: () => [['handicap']],
-  entreprises: (f) => companyKeys(f.companyId),
-  b2c: (f) => companyKeys(f.companyId),
+  // A company's page and fiches, and « Accès » (list, counters, badge, sync
+  // state): a refused or failed sync with the de9de9 app arrives on this file.
+  entreprises: (f) => [...companyKeys(f.companyId), ['acces']],
+  b2c: (f) => [...companyKeys(f.companyId), ['acces']],
 };
 
 function companyKeys(companyId: string | null | undefined): QueryKey[] {

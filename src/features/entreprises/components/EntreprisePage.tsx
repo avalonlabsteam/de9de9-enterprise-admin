@@ -8,12 +8,17 @@ import { useLocation, useNavigate, useParams, useSearchParams } from 'react-rout
 import { ArrowRight, Building2, ChevronLeft } from 'lucide-react';
 import { Glyph } from '@/components/common/Glyph';
 import { useT } from '@/lib/i18n';
+import { cn } from '@/lib/utils';
 import { problemMessage } from '@/api/problem';
 import { useCreditClient } from '@/features/credits/api/credits';
 import { fmtDate } from '@/features/kyc/lib/kyc';
 import { useEntreprise } from '../api/entreprises';
 
 const CARD = 'rounded-md border border-de9-line bg-card p-[22px]';
+const FLAG = 'rounded-full px-2.5 py-[4px] text-[11px] font-bold';
+const FLAG_GREEN = 'bg-[#E7F6EE] text-[#2FA86A] dark:bg-[#2FA86A]/15 dark:text-[#6FCF97]';
+const FLAG_AMBER = 'bg-[#FBF4E4] text-[#B68A2E] dark:bg-[#B68A2E]/15 dark:text-[#D9B36A]';
+const FLAG_GREY = 'bg-[#ECEFF2] text-[#5A6270] dark:bg-[#9AA4B2]/15 dark:text-[#A6AEBD]';
 
 type Side = 'client' | 'prestataire';
 
@@ -118,6 +123,29 @@ export function EntreprisePage() {
               )}
             </div>
           </div>
+
+          {/* The two accesses de9de9 holds on the company — changed on « Accès ». */}
+          {(company.b2bEnabled !== null || company.b2cEnabled !== null) && (
+            <div className="mt-3.5 flex flex-wrap items-center gap-2">
+              {company.b2bEnabled !== null && (
+                <span className={cn(FLAG, company.b2bEnabled ? FLAG_GREEN : FLAG_AMBER)}>
+                  {t(company.b2bEnabled ? 'entB2bActif' : 'accesChipB2bSuspendu')}
+                </span>
+              )}
+              {company.b2cEnabled !== null && (
+                <span className={cn(FLAG, company.b2cEnabled ? FLAG_GREEN : FLAG_GREY)}>
+                  {t(company.b2cEnabled ? 'accesChipB2cAccorde' : 'accesChipB2cNonAccorde')}
+                </span>
+              )}
+              <button
+                type="button"
+                onClick={() => navigate(nom ? '/acces?q=' + encodeURIComponent(nom) : '/acces')}
+                className="cursor-pointer text-[12.5px] font-bold text-de9-teal-dark hover:underline"
+              >
+                {t('entGererAcces')} <Glyph icon={ArrowRight} className="rtl:rotate-180" />
+              </button>
+            </div>
+          )}
 
           {rows.some(([, v]) => v) && (
             <div className="mt-5 grid grid-cols-1 gap-x-6 gap-y-3 sm:grid-cols-2">

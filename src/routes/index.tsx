@@ -6,6 +6,7 @@ import { authRoutes } from '@/features/auth/routes';
 import { commandesRoutes } from '@/features/commandes/routes';
 import { prestatairesRoutes } from '@/features/prestataires/routes';
 import { kycRoutes } from '@/features/kyc/routes';
+import { accesRoutes } from '@/features/acces/routes';
 import { soustraitanceRoutes } from '@/features/soustraitance/routes';
 import { handicapRoutes } from '@/features/handicap/routes';
 import { facturesRoutes } from '@/features/factures/routes';
@@ -34,6 +35,7 @@ export const router = createBrowserRouter([
               ...commandesRoutes,
               ...prestatairesRoutes,
               ...kycRoutes,
+              ...accesRoutes,
               ...soustraitanceRoutes,
               ...handicapRoutes,
               ...facturesRoutes,
