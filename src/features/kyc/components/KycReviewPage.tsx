@@ -7,11 +7,12 @@
 import { useState } from 'react';
 import type { ReactNode } from 'react';
 import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { ChevronLeft } from 'lucide-react';
+import { ChevronLeft, Lock, RefreshCw, Repeat, Send } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { useT } from '@/lib/i18n';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
+import { Glyph } from '@/components/common/Glyph';
 import { reloadKycRevue, useKycRevue, useKycSubmitForCompany } from '../api/kyc';
 import type { KycRevue } from '../schemas/kyc';
 import {
@@ -29,7 +30,7 @@ import { VerdictDialog, type VerdictTarget } from './VerdictDialog';
 import { ProgressBar, StatusPill, Tag } from './shared';
 
 const CARD =
-  'rounded-[20px] border border-de9-line bg-card px-5 py-5 shadow-[0_10px_30px_rgba(38,50,69,.06)] sm:px-6';
+  'rounded-md border border-de9-line bg-card px-5 py-5 sm:px-6';
 
 /** Set by the queue's links, so « Retour » restores its tab, search and page. */
 export interface KycBackState {
@@ -65,9 +66,9 @@ export function KycReviewPage() {
       <div className="mx-auto max-w-[1180px]">
         {backLink}
         <div className="flex flex-col gap-4">
-          <div className="h-[150px] animate-pulse rounded-[20px] bg-card" />
+          <div className="h-[150px] animate-pulse rounded-md bg-card" />
           {[0, 1, 2].map((i) => (
-            <div key={i} className="h-[300px] animate-pulse rounded-[20px] bg-card" />
+            <div key={i} className="h-[300px] animate-pulse rounded-md bg-card" />
           ))}
         </div>
       </div>
@@ -86,9 +87,9 @@ export function KycReviewPage() {
               type="button"
               onClick={() => void revueQ.refetch()}
               disabled={revueQ.isFetching}
-              className="cursor-pointer rounded-[10px] border-[1.5px] border-de9-line bg-card px-2.5 py-1.5 text-[11.5px] font-bold text-de9-slate disabled:opacity-50"
+              className="cursor-pointer rounded-full border border-de9-line bg-card px-2.5 py-1.5 text-[11.5px] font-bold text-de9-slate disabled:opacity-50"
             >
-              ⟳ {t('kycReessayer')}
+              <Glyph icon={RefreshCw} /> {t('kycReessayer')}
             </button>
           )}
         </div>
@@ -149,7 +150,7 @@ function Review({ revue: r, backLink }: { revue: KycRevue; backLink: ReactNode }
       <div className={CARD}>
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="flex min-w-0 items-center gap-3.5">
-            <div className="flex h-[52px] w-[52px] flex-none items-center justify-center rounded-[15px] bg-de9-ink text-[17px] font-extrabold text-white dark:text-[#151923]">
+            <div className="flex h-[52px] w-[52px] flex-none items-center justify-center rounded-md bg-primary-container text-[17px] font-extrabold text-on-primary-container">
               {initials(r.nom)}
             </div>
             <div className="min-w-0">
@@ -157,7 +158,12 @@ function Review({ revue: r, backLink }: { revue: KycRevue; backLink: ReactNode }
                 <h1 className="text-[21px] font-extrabold leading-tight">{r.nom}</h1>
                 <StatusPill tone={tone} label={dossierStatutLabel(r.statut, r.statutLabel, t)} />
                 {r.revueCommencee && <Tag>{t('kycTagRevueEnCours')}</Tag>}
-                {r.resoumission && <Tag tone="amber">{t('kycTagRenvoye')}</Tag>}
+                {r.resoumission && (
+                  <Tag tone="amber">
+                    <Glyph icon={Repeat} className="me-1" />
+                    {t('kycTagRenvoye')}
+                  </Tag>
+                )}
               </div>
               <div className="mt-1 text-[12.5px] text-de9-gray">
                 {[r.raisonSociale, ...roleLabels].filter(Boolean).join(' · ') || '—'}
@@ -169,7 +175,7 @@ function Review({ revue: r, backLink }: { revue: KycRevue; backLink: ReactNode }
               <button
                 type="button"
                 onClick={openFiche}
-                className="cursor-pointer rounded-[11px] border-[1.5px] border-de9-line bg-card px-3.5 py-2 text-[12px] font-bold text-de9-slate"
+                className="cursor-pointer rounded-full border border-de9-line bg-card px-3.5 py-2 text-[12px] font-bold text-de9-slate"
               >
                 {t('fichePresta')}
               </button>
@@ -178,9 +184,9 @@ function Review({ revue: r, backLink }: { revue: KycRevue; backLink: ReactNode }
               <button
                 type="button"
                 onClick={() => setConfirmSubmit(true)}
-                className="cursor-pointer rounded-[11px] border-[1.5px] border-de9-line bg-card px-3.5 py-2 text-[12px] font-bold text-de9-slate"
+                className="cursor-pointer rounded-full border border-de9-line bg-card px-3.5 py-2 text-[12px] font-bold text-de9-slate"
               >
-                📨 {t('kycSoumettrePour')}
+                <Glyph icon={Send} /> {t('kycSoumettrePour')}
               </button>
             )}
           </div>
@@ -207,17 +213,8 @@ function Review({ revue: r, backLink }: { revue: KycRevue; backLink: ReactNode }
         </div>
       </div>
 
-      {/* ===== where the dossier stands ===== */}
-      {enRevue ? (
-        <Banner tone="blue">{t('kycRevueInfo')}</Banner>
-      ) : r.statut === 'verified' ? (
-        <Banner tone="green">{t('kycVerifieInfo')}</Banner>
-      ) : r.statut === 'pending' ? (
-        <Banner tone="grey">{t('kycNonSoumisInfo')}</Banner>
-      ) : null}
-
       {r.statut === 'rejected' && r.motif && (
-        <div className="mt-3.5 rounded-[14px] border border-[#F3C9CB] bg-[#FDECEC] px-4 py-3 dark:border-[#E7464E]/40 dark:bg-[#E7464E]/15">
+        <div className="mt-3.5 rounded-md border border-[#F3C9CB] bg-[#FDECEC] px-4 py-3 dark:border-[#E7464E]/40 dark:bg-[#E7464E]/15">
           <div className="text-[10.5px] font-extrabold uppercase tracking-[.04em] text-de9-red">
             {t('kycMotifEnvoye')}
           </div>
@@ -229,9 +226,9 @@ function Review({ revue: r, backLink }: { revue: KycRevue; backLink: ReactNode }
       )}
 
       {r.noteDossier && (
-        <div className="mt-3.5 rounded-[14px] bg-card px-4 py-3">
+        <div className="mt-3.5 rounded-md bg-card px-4 py-3">
           <div className="text-[10.5px] font-extrabold uppercase tracking-[.04em] text-de9-gray">
-            🔒 {t('kycNoteDossier')}
+            <Glyph icon={Lock} /> {t('kycNoteDossier')}
           </div>
           <div dir="auto" className="mt-1 text-[12.5px] leading-[1.5] text-de9-slate">
             {r.noteDossier}
@@ -269,10 +266,10 @@ function Review({ revue: r, backLink }: { revue: KycRevue; backLink: ReactNode }
       <Dialog open={confirmSubmit} onOpenChange={setConfirmSubmit}>
         <DialogContent
           showCloseButton={false}
-          className="block max-w-[calc(100%-2rem)] gap-0 rounded-[22px] bg-card p-7 sm:max-w-[440px]"
+          className="block max-w-[calc(100%-2rem)] gap-0 rounded-xl bg-card p-7 sm:max-w-[440px]"
         >
-          <div className="flex h-[54px] w-[54px] items-center justify-center rounded-[15px] bg-[#EAF2FD] text-[24px] dark:bg-[#2F7FD0]/15">
-            📨
+          <div className="flex h-[54px] w-[54px] items-center justify-center rounded-md bg-[#EAF2FD] text-[24px] dark:bg-[#2F7FD0]/15 text-[#2F7FD0] dark:text-[#7EB5EC]">
+            <Glyph icon={Send} />
           </div>
           <DialogTitle className="mt-4 text-[19px] leading-normal font-extrabold text-de9-ink">
             {t('kycSoumettrePour')}
@@ -284,7 +281,7 @@ function Review({ revue: r, backLink }: { revue: KycRevue; backLink: ReactNode }
             <button
               type="button"
               onClick={() => setConfirmSubmit(false)}
-              className="flex-1 cursor-pointer rounded-[13px] bg-secondary p-3.5 text-center text-sm font-bold text-de9-slate"
+              className="flex-1 cursor-pointer rounded-full bg-secondary p-3.5 text-center text-sm font-bold text-de9-slate"
             >
               {t('annuler')}
             </button>
@@ -292,31 +289,13 @@ function Review({ revue: r, backLink }: { revue: KycRevue; backLink: ReactNode }
               type="button"
               disabled={submit.isPending}
               onClick={runSubmit}
-              className="flex-1 cursor-pointer rounded-[13px] bg-[#2F7FD0] p-3.5 text-center text-sm font-bold text-white shadow-[0_10px_22px_rgba(47,127,208,.4)] disabled:opacity-60"
+              className="flex-1 cursor-pointer rounded-full bg-[#2F7FD0] p-3.5 text-center text-sm font-bold text-white disabled:opacity-60"
             >
               {submit.isPending ? t('kycEnvoi') : t('fcConfirmer')}
             </button>
           </div>
         </DialogContent>
       </Dialog>
-    </div>
-  );
-}
-
-function Banner({ tone, children }: { tone: 'blue' | 'green' | 'grey'; children: ReactNode }) {
-  return (
-    <div
-      className={cn(
-        'mt-3.5 flex gap-2.5 rounded-[14px] border px-4 py-3 text-[12.5px] leading-[1.5]',
-        tone === 'blue' &&
-          'border-[#BFD9F2] bg-[#EAF2FD] text-[#2C6FB0] dark:border-[#2F7FD0]/40 dark:bg-[#2F7FD0]/15 dark:text-[#7EB5EC]',
-        tone === 'green' &&
-          'border-[#BEE6CE] bg-[#E7F6EE] text-[#23794D] dark:border-[#2FA86A]/40 dark:bg-[#2FA86A]/15 dark:text-[#6FCF97]',
-        tone === 'grey' && 'border-de9-line bg-card text-de9-slate',
-      )}
-    >
-      <span aria-hidden>ⓘ</span>
-      <span>{children}</span>
     </div>
   );
 }

@@ -3,6 +3,7 @@
 // « Charger plus ». The mock twin lives in src/api/mock/handlers.ts.
 import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import { Check, Mail, MessageCircle, Phone } from 'lucide-react';
 import { useT, useL } from '@/lib/i18n';
 import { useLangStore, type Lang } from '@/stores/langStore';
 import { cn } from '@/lib/utils';
@@ -14,6 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Glyph } from '@/components/common/Glyph';
 import { useWilayas } from '@/features/geo/api/geo';
 import { useHandicapList } from '../api/handicap';
 import type { HandicapItem, HandicapParams } from '../schemas/handicap';
@@ -105,7 +107,7 @@ export function HandicapPage() {
     if (value !== 'all' && !options.some((o) => o.v === value)) options.push({ v: value, l: value });
     return (
       <Select value={value} onValueChange={onChange}>
-        <SelectTrigger className="h-auto w-full cursor-pointer gap-1.5 rounded-[11px] border-[1.5px] border-de9-line bg-card px-[13px] py-[10px] text-[12.5px] font-semibold text-de9-slate shadow-none sm:w-auto">
+        <SelectTrigger className="h-auto w-full cursor-pointer gap-1.5 rounded-xs border border-outline bg-card px-[13px] py-[10px] text-[12.5px] font-semibold text-de9-slate shadow-none sm:w-auto">
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
@@ -129,18 +131,13 @@ export function HandicapPage() {
         </div>
       </div>
 
-      {/* confidential chip */}
-      <div className="mt-[14px] inline-flex items-center gap-[7px] rounded-[10px] border border-[#CFE0F5] bg-[#EAF2FD] px-[13px] py-2 text-[11.5px] font-bold text-[#2C6FB0] dark:border-[#2F7FD0]/40 dark:bg-[#2F7FD0]/15 dark:text-[#7EB5EC]">
-        🔒 {t('hcConfid')}
-      </div>
-
       {/* search + filters + count */}
       <div className="mt-[14px] flex flex-wrap items-center gap-[9px]">
         <input
           value={searchInput}
           onChange={(e) => setSearchInput(e.target.value)}
           placeholder={t('hcRecherche')}
-          className="w-full flex-none rounded-[11px] border-[1.5px] border-de9-line bg-card px-[15px] py-[10px] text-[12.5px] text-de9-ink outline-none sm:w-[300px]"
+          className="w-full flex-none rounded-xs border border-outline bg-card px-[15px] py-[10px] text-[12.5px] text-de9-ink outline-none sm:w-[300px]"
         />
         {mkSelect(wilaya, t('fWilaya'), wilayaOpts, setWilaya)}
         {mkSelect(jobType, t('hcColPoste'), jobTypeOpts, setJobType)}
@@ -150,9 +147,9 @@ export function HandicapPage() {
             type="button"
             onClick={() => setContacted(c.key)}
             className={cn(
-              'cursor-pointer rounded-full border-[1.5px] px-[13px] py-[8px] text-[12px] font-bold',
+              'cursor-pointer rounded-full border px-[13px] py-[8px] text-[12px] font-bold',
               contacted === c.key
-                ? 'border-[#232838] bg-[#232838] text-white'
+                ? 'border-secondary-container bg-secondary-container text-on-secondary-container'
                 : 'border-de9-line bg-card text-de9-slate',
             )}
           >
@@ -165,7 +162,7 @@ export function HandicapPage() {
       </div>
 
       {/* table card */}
-      <div className="mt-3 overflow-x-auto rounded-[18px] border border-de9-line bg-card shadow-[0_10px_30px_rgba(38,50,69,.06)]">
+      <div className="mt-3 overflow-x-auto rounded-md border border-de9-line bg-card">
         <div className={cn('min-w-[1040px] transition-opacity', listQ.isPlaceholderData && 'opacity-60')}>
           <div
             className={`grid ${GRID_COLS} gap-[10px] border-b border-de9-line bg-secondary px-5 py-[13px] text-[10px] font-bold uppercase tracking-[.03em] text-de9-gray`}
@@ -184,7 +181,7 @@ export function HandicapPage() {
           {listQ.isPending && (
             <div className="px-5 py-[13px]">
               {[0, 1, 2].map((i) => (
-                <div key={i} className="mb-[13px] h-9 animate-pulse rounded-[9px] bg-de9-row" />
+                <div key={i} className="mb-[13px] h-9 animate-pulse rounded-sm bg-de9-row" />
               ))}
             </div>
           )}
@@ -236,7 +233,7 @@ export function HandicapPage() {
                     {w.comment || '—'}
                     {w.contactNote && (
                       <div className="mt-0.5 text-[10.5px] font-semibold text-[#2FA86A] dark:text-[#6FCF97]">
-                        ✓ {w.contactNote}
+                        <Glyph icon={Check} /> {w.contactNote}
                       </div>
                     )}
                   </div>
@@ -244,9 +241,9 @@ export function HandicapPage() {
                     {w.contactPhone && (
                       <a
                         href={'tel:+213' + w.contactPhone.replace(/^0/, '')}
-                        className="flex h-[30px] w-[30px] items-center justify-center rounded-[9px] border-[1.5px] border-de9-line text-[13px] no-underline"
+                        className="flex h-[30px] w-[30px] items-center justify-center rounded-full border border-de9-line text-[13px] no-underline"
                       >
-                        📞
+                        <Glyph icon={Phone} />
                       </a>
                     )}
                     {waHref && (
@@ -254,17 +251,17 @@ export function HandicapPage() {
                         href={waHref}
                         target="_blank"
                         rel="noreferrer"
-                        className="flex h-[30px] w-[30px] items-center justify-center rounded-[9px] border-[1.5px] border-de9-line text-[13px] no-underline"
+                        className="flex h-[30px] w-[30px] items-center justify-center rounded-full border border-de9-line text-[13px] no-underline"
                       >
-                        💬
+                        <Glyph icon={MessageCircle} />
                       </a>
                     )}
                     {w.contactEmail && (
                       <a
                         href={'mailto:' + w.contactEmail}
-                        className="flex h-[30px] w-[30px] items-center justify-center rounded-[9px] border-[1.5px] border-de9-line text-[13px] no-underline"
+                        className="flex h-[30px] w-[30px] items-center justify-center rounded-full border border-de9-line text-[13px] no-underline"
                       >
-                        ✉️
+                        <Glyph icon={Mail} />
                       </a>
                     )}
                     {!w.contactPhone && !w.contactEmail && '—'}
@@ -274,13 +271,13 @@ export function HandicapPage() {
                       type="button"
                       onClick={() => toggleContacted(w)}
                       title={w.contactedAt ? registeredLabel(w.contactedAt, lang) : undefined}
-                      className={`flex h-6 w-6 cursor-pointer items-center justify-center rounded-[7px] border-2 text-[13px] font-extrabold text-white ${
+                      className={`flex h-6 w-6 cursor-pointer items-center justify-center rounded-full border-2 text-[13px] font-extrabold text-white ${
                         done
                           ? 'border-[#2FA86A] bg-[#2FA86A]'
                           : 'border-[#CBD3DB] bg-card dark:border-de9-line'
                       }`}
                     >
-                      {done ? '✓' : ''}
+                      {done && <Glyph icon={Check} className="stroke-[3]" />}
                     </button>
                   </div>
                 </div>
@@ -299,7 +296,7 @@ export function HandicapPage() {
               type="button"
               disabled={listQ.isFetchingNextPage}
               onClick={() => void listQ.fetchNextPage()}
-              className="cursor-pointer rounded-[11px] border-[1.5px] border-de9-line bg-card px-4 py-2 text-[12.5px] font-bold text-de9-slate disabled:cursor-default disabled:opacity-40"
+              className="cursor-pointer rounded-full border border-de9-line bg-card px-4 py-2 text-[12.5px] font-bold text-de9-slate disabled:cursor-default disabled:opacity-40"
             >
               {listQ.isFetchingNextPage ? '…' : t('chargerPlus')}
             </button>

@@ -11,7 +11,7 @@ import { AlerteIcon } from './AlerteIcon';
 // row; ✕ only dismisses — it does not mark the alert read.
 
 const shell =
-  'flex w-[356px] max-w-[calc(100vw-32px)] cursor-pointer items-start gap-3 rounded-2xl border-s-4 bg-[#232838] px-3.5 py-3 text-start text-white shadow-[0_18px_44px_rgba(20,30,45,.35)] outline-none focus-visible:ring-2 focus-visible:ring-white/60';
+  'flex w-[356px] max-w-[calc(100vw-32px)] cursor-pointer items-start gap-3 rounded-md border-s-4 bg-[rgb(35_40_56)] px-3.5 py-3 dark:ring-1 dark:ring-white/10 text-start text-white shadow-e3 outline-none focus-visible:ring-2 focus-visible:ring-white/60';
 
 function onActivate(fn: () => void) {
   return (e: KeyboardEvent) => {
@@ -36,7 +36,7 @@ function CloseButton({ onClose }: { onClose: () => void }) {
       type="button"
       onClick={stop(onClose)}
       aria-label={t('fermer')}
-      className="-me-1 -mt-0.5 flex size-7 flex-none cursor-pointer items-center justify-center rounded-lg text-[#A6AEBD] hover:bg-white/10 hover:text-white"
+      className="-me-1 -mt-0.5 flex size-7 flex-none cursor-pointer items-center justify-center rounded-full text-[#A6AEBD] hover:bg-white/10 hover:text-white"
     >
       <X className="size-4" />
     </button>
@@ -48,7 +48,7 @@ export function AlerteToast({ alerte: a, onOpen, onClose }: { alerte: Alerte; on
   const style = tonStyle(a.ton);
   return (
     <div role="button" tabIndex={0} onClick={onOpen} onKeyDown={onActivate(onOpen)} className={cn(shell, style.edge)}>
-      <div className={cn('flex size-9 flex-none items-center justify-center rounded-[10px]', style.toastTile)}>
+      <div className={cn('flex size-9 flex-none items-center justify-center rounded-sm', style.toastTile)}>
         <AlerteIcon icone={a.icone} className="size-[18px]" />
       </div>
       <div className="min-w-0 flex-1">
@@ -70,7 +70,7 @@ export function AlerteToast({ alerte: a, onOpen, onClose }: { alerte: Alerte; on
           <button
             type="button"
             onClick={stop(onOpen)}
-            className="mt-2 cursor-pointer rounded-[9px] bg-white px-3 py-1.5 text-[12px] font-extrabold text-[#232838] hover:bg-[#EEF1F4]"
+            className="mt-2 cursor-pointer rounded-full bg-white px-3 py-1.5 text-[12px] font-extrabold text-[rgb(35_40_56)] hover:bg-[#EEF1F4]"
           >
             {t('alertesOuvrir')}
           </button>
@@ -92,7 +92,7 @@ export function AlertesSummaryToast({ n, onOpen, onClose }: { n: number; onOpen:
       onKeyDown={onActivate(onOpen)}
       className={cn(shell, 'items-center border-s-[#65CBC4]')}
     >
-      <div className="flex size-9 flex-none items-center justify-center rounded-[10px] bg-[#65CBC4]/20 text-[#9FE0DB]">
+      <div className="flex size-9 flex-none items-center justify-center rounded-sm bg-[#65CBC4]/20 text-[#9FE0DB]">
         <BellRing className="size-[18px]" />
       </div>
       <div className="min-w-0 flex-1 text-[13px] font-extrabold">{t('alertesNouvelles').replace('{n}', String(n))}</div>

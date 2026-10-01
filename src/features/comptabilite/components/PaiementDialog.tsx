@@ -5,10 +5,12 @@
 import { useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
+import { ArrowRight, Copy, Landmark, ReceiptText, TriangleAlert } from 'lucide-react';
 import { useT } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 import { problemMessage } from '@/api/problem';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
+import { Glyph } from '@/components/common/Glyph';
 import { fetchRecuBanque, rel, reloadPaiement, useComptaPaiement, usePaiementAction } from '../api/comptabilite';
 import { comptaProblem, fmtAlger, isOrphanFlag, roleLabel, tonBadge } from '../lib/comptabilite';
 import type { PaiementAction, PaiementDetail } from '../schemas/paiement';
@@ -55,12 +57,12 @@ export function PaiementDialog({ id, onClose }: { id: string; onClose: () => voi
       <DialogContent
         showCloseButton={false}
         aria-describedby={undefined}
-        className="block max-h-[90vh] max-w-[calc(100%-2rem)] gap-0 overflow-y-auto rounded-[22px] bg-card p-7 sm:max-w-[640px]"
+        className="block max-h-[90vh] max-w-[calc(100%-2rem)] gap-0 overflow-y-auto rounded-xl bg-card p-7 sm:max-w-[640px]"
       >
         <DialogTitle className="text-[19px] leading-normal font-extrabold text-de9-ink">{t('comptaDetailTitre')}</DialogTitle>
-        {q.isPending && <div className="mt-4 h-64 animate-pulse rounded-[14px] bg-secondary" />}
+        {q.isPending && <div className="mt-4 h-64 animate-pulse rounded-md bg-secondary" />}
         {q.isError && (
-          <div className="mt-4 rounded-xl border border-[#F3C9CB] bg-[#FDECEC] px-4 py-3 text-[12.5px] font-semibold text-de9-red dark:border-[#E7464E]/40 dark:bg-[#E7464E]/15">
+          <div className="mt-4 rounded-md border border-[#F3C9CB] bg-[#FDECEC] px-4 py-3 text-[12.5px] font-semibold text-de9-red dark:border-[#E7464E]/40 dark:bg-[#E7464E]/15">
             {problemMessage(q.error)}
           </div>
         )}
@@ -68,7 +70,7 @@ export function PaiementDialog({ id, onClose }: { id: string; onClose: () => voi
         <button
           type="button"
           onClick={onClose}
-          className="mt-6 w-full cursor-pointer rounded-[13px] bg-[#232838] p-3.5 text-center text-sm font-bold text-white"
+          className="mt-6 w-full cursor-pointer rounded-full bg-primary p-3.5 text-center text-sm font-bold text-primary-foreground"
         >
           {t('btnClose')}
         </button>
@@ -157,7 +159,7 @@ function DetailBody({ d }: { d: PaiementDetail }) {
     .sort((x, y) => (Number.isNaN(x.at) || Number.isNaN(y.at) ? 0 : x.at - y.at))
     .map(({ label, iso }) => [label, fmtAlger(iso)] as const);
   const btn =
-    'cursor-pointer rounded-[11px] border-[1.5px] border-de9-line bg-card px-3.5 py-2.5 text-[12.5px] font-bold text-de9-slate hover:bg-de9-row disabled:cursor-not-allowed disabled:opacity-50';
+    'cursor-pointer rounded-full border border-de9-line bg-card px-3.5 py-2.5 text-[12.5px] font-bold text-de9-slate hover:bg-de9-row disabled:cursor-not-allowed disabled:opacity-50';
 
   return (
     <>
@@ -168,18 +170,24 @@ function DetailBody({ d }: { d: PaiementDetail }) {
           {d.statutLabel ?? d.statut}
         </span>
       </div>
-      <div className="mt-2 text-[24px] leading-tight font-extrabold text-de9-ink">{d.montantLabel ?? '—'}</div>
-      {d.creditsLabel && <div className="text-[12.5px] font-semibold text-de9-gray">{d.creditsLabel}</div>}
+      <div className="mt-2 text-[24px] leading-tight font-extrabold text-de9-ink">
+        <span className="num">{d.montantLabel ?? '—'}</span>
+      </div>
+      {d.creditsLabel && (
+        <div className="text-[12.5px] font-semibold text-de9-gray">
+          <span className="num">{d.creditsLabel}</span>
+        </div>
+      )}
       {d.drapeauLabel && (
         <div
           className={cn(
-            'mt-3 rounded-xl px-3.5 py-2.5 text-[12.5px] font-semibold',
+            'mt-3 rounded-md px-3.5 py-2.5 text-[12.5px] font-semibold',
             isOrphanFlag(d.drapeau)
               ? 'bg-[#FDECEC] text-de9-red dark:bg-[#E7464E]/15'
               : 'bg-[#FBF4E4] text-[#92702A] dark:bg-[#B68A2E]/15 dark:text-[#D9B36A]',
           )}
         >
-          ⚠ {d.drapeauLabel}
+          <Glyph icon={TriangleAlert} /> <span dir="auto">{d.drapeauLabel}</span>
         </div>
       )}
 
@@ -244,9 +252,9 @@ function DetailBody({ d }: { d: PaiementDetail }) {
               <button
                 type="button"
                 onClick={() => copyFormUrl(g.formUrl ?? '')}
-                className="mt-0.5 cursor-pointer rounded-[9px] border-[1.5px] border-de9-line px-2.5 py-1 text-[12px] font-bold text-de9-slate hover:bg-de9-row"
+                className="mt-0.5 cursor-pointer rounded-full border border-de9-line px-2.5 py-1 text-[12px] font-bold text-de9-slate hover:bg-de9-row"
               >
-                ⧉ {t('comptaCopierLien')}
+                <Glyph icon={Copy} /> {t('comptaCopierLien')}
               </button>
             </div>
           )}
@@ -301,7 +309,7 @@ function DetailBody({ d }: { d: PaiementDetail }) {
                   className={cn(
                     btn,
                     a.code === 'revue_crediter' &&
-                      'border-de9-teal-dark bg-de9-teal-dark text-white shadow-[0_8px_18px_rgba(23,138,130,.32)] hover:bg-de9-teal-dark',
+                      'border-de9-teal-dark bg-primary text-primary-foreground hover:bg-de9-teal-dark',
                     a.code === 'revue_rejeter' && 'border-[#F3C9CB] text-de9-red dark:border-[#E7464E]/40',
                   )}
                 >
@@ -311,7 +319,10 @@ function DetailBody({ d }: { d: PaiementDetail }) {
             </div>
           )}
           {d.revue?.creditImpossible && (
-            <div className="rounded-xl border border-[#F0E2C0] bg-[#FBF4E4] px-3.5 py-2.5 text-[12.5px] font-semibold text-[#92702A] dark:border-[#B68A2E]/40 dark:bg-[#B68A2E]/15 dark:text-[#D9B36A]">
+            <div
+              dir="auto"
+              className="rounded-md border border-[#F0E2C0] bg-[#FBF4E4] px-3.5 py-2.5 text-[12.5px] font-semibold text-[#92702A] ltr:text-left rtl:text-right dark:border-[#B68A2E]/40 dark:bg-[#B68A2E]/15 dark:text-[#D9B36A]"
+            >
               {d.revue.creditImpossible}
             </div>
           )}
@@ -329,7 +340,7 @@ function DetailBody({ d }: { d: PaiementDetail }) {
                   }
                   className={btn}
                 >
-                  🧾 {t('comptaRecuPdf')}
+                  <Glyph icon={ReceiptText} /> {t('comptaRecuPdf')}
                 </button>
               )}
               {d.recuBanqueHref && (
@@ -339,7 +350,7 @@ function DetailBody({ d }: { d: PaiementDetail }) {
                   disabled={openingBanque}
                   className={btn}
                 >
-                  🏦 {openingBanque ? t('comptaEnCours') : t('comptaRecuBanque')}
+                  <Glyph icon={Landmark} /> {openingBanque ? t('comptaEnCours') : t('comptaRecuBanque')}
                 </button>
               )}
               {d.mouvementId && (
@@ -348,7 +359,7 @@ function DetailBody({ d }: { d: PaiementDetail }) {
                   onClick={() => navigate(`/credits?mouvement=${encodeURIComponent(d.mouvementId ?? '')}`)}
                   className="cursor-pointer px-1 text-[12.5px] font-bold text-[#2F7FD0] dark:text-[#7EB5EC]"
                 >
-                  {t('comptaVoirMouvement')} →
+                  {t('comptaVoirMouvement')} <Glyph icon={ArrowRight} className="rtl:rotate-180" />
                 </button>
               )}
             </div>

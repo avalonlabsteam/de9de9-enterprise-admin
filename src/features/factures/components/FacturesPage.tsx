@@ -13,12 +13,24 @@ import type { ChangeEvent } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import axios from 'axios';
 import { toast } from 'sonner';
+import {
+  Banknote,
+  Download,
+  FileText,
+  Handshake,
+  Inbox,
+  Paperclip,
+  Scale,
+  TriangleAlert,
+  type LucideIcon,
+} from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useT, useL, type TKey } from '@/lib/i18n';
 import { useLangStore, type Lang } from '@/stores/langStore';
 import { queryClient } from '@/lib/queryClient';
 import { problemMessage } from '@/api/problem';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
+import { Glyph } from '@/components/common/Glyph';
 import {
   downloadFactureFile,
   previewFactureFile,
@@ -57,28 +69,28 @@ const STATUS_META: Record<FactureStatus, StatusMeta> = {
   doneInvoiced: {
     labelKey: 'fcReçue',
     num: 'V5',
-    pill: 'bg-[#FEF6E9] text-[#C98A1E]',
+    pill: 'bg-[#FEF6E9] text-[#C98A1E] dark:bg-[#C98A1E]/15 dark:text-[#E0AE55]',
     dot: 'bg-[#E6A53A]',
     actions: ['approuver', 'contester'],
   },
   doneDisputed: {
     labelKey: 'fcContestee',
     num: 'V5·C',
-    pill: 'bg-[#FDECEC] text-de9-red',
+    pill: 'bg-[#FDECEC] text-de9-red dark:bg-[#E7464E]/15',
     dot: 'bg-de9-red',
     actions: ['resoudre-litige'],
   },
   doneApproved: {
     labelKey: 'fcApprouvee',
     num: 'V6',
-    pill: 'bg-[#E6F6EC] text-[#2E9E5B]',
+    pill: 'bg-[#E6F6EC] text-[#2E9E5B] dark:bg-[#2E9E5B]/15 dark:text-[#6FCF97]',
     dot: 'bg-[#2E9E5B]',
     actions: ['regler'],
   },
   paid: {
     labelKey: 'fcPayee',
     num: 'V7',
-    pill: 'bg-[#EEF1F4] text-[#6B7280]',
+    pill: 'bg-[#EEF1F4] text-[#6B7280] dark:bg-[#9AA4B2]/15 dark:text-[#A6AEBD]',
     dot: 'bg-[#9AA4B2]',
     actions: [],
   },
@@ -86,11 +98,11 @@ const STATUS_META: Record<FactureStatus, StatusMeta> = {
 
 /** A detail can be cancelled; the list never is. */
 const DETAIL_PILL: Record<FactureDetailStatus, string> = {
-  doneInvoiced: 'bg-[#FEF6E9] text-[#C98A1E]',
-  doneDisputed: 'bg-[#FDECEC] text-de9-red',
-  doneApproved: 'bg-[#E6F6EC] text-[#2E9E5B]',
-  paid: 'bg-[#EEF1F4] text-[#6B7280]',
-  cancelled: 'bg-[#EEF1F4] text-[#9AA4B2]',
+  doneInvoiced: 'bg-[#FEF6E9] text-[#C98A1E] dark:bg-[#C98A1E]/15 dark:text-[#E0AE55]',
+  doneDisputed: 'bg-[#FDECEC] text-de9-red dark:bg-[#E7464E]/15',
+  doneApproved: 'bg-[#E6F6EC] text-[#2E9E5B] dark:bg-[#2E9E5B]/15 dark:text-[#6FCF97]',
+  paid: 'bg-[#EEF1F4] text-[#6B7280] dark:bg-[#9AA4B2]/15 dark:text-[#A6AEBD]',
+  cancelled: 'bg-[#EEF1F4] text-[#9AA4B2] dark:bg-[#9AA4B2]/15',
 };
 
 /** Tab → the `statut` value (the API accepts either vocabulary). */
@@ -130,17 +142,17 @@ const ACTION_INFO: Record<ActionCode, TKey> = {
   regler: 'fcInfoRegler',
 };
 
-const ACTION_ICON: Record<ActionCode, string> = {
-  approuver: '⚖️',
-  contester: '⚠️',
-  'resoudre-litige': '🤝',
-  regler: '💸',
+const ACTION_ICON: Record<ActionCode, LucideIcon> = {
+  approuver: Scale,
+  contester: TriangleAlert,
+  'resoudre-litige': Handshake,
+  regler: Banknote,
 };
 
 const ACTION_CLS: Record<ActionCode, string> = {
   approuver: 'border-[#2E9E5B] bg-[#2E9E5B] text-white',
   contester: 'border-[#F3C9CB] bg-white text-de9-red dark:border-[#E7464E]/40 dark:bg-[#E7464E]/15',
-  'resoudre-litige': 'border-[#232838] bg-[#232838] text-white',
+  'resoudre-litige': 'border-secondary-container bg-secondary-container text-on-secondary-container',
   regler: 'border-[#2E9E5B] bg-[#2E9E5B] text-white',
 };
 
@@ -223,7 +235,7 @@ interface PendingAction {
 const PAGE_SIZE = 20;
 const SEARCH_DEBOUNCE_MS = 300;
 const SELECT_CLS =
-  'rounded-[11px] border-[1.5px] border-de9-line bg-card px-3 py-2.5 text-[12.5px] font-semibold text-de9-slate outline-none';
+  'rounded-xs border border-outline bg-card px-3 py-2.5 text-[12.5px] font-semibold text-de9-slate outline-none';
 
 // ===================== page =====================
 
@@ -452,13 +464,13 @@ export function FacturesPage() {
         <div className="mt-4 animate-pulse">
           <div className="grid grid-cols-2 gap-3.5 md:grid-cols-4">
             {[0, 1, 2, 3].map((i) => (
-              <div key={i} className="h-[104px] rounded-2xl border border-de9-line bg-card" />
+              <div key={i} className="h-[104px] rounded-md border border-de9-line bg-card" />
             ))}
           </div>
-          <div className="mt-3.5 h-64 rounded-[18px] border border-de9-line bg-card" />
+          <div className="mt-3.5 h-64 rounded-md border border-de9-line bg-card" />
         </div>
       ) : consoleQ.isError ? (
-        <div className="mt-4 rounded-xl border border-[#F3C9CB] bg-[#FDECEC] px-4 py-3 text-[12.5px] font-semibold text-de9-red dark:border-[#E7464E]/40 dark:bg-[#E7464E]/15">
+        <div className="mt-4 rounded-md border border-[#F3C9CB] bg-[#FDECEC] px-4 py-3 text-[12.5px] font-semibold text-de9-red dark:border-[#E7464E]/40 dark:bg-[#E7464E]/15">
           {l('Erreur de chargement des factures', 'خطأ في تحميل الفواتير')} — {problemMessage(consoleQ.error)}
         </div>
       ) : (
@@ -472,8 +484,8 @@ export function FacturesPage() {
                   key={c.key}
                   onClick={() => setFilterKey(filter === c.group ? 'all' : c.group)}
                   className={cn(
-                    'cursor-pointer rounded-2xl border bg-card px-[18px] py-4 shadow-[0_6px_18px_rgba(38,50,69,.04)]',
-                    filter === c.group ? 'border-[#232838]' : 'border-de9-line',
+                    'cursor-pointer rounded-md border bg-card px-[18px] py-4',
+                    filter === c.group ? 'border-primary' : 'border-de9-line',
                   )}
                 >
                   <div className="text-xs font-semibold text-de9-gray">{t(c.labelKey)}</div>
@@ -494,7 +506,7 @@ export function FacturesPage() {
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
               placeholder={t('facSearch')}
-              className="min-w-0 flex-1 rounded-[11px] border-[1.5px] border-de9-line bg-card px-[15px] py-2.5 text-[12.5px] text-de9-ink outline-none sm:flex-[0_0_300px]"
+              className="min-w-0 flex-1 rounded-xs border border-outline bg-card px-[15px] py-2.5 text-[12.5px] text-de9-ink outline-none sm:flex-[0_0_300px]"
             />
             {FILTERS.map((ff) => {
               const active = filter === ff.key;
@@ -504,8 +516,8 @@ export function FacturesPage() {
                   type="button"
                   onClick={() => setFilterKey(ff.key)}
                   className={cn(
-                    'cursor-pointer rounded-full border-[1.5px] px-[15px] py-[9px] text-[12.5px] font-bold',
-                    active ? 'border-[#232838] bg-[#232838] text-white' : 'border-de9-line bg-card text-de9-slate',
+                    'cursor-pointer rounded-full border px-[15px] py-[9px] text-[12.5px] font-bold',
+                    active ? 'border-secondary-container bg-secondary-container text-on-secondary-container' : 'border-de9-line bg-card text-de9-slate',
                   )}
                 >
                   {t(ff.labelKey)} · {countOf(ff.key) ?? '—'}
@@ -574,7 +586,7 @@ export function FacturesPage() {
           </div>
 
           {/* table */}
-          <div className="mt-3.5 overflow-hidden rounded-[18px] border border-de9-line bg-card shadow-[0_10px_30px_rgba(38,50,69,.06)]">
+          <div className="mt-3.5 overflow-hidden rounded-md border border-de9-line bg-card">
             <div className={cn('overflow-x-auto transition-opacity', consoleQ.isPlaceholderData && 'opacity-60')}>
               <div className="min-w-[920px]">
                 <div className="grid grid-cols-[1.3fr_1.7fr_1.3fr_1.3fr_1fr_1.2fr_2fr] gap-3 border-b border-de9-line bg-secondary px-[22px] py-[13px] text-[10.5px] font-bold tracking-[.04em] text-de9-gray uppercase">
@@ -625,7 +637,7 @@ export function FacturesPage() {
                         {f.visitAt ? isoLabel(f.visitAt, lang) : legacyDateLabel(f.date, lang)}
                       </div>
                       <div className="text-end">
-                        <span className="text-[13.5px] font-extrabold text-de9-ink">{fmt(f.montant)}</span>
+                        <span className="num text-[13.5px] font-extrabold text-de9-ink">{fmt(f.montant)}</span>
                         <div className="text-[10px] text-de9-gray">{t('credits')}</div>
                       </div>
                       <div>
@@ -635,7 +647,7 @@ export function FacturesPage() {
                             st.pill,
                           )}
                         >
-                          <span className="inline-flex min-w-[18px] flex-none items-center justify-center rounded-md bg-[#232838] px-[5px] py-[2px] text-[9.5px] leading-[1.4] font-extrabold tracking-[.02em] text-white">
+                          <span className="inline-flex min-w-[18px] flex-none items-center justify-center rounded-xs bg-inverse-surface px-[5px] py-[2px] text-[9.5px] leading-[1.4] font-extrabold tracking-[.02em] text-inverse-on-surface">
                             {f.code ?? st.num}
                           </span>
                           <span className={cn('h-[7px] w-[7px] rounded-full', st.dot)} />
@@ -650,7 +662,7 @@ export function FacturesPage() {
                             disabled={action.isPending}
                             onClick={() => openRowAction(f, code)}
                             className={cn(
-                              'cursor-pointer rounded-[10px] border-[1.5px] px-[13px] py-2 text-[11.5px] font-bold disabled:opacity-60',
+                              'cursor-pointer rounded-full border px-[13px] py-2 text-[11.5px] font-bold disabled:opacity-60',
                               ACTION_CLS[code],
                             )}
                           >
@@ -664,15 +676,15 @@ export function FacturesPage() {
                             aria-label={t('telecharger')}
                             disabled={downloading === f.invoiceId}
                             onClick={() => download(f.invoiceId, `facture-${f.ref}.pdf`)}
-                            className="cursor-pointer rounded-[10px] border-[1.5px] border-de9-line bg-card px-2.5 py-2 text-[11.5px] font-bold text-de9-slate disabled:opacity-50"
+                            className="cursor-pointer rounded-full border border-de9-line bg-card px-2.5 py-2 text-[11.5px] font-bold text-de9-slate disabled:opacity-50"
                           >
-                            ⤓
+                            <Glyph icon={Download} />
                           </button>
                         )}
                         <button
                           type="button"
                           onClick={() => openView(f.invoiceId)}
-                          className="cursor-pointer rounded-[10px] border-[1.5px] border-de9-line bg-secondary px-[13px] py-2 text-[11.5px] font-bold text-de9-slate"
+                          className="cursor-pointer rounded-full border border-de9-line bg-secondary px-[13px] py-2 text-[11.5px] font-bold text-de9-slate"
                         >
                           {t('fcVoir')}
                         </button>
@@ -699,7 +711,7 @@ export function FacturesPage() {
                     type="button"
                     disabled={page <= 1}
                     onClick={() => setPage((n) => Math.max(1, n - 1))}
-                    className="cursor-pointer rounded-[11px] border-[1.5px] border-de9-line bg-card px-[13px] py-2 text-[12.5px] font-bold text-de9-slate disabled:cursor-default disabled:opacity-40"
+                    className="cursor-pointer rounded-full border border-de9-line bg-card px-[13px] py-2 text-[12.5px] font-bold text-de9-slate disabled:cursor-default disabled:opacity-40"
                   >
                     {t('pagePrecedent')}
                   </button>
@@ -707,7 +719,7 @@ export function FacturesPage() {
                     type="button"
                     disabled={!meta.has_more_pages}
                     onClick={() => setPage((n) => n + 1)}
-                    className="cursor-pointer rounded-[11px] border-[1.5px] border-de9-line bg-card px-[13px] py-2 text-[12.5px] font-bold text-de9-slate disabled:cursor-default disabled:opacity-40"
+                    className="cursor-pointer rounded-full border border-de9-line bg-card px-[13px] py-2 text-[12.5px] font-bold text-de9-slate disabled:cursor-default disabled:opacity-40"
                   >
                     {t('pageSuivant')}
                   </button>
@@ -727,12 +739,12 @@ export function FacturesPage() {
       >
         <DialogContent
           showCloseButton={false}
-          className="block max-h-[90vh] max-w-[calc(100%-2rem)] gap-0 overflow-y-auto rounded-[22px] bg-card p-7 sm:max-w-[460px]"
+          className="block max-h-[90vh] max-w-[calc(100%-2rem)] gap-0 overflow-y-auto rounded-xl bg-card p-7 sm:max-w-[460px]"
         >
           {pending && (
             <>
-              <div className="flex h-[54px] w-[54px] items-center justify-center rounded-[15px] bg-[#EAF2FD] text-[26px] dark:bg-[#2F7FD0]/15">
-                {ACTION_ICON[pending.code]}
+              <div className="flex h-[54px] w-[54px] items-center justify-center rounded-md bg-[#EAF2FD] text-[26px] dark:bg-[#2F7FD0]/15 text-[#2F7FD0] dark:text-[#7EB5EC]">
+                <Glyph icon={ACTION_ICON[pending.code]} className="stroke-[1.75]" />
               </div>
               <DialogTitle className="mt-4 text-[19px] leading-normal font-extrabold text-de9-ink">
                 {pending.label ?? t(ACTION_TITLE[pending.code])} · {pending.ref}
@@ -741,8 +753,8 @@ export function FacturesPage() {
                 {t(ACTION_INFO[pending.code])}
               </DialogDescription>
               {pending.code === 'approuver' && (
-                <div className="mt-4 rounded-xl border border-[#F0E2C0] bg-[#FBF4E4] px-[15px] py-[13px] text-[12.5px] leading-[1.5] text-[#92702A] dark:border-[#92702A]/40 dark:bg-[#92702A]/15 dark:text-[#D9B36A]">
-                  {t('modalWarn')}
+                <div className="mt-4 rounded-md border border-[#F0E2C0] bg-[#FBF4E4] px-[15px] py-[13px] text-[12.5px] leading-[1.5] text-[#92702A] dark:border-[#92702A]/40 dark:bg-[#92702A]/15 dark:text-[#D9B36A]">
+                  <Glyph icon={TriangleAlert} /> {t('modalWarn')}
                 </div>
               )}
               {pending.champ && (
@@ -761,8 +773,8 @@ export function FacturesPage() {
                     rows={3}
                     aria-invalid={!!fieldError}
                     className={cn(
-                      'w-full resize-y rounded-xl border-[1.5px] bg-card px-3.5 py-3 text-[13.5px] text-de9-ink outline-none',
-                      fieldError ? 'border-de9-red' : 'border-de9-line',
+                      'w-full resize-y rounded-xs border bg-card px-3.5 py-3 text-[13.5px] text-de9-ink outline-none',
+                      fieldError ? 'border-de9-red' : 'border-outline',
                     )}
                   />
                   {fieldError && <p className="pt-1 text-[11.5px] font-semibold text-de9-red">{fieldError}</p>}
@@ -772,7 +784,7 @@ export function FacturesPage() {
                 <button
                   type="button"
                   onClick={closeAction}
-                  className="flex-1 cursor-pointer rounded-[13px] bg-secondary p-3.5 text-center text-sm font-bold text-de9-slate"
+                  className="flex-1 cursor-pointer rounded-full bg-secondary p-3.5 text-center text-sm font-bold text-de9-slate"
                 >
                   {t('annuler')}
                 </button>
@@ -780,7 +792,7 @@ export function FacturesPage() {
                   type="button"
                   disabled={action.isPending}
                   onClick={runAction}
-                  className="flex-1 cursor-pointer rounded-[13px] bg-[#2F7FD0] p-3.5 text-center text-sm font-bold text-white shadow-[0_10px_22px_rgba(47,127,208,.4)] disabled:opacity-60"
+                  className="flex-1 cursor-pointer rounded-full bg-[#2F7FD0] p-3.5 text-center text-sm font-bold text-white disabled:opacity-60"
                 >
                   {action.isPending
                     ? t('docTelechargementEnCours')
@@ -804,7 +816,7 @@ export function FacturesPage() {
         <DialogContent
           showCloseButton={false}
           aria-describedby={undefined}
-          className="block max-h-[90vh] max-w-[calc(100%-2rem)] gap-0 overflow-y-auto rounded-[22px] bg-card p-7 sm:max-w-[580px]"
+          className="block max-h-[90vh] max-w-[calc(100%-2rem)] gap-0 overflow-y-auto rounded-xl bg-card p-7 sm:max-w-[580px]"
         >
           <div className="flex flex-wrap items-center justify-between gap-2">
             <DialogTitle className="text-[19px] leading-normal font-extrabold text-de9-ink">
@@ -821,9 +833,9 @@ export function FacturesPage() {
             )}
           </div>
 
-          {detailQ.isPending && <div className="mt-4 h-48 animate-pulse rounded-[14px] bg-secondary" />}
+          {detailQ.isPending && <div className="mt-4 h-48 animate-pulse rounded-md bg-secondary" />}
           {detailQ.isError && (
-            <div className="mt-4 rounded-xl border border-[#F3C9CB] bg-[#FDECEC] px-4 py-3 text-[12.5px] font-semibold text-de9-red dark:border-[#E7464E]/40 dark:bg-[#E7464E]/15">
+            <div className="mt-4 rounded-md border border-[#F3C9CB] bg-[#FDECEC] px-4 py-3 text-[12.5px] font-semibold text-de9-red dark:border-[#E7464E]/40 dark:bg-[#E7464E]/15">
               {problemInfo(detailQ.error).status === 404 ? t('fcIntrouvable') : problemMessage(detailQ.error)}
             </div>
           )}
@@ -836,7 +848,7 @@ export function FacturesPage() {
 
               {/* parties */}
               <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
-                <div className="rounded-xl bg-secondary px-3.5 py-2.5">
+                <div className="rounded-md bg-secondary px-3.5 py-2.5">
                   <div className="text-[10.5px] font-bold tracking-[.04em] text-de9-gray uppercase">{t('fcEnt')}</div>
                   <div
                     onClick={() => openClientFiche(detail.client.nom)}
@@ -848,7 +860,7 @@ export function FacturesPage() {
                     {[detail.client.email, detail.client.telephone].filter(Boolean).join(' · ')}
                   </div>
                 </div>
-                <div className="rounded-xl bg-secondary px-3.5 py-2.5">
+                <div className="rounded-md bg-secondary px-3.5 py-2.5">
                   <div className="text-[10.5px] font-bold tracking-[.04em] text-de9-gray uppercase">{t('fcPro')}</div>
                   <div
                     onClick={() => openPres(detail.prestataire?.id, detail.prestataire?.nom)}
@@ -862,12 +874,12 @@ export function FacturesPage() {
                 </div>
               </div>
 
-              <div className="mt-3.5 overflow-hidden rounded-[14px] border-[1.5px] border-de9-line">
+              <div className="mt-3.5 overflow-hidden rounded-md border border-de9-line">
                 {/* file preview */}
                 <div className="border-b border-de9-line bg-secondary">
                   {!detail.fichier ? (
                     <div className="p-7 text-center">
-                      <div className="text-[42px]">📭</div>
+                      <div className="text-[42px] text-de9-faint"><Glyph icon={Inbox} className="stroke-[1.25]" /></div>
                       <div className="mt-2 text-[13px] font-bold text-de9-slate">{t('fcAucunFichier')}</div>
                     </div>
                   ) : shownPreview ? (
@@ -882,7 +894,7 @@ export function FacturesPage() {
                     )
                   ) : (
                     <div className="p-7 text-center">
-                      <div className="text-[42px]">📄</div>
+                      <div className="text-[42px] text-de9-faint"><Glyph icon={FileText} className="stroke-[1.25]" /></div>
                       <div className="mt-2 text-[13px] font-bold text-de9-slate">{detail.fichier.fileName}</div>
                       <div className="text-[11px] text-de9-gray">
                         {previewLoading ? t('fcApercuChargement') : t('fcApercuIndispo')}
@@ -896,9 +908,9 @@ export function FacturesPage() {
                         type="button"
                         disabled={downloading === detail.invoiceId}
                         onClick={() => download(detail.invoiceId, detail.fichier?.fileName)}
-                        className="flex-none cursor-pointer rounded-[10px] bg-de9-ink px-3 py-1.5 text-[11.5px] font-bold text-white disabled:opacity-50 dark:text-[#151923]"
+                        className="flex-none cursor-pointer rounded-full bg-primary px-3 py-1.5 text-[11.5px] font-bold text-primary-foreground disabled:opacity-50"
                       >
-                        ⤓ {downloading === detail.invoiceId ? t('docTelechargementEnCours') : t('telecharger')}
+                        <Glyph icon={Download} /> {downloading === detail.invoiceId ? t('docTelechargementEnCours') : t('telecharger')}
                       </button>
                     </div>
                   )}
@@ -919,7 +931,7 @@ export function FacturesPage() {
 
                   {/* The server applies the payout rule (85 % floored, margin = the rest). */}
                   {detail.ventilation && (
-                    <div className="rounded-[10px] bg-secondary px-[13px] py-[11px] text-xs leading-[1.6] text-de9-slate">
+                    <div className="rounded-sm bg-secondary px-[13px] py-[11px] text-xs leading-[1.6] text-de9-slate">
                       {t('ventilation')} (
                       {detail.ventilation.definitive ? t('fcVentilationDefinitive') : t('fcVentilationPrevue')}) :{' '}
                       <b>{fmt(detail.montantCredits)}</b> {t('client')} →{' '}
@@ -939,7 +951,7 @@ export function FacturesPage() {
                       )}
                     >
                       {detail.code && (
-                        <span className="inline-flex min-w-[18px] items-center justify-center rounded-md bg-[#232838] px-[5px] py-[2px] text-[9.5px] font-extrabold text-white">
+                        <span className="inline-flex min-w-[18px] items-center justify-center rounded-xs bg-inverse-surface px-[5px] py-[2px] text-[9.5px] font-extrabold text-inverse-on-surface">
                           {detail.code}
                         </span>
                       )}
@@ -959,7 +971,7 @@ export function FacturesPage() {
                   </div>
 
                   {detail.contestation && (
-                    <div className="mt-3 rounded-[10px] border border-[#F3C9CB] bg-[#FDECEC] px-3.5 py-3 text-[12px] text-de9-red dark:border-[#E7464E]/40 dark:bg-[#E7464E]/15">
+                    <div className="mt-3 rounded-sm border border-[#F3C9CB] bg-[#FDECEC] px-3.5 py-3 text-[12px] text-de9-red dark:border-[#E7464E]/40 dark:bg-[#E7464E]/15">
                       <div className="font-extrabold">
                         {t('fcBlocLitige')}
                         {detail.contestation.enCours ? ' · ' + t('fcLitigeEnCours') : ''}
@@ -988,9 +1000,9 @@ export function FacturesPage() {
                         .map((d) => (
                           <div
                             key={d.id}
-                            className="mt-1.5 flex items-center justify-between gap-2 rounded-lg bg-secondary px-3 py-2"
+                            className="mt-1.5 flex items-center justify-between gap-2 rounded-md bg-secondary px-3 py-2"
                           >
-                            <span className="truncate text-[12px] text-de9-slate">📎 {d.fileName}</span>
+                            <span className="truncate text-[12px] text-de9-slate"><Glyph icon={Paperclip} /> {d.fileName}</span>
                             <button
                               type="button"
                               aria-label={t('telecharger')}
@@ -998,7 +1010,7 @@ export function FacturesPage() {
                               onClick={() => download(detail.invoiceId, d.fileName, d.id)}
                               className="flex-none cursor-pointer text-[12px] font-bold text-de9-slate disabled:opacity-50"
                             >
-                              ⤓
+                              <Glyph icon={Download} />
                             </button>
                           </div>
                         ))}
@@ -1017,11 +1029,11 @@ export function FacturesPage() {
                         <label
                           key={code}
                           className={cn(
-                            'cursor-pointer rounded-[10px] border-[1.5px] border-de9-line bg-card px-[13px] py-2 text-[11.5px] font-bold text-de9-slate',
+                            'cursor-pointer rounded-sm border border-de9-line bg-card px-[13px] py-2 text-[11.5px] font-bold text-de9-slate',
                             ajouter.isPending && 'pointer-events-none opacity-60',
                           )}
                         >
-                          📎 {ajouter.isPending ? t('docTelechargementEnCours') : a.label}
+                          <Glyph icon={Paperclip} /> {ajouter.isPending ? t('docTelechargementEnCours') : a.label}
                           <input
                             type="file"
                             multiple
@@ -1050,7 +1062,7 @@ export function FacturesPage() {
                           })
                         }
                         className={cn(
-                          'cursor-pointer rounded-[10px] border-[1.5px] px-[13px] py-2 text-[11.5px] font-bold disabled:opacity-60',
+                          'cursor-pointer rounded-full border px-[13px] py-2 text-[11.5px] font-bold disabled:opacity-60',
                           ACTION_CLS[code],
                         )}
                       >
@@ -1066,7 +1078,7 @@ export function FacturesPage() {
           <button
             type="button"
             onClick={closeView}
-            className="mt-5 w-full cursor-pointer rounded-[13px] bg-[#232838] p-3.5 text-center text-sm font-bold text-white"
+            className="mt-5 w-full cursor-pointer rounded-full bg-primary p-3.5 text-center text-sm font-bold text-primary-foreground"
           >
             {t('btnClose')}
           </button>

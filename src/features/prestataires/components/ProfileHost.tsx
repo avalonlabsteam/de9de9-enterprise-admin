@@ -8,8 +8,10 @@ import type { ReactNode } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Dialog as DialogPrimitive } from 'radix-ui';
 import { toast } from 'sonner';
-import { cn } from '@/lib/utils';
+import { Check, Circle, Eye, Mail, MapPin, MessageCircle, Phone, ReceiptText, Star } from 'lucide-react';
+import { cn, isInk } from '@/lib/utils';
 import { Dialog, DialogOverlay, DialogPortal, DialogTitle } from '@/components/ui/dialog';
+import { Glyph } from '@/components/common/Glyph';
 import { useL, useT } from '@/lib/i18n';
 import { uiActions } from '@/stores/uiStore';
 import { usePrestataireFiche } from '../api/prestataires';
@@ -93,7 +95,7 @@ function PanelSkeleton({ rows = 3 }: { rows?: number }) {
   return (
     <div className="flex flex-col gap-[9px]">
       {Array.from({ length: rows }).map((_, i) => (
-        <div key={i} className="h-[58px] animate-pulse rounded-[13px] bg-secondary" />
+        <div key={i} className="h-[58px] animate-pulse rounded-md bg-secondary" />
       ))}
     </div>
   );
@@ -102,7 +104,7 @@ function PanelSkeleton({ rows = 3 }: { rows?: number }) {
 function ErrorBlock() {
   const l = useL();
   return (
-    <div className="rounded-xl bg-[#FDECEC] px-3.5 py-3 text-[12.5px] font-bold text-de9-red dark:bg-[#E7464E]/15">
+    <div className="rounded-md bg-[#FDECEC] px-3.5 py-3 text-[12.5px] font-bold text-de9-red dark:bg-[#E7464E]/15">
       {l('Erreur de chargement des données', 'خطأ في تحميل البيانات')}
     </div>
   );
@@ -111,7 +113,7 @@ function ErrorBlock() {
 /** One label/value pair of the identity block. */
 function InfoField({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-xl bg-secondary px-3 py-2.5">
+    <div className="rounded-md bg-secondary px-3 py-2.5">
       <div className="text-[10px] font-extrabold tracking-[.04em] text-de9-gray uppercase">
         {label}
       </div>
@@ -262,7 +264,7 @@ function PresProfile({
           onInteractOutside={(e) => {
             if (piece || reviewOpen) e.preventDefault();
           }}
-          className="fixed start-1/2 top-1/2 z-[92] max-h-[90vh] w-full max-w-[calc(100%-24px)] -translate-x-1/2 -translate-y-1/2 animate-sheet-up overflow-y-auto rounded-[22px] bg-card text-de9-ink shadow-[0_30px_70px_rgba(20,30,45,.35)] outline-none sm:w-[calc(100%-48px)] sm:max-w-[560px] rtl:translate-x-1/2"
+          className="fixed start-1/2 top-1/2 z-[92] max-h-[90vh] w-full max-w-[calc(100%-24px)] -translate-x-1/2 -translate-y-1/2 animate-sheet-up overflow-y-auto rounded-xl bg-card text-de9-ink shadow-e3 outline-none sm:w-[calc(100%-48px)] sm:max-w-[560px] rtl:translate-x-1/2"
         >
           {!vm || !avis ? (
             <div className="px-4 py-6 sm:px-[26px]">
@@ -274,7 +276,10 @@ function PresProfile({
               <div className="border-b border-de9-line px-4 py-6 sm:px-[26px]">
                 <div className="flex items-center gap-3.5">
                   <div
-                    className="flex h-14 w-14 flex-none items-center justify-center rounded-[15px] text-[18px] font-extrabold text-white"
+                    className={cn(
+                      'flex h-14 w-14 flex-none items-center justify-center rounded-md text-[18px] font-extrabold text-white',
+                      isInk(vm.famColor) && 'tone-ink-bg',
+                    )}
                     style={{ background: vm.famColor }}
                   >
                     {vm.init}
@@ -286,7 +291,10 @@ function PresProfile({
                       </DialogTitle>
                       {vm.famLabel && (
                         <span
-                          className="rounded-full px-2 py-[3px] text-[10px] font-extrabold text-white"
+                          className={cn(
+                            'rounded-full px-2 py-[3px] text-[10px] font-extrabold text-white',
+                            isInk(vm.famColor) && 'tone-ink-bg',
+                          )}
                           style={{ background: vm.famColor }}
                         >
                           {vm.famLabel}
@@ -294,7 +302,7 @@ function PresProfile({
                       )}
                       {vm.kycVerifie && (
                         <span className="rounded-full bg-[#E7F6EE] px-2 py-[3px] text-[10px] font-extrabold text-[#2FA86A] dark:bg-[#2FA86A]/15 dark:text-[#6FCF97]">
-                          ✓ KYC
+                          <Glyph icon={Check} /> KYC
                         </span>
                       )}
                       <span
@@ -304,11 +312,11 @@ function PresProfile({
                           color: signed ? '#178A82' : '#8A94A0',
                         }}
                       >
-                        {signed ? '✓' : '○'} {signed ? t('contratSigne') : t('contratNonSigne')}
+                        <Glyph icon={signed ? Check : Circle} /> {signed ? t('contratSigne') : t('contratNonSigne')}
                       </span>
                     </div>
                     <div className="mt-[3px] text-[12.5px] text-de9-gray">
-                      ★ {vm.rating} · {avis.count || vm.reviewCount} {t('surNAvis')} · {vm.missions}{' '}
+                      <Glyph icon={Star} filled /> {vm.rating} · {avis.count || vm.reviewCount} {t('surNAvis')} · {vm.missions}{' '}
                       {t('presMissionsCount')} · {vm.satisfaction}
                     </div>
                   </div>
@@ -316,31 +324,31 @@ function PresProfile({
                 <div className="mt-4 flex flex-wrap gap-[9px]">
                   <a
                     href={'tel:' + vm.phone.replace(/\s/g, '')}
-                    className="min-w-[90px] flex-1 rounded-xl border-[1.5px] border-de9-line bg-card py-[11px] text-center text-[12.5px] font-bold text-de9-slate no-underline"
+                    className="min-w-[90px] flex-1 rounded-full border border-de9-line bg-card py-[11px] text-center text-[12.5px] font-bold text-de9-slate no-underline"
                   >
-                    📞 {t('tel')}
+                    <Glyph icon={Phone} /> {t('tel')}
                   </a>
                   <a
                     href={vm.waUrl}
                     target="_blank"
                     rel="noreferrer"
-                    className="min-w-[90px] flex-1 rounded-xl border-[1.5px] border-de9-line bg-card py-[11px] text-center text-[12.5px] font-bold text-de9-slate no-underline"
+                    className="min-w-[90px] flex-1 rounded-full border border-de9-line bg-card py-[11px] text-center text-[12.5px] font-bold text-de9-slate no-underline"
                   >
-                    💬 WhatsApp
+                    <Glyph icon={MessageCircle} /> WhatsApp
                   </a>
                   <a
                     href={'mailto:' + vm.email}
-                    className="min-w-[90px] flex-1 rounded-xl border-[1.5px] border-de9-line bg-card py-[11px] text-center text-[12.5px] font-bold text-de9-slate no-underline"
+                    className="min-w-[90px] flex-1 rounded-full border border-de9-line bg-card py-[11px] text-center text-[12.5px] font-bold text-de9-slate no-underline"
                   >
-                    ✉️ Email
+                    <Glyph icon={Mail} /> Email
                   </a>
                 </div>
                 <button
                   type="button"
                   onClick={viewAsPres}
-                  className="mt-[9px] w-full cursor-pointer rounded-xl bg-[#EAF2FD] py-[11px] text-center text-[12.5px] font-bold text-[#2F7FD0] dark:bg-[#2F7FD0]/15 dark:text-[#7EB5EC]"
+                  className="mt-[9px] w-full cursor-pointer rounded-full bg-[#EAF2FD] py-[11px] text-center text-[12.5px] font-bold text-[#2F7FD0] dark:bg-[#2F7FD0]/15 dark:text-[#7EB5EC]"
                 >
-                  👁 {t('voirEnTantPresta')}
+                  <Glyph icon={Eye} /> {t('voirEnTantPresta')}
                 </button>
               </div>
 
@@ -352,9 +360,9 @@ function PresProfile({
                     type="button"
                     onClick={() => setTab(tb.key)}
                     className={cn(
-                      'flex-none cursor-pointer rounded-t-[10px] px-[13px] py-[9px] text-xs font-bold',
+                      'flex-none cursor-pointer rounded-t-full px-[13px] py-[9px] text-xs font-bold',
                       tab === tb.key
-                        ? 'bg-de9-ink text-white dark:text-[#151923]'
+                        ? 'bg-secondary-container text-on-secondary-container'
                         : 'bg-card text-de9-slate',
                     )}
                   >
@@ -380,7 +388,7 @@ function PresProfile({
                         {vm.subs.join(' · ') || '—'}
                       </div>
                       <div className="mt-[2px] text-[12.5px] text-de9-slate">
-                        📍 {vm.zones.join(', ') || '—'}
+                        <Glyph icon={MapPin} /> {vm.zones.join(', ') || '—'}
                       </div>
                       {vm.pitch && (
                         <div className="mt-2 text-[12.5px] leading-normal text-de9-slate">
@@ -389,17 +397,17 @@ function PresProfile({
                       )}
                     </div>
                     <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
-                      <div className="rounded-xl bg-secondary p-3 text-center">
+                      <div className="rounded-md bg-secondary p-3 text-center">
                         <div className="text-[16px] font-extrabold">{vm.effectif}</div>
                         <div className="text-[10px] text-de9-gray">{t('presEquipe')}</div>
                       </div>
-                      <div className="rounded-xl bg-secondary p-3 text-center">
+                      <div className="rounded-md bg-secondary p-3 text-center">
                         <div className="text-[16px] font-extrabold">
                           {vm.anciennete} {t('presAns')}
                         </div>
                         <div className="text-[10px] text-de9-gray">{t('presAnciennete')}</div>
                       </div>
-                      <div className="rounded-xl bg-secondary p-3 text-center">
+                      <div className="rounded-md bg-secondary p-3 text-center">
                         <div className="text-[16px] font-extrabold">{vm.anneeCreation}</div>
                         <div className="text-[10px] text-de9-gray">{t('presAnneeCreation')}</div>
                       </div>
@@ -417,7 +425,7 @@ function PresProfile({
                               key={i}
                               className="rounded-full bg-secondary px-2.5 py-[5px] text-[11px] font-bold text-de9-slate"
                             >
-                              ✓ {ct}
+                              <Glyph icon={Check} /> {ct}
                             </span>
                           ))}
                         </div>
@@ -438,7 +446,7 @@ function PresProfile({
                         <InfoField label={t('presPieceNis')} value={vm.nis} />
                       </div>
                       {vm.address && (
-                        <div className="mt-2 text-[12.5px] text-de9-slate">📍 {vm.address}</div>
+                        <div className="mt-2 text-[12.5px] text-de9-slate"><Glyph icon={MapPin} /> {vm.address}</div>
                       )}
                     </div>
                   </>
@@ -476,14 +484,14 @@ function PresProfile({
                         key={ms.id}
                         type="button"
                         onClick={() => openCmd(ms.id)}
-                        className="flex cursor-pointer items-center gap-[11px] rounded-[13px] border-[1.5px] border-de9-line bg-card px-3.5 py-3 text-start"
+                        className="flex cursor-pointer items-center gap-[11px] rounded-md border border-de9-line bg-card px-3.5 py-3 text-start"
                       >
                         <div className="min-w-0 flex-1">
                           <div className="text-[13px] font-bold">{ms.title}</div>
                           <div className="text-[11.5px] text-de9-gray">{ms.sub}</div>
                         </div>
                         <span
-                          className="rounded-full px-2.5 py-[5px] text-[10.5px] font-bold"
+                          className="rounded-full px-2.5 py-[5px] text-[10.5px] font-bold tone-chip"
                           style={{ background: ms.badge.bg, color: ms.badge.fg }}
                         >
                           {ms.badge.label}
@@ -501,10 +509,10 @@ function PresProfile({
                     {factures.map((fc) => (
                       <div
                         key={fc.id}
-                        className="flex items-center gap-[11px] rounded-[13px] border-[1.5px] border-de9-line px-3.5 py-3"
+                        className="flex items-center gap-[11px] rounded-md border border-de9-line px-3.5 py-3"
                       >
-                        <div className="flex h-9 w-9 flex-none items-center justify-center rounded-[11px] bg-[#F4EFFB] text-[16px] dark:bg-[#7C57C7]/15">
-                          🧾
+                        <div className="flex h-9 w-9 flex-none items-center justify-center rounded-sm bg-[#F4EFFB] text-[16px] dark:bg-[#7C57C7]/15 text-[#7C57C7] dark:text-[#A98BE8]">
+                          <Glyph icon={ReceiptText} />
                         </div>
                         <div className="min-w-0 flex-1">
                           <div className="text-[13px] font-bold">
@@ -514,7 +522,7 @@ function PresProfile({
                           <div className="text-[11px] text-de9-gray">{fc.sub}</div>
                         </div>
                         <span
-                          className="rounded-full px-2.5 py-[5px] text-[10.5px] font-bold"
+                          className="rounded-full px-2.5 py-[5px] text-[10.5px] font-bold tone-chip"
                           style={{ background: fc.badge.bg, color: fc.badge.fg }}
                         >
                           {fc.badge.label}
@@ -522,7 +530,7 @@ function PresProfile({
                         <button
                           type="button"
                           onClick={() => openPiece(t('presFactureService') + ' ' + fc.ref, fc.fileName)}
-                          className="flex-none cursor-pointer rounded-[9px] bg-de9-ink px-[11px] py-[7px] text-[11px] font-bold text-white dark:text-[#151923]"
+                          className="flex-none cursor-pointer rounded-full bg-primary px-[11px] py-[7px] text-[11px] font-bold text-primary-foreground"
                         >
                           {t('voir')}
                         </button>
@@ -539,7 +547,7 @@ function PresProfile({
                     {versements.map((vs) => (
                       <div
                         key={vs.id}
-                        className="flex items-center gap-[11px] rounded-[13px] border-[1.5px] border-de9-line px-3.5 py-3"
+                        className="flex items-center gap-[11px] rounded-md border border-de9-line px-3.5 py-3"
                       >
                         <div className="min-w-0 flex-1">
                           <div className="text-[13px] font-extrabold text-[#2FA86A] dark:text-[#6FCF97]">
@@ -558,9 +566,9 @@ function PresProfile({
                           onClick={() =>
                             openPiece(t('factureServicePresta') + ' — ' + presName, vs.fileName)
                           }
-                          className="flex-none cursor-pointer rounded-[9px] bg-[#EAF2FD] px-[11px] py-[7px] text-[11px] font-bold text-[#2F7FD0] dark:bg-[#2F7FD0]/15 dark:text-[#7EB5EC]"
+                          className="flex-none cursor-pointer rounded-full bg-[#EAF2FD] px-[11px] py-[7px] text-[11px] font-bold text-[#2F7FD0] dark:bg-[#2F7FD0]/15 dark:text-[#7EB5EC]"
                         >
-                          🧾 {t('voir')}
+                          <Glyph icon={ReceiptText} /> {t('voir')}
                         </button>
                       </div>
                     ))}
@@ -577,9 +585,9 @@ function PresProfile({
                     {equipe.map((ov) => (
                       <div
                         key={ov.id}
-                        className="flex items-center gap-[11px] rounded-[13px] border-[1.5px] border-de9-line px-3.5 py-[11px]"
+                        className="flex items-center gap-[11px] rounded-md border border-de9-line px-3.5 py-[11px]"
                       >
-                        <div className="flex h-[34px] w-[34px] flex-none items-center justify-center rounded-full bg-de9-ink text-[13px] font-bold text-white dark:text-[#151923]">
+                        <div className="flex h-[34px] w-[34px] flex-none items-center justify-center rounded-full bg-primary-container text-[13px] font-bold text-on-primary-container">
                           {ov.init}
                         </div>
                         <div className="min-w-0 flex-1">
@@ -601,7 +609,7 @@ function PresProfile({
                 {tab === 'stats' && (
                   <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
                     {stats.map((sc, i) => (
-                      <div key={i} className="rounded-[14px] bg-secondary p-[15px]">
+                      <div key={i} className="rounded-md bg-secondary p-[15px]">
                         <div
                           className={cn(
                             'text-[19px] font-extrabold',
@@ -625,14 +633,14 @@ function PresProfile({
                 <button
                   type="button"
                   onClick={addCandidate}
-                  className="flex-1 cursor-pointer rounded-[13px] bg-de9-ink p-[13px] text-center text-[13.5px] font-bold text-white dark:text-[#151923]"
+                  className="flex-1 cursor-pointer rounded-full bg-primary p-[13px] text-center text-[13.5px] font-bold text-primary-foreground"
                 >
                   {t('presDemanderDevis')}
                 </button>
                 <button
                   type="button"
                   onClick={onClose}
-                  className="flex-none basis-[110px] cursor-pointer rounded-[13px] bg-secondary p-[13px] text-center text-[13.5px] font-bold text-de9-slate"
+                  className="flex-none basis-[110px] cursor-pointer rounded-full bg-secondary p-[13px] text-center text-[13.5px] font-bold text-de9-slate"
                 >
                   {t('fermer')}
                 </button>

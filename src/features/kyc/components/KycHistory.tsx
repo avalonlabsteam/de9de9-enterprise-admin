@@ -2,6 +2,8 @@
 // Rendered per the guide's table (« NIF refusé » + « Motif envoyé » box + the
 // internal note…); other company steps keep the audit's own wording.
 import { useMemo } from 'react';
+import { Lock } from 'lucide-react';
+import { Glyph } from '@/components/common/Glyph';
 import { cn } from '@/lib/utils';
 import { useT } from '@/lib/i18n';
 import { useKycAudit } from '../api/kyc';
@@ -14,13 +16,13 @@ export function KycHistory({ companyId }: { companyId: string }) {
   const events = useMemo(() => (auditQ.data ? auditEvents(auditQ.data, t) : []), [auditQ.data, t]);
 
   return (
-    <div className="rounded-[20px] border border-de9-line bg-card px-5 py-[18px] shadow-[0_10px_30px_rgba(38,50,69,.06)]">
+    <div className="rounded-md border border-de9-line bg-card px-5 py-[18px]">
       <SectionLabel>{t('kycJournalTitre')}</SectionLabel>
 
       {auditQ.isPending && (
         <div className="mt-3 flex flex-col gap-3">
           {[0, 1, 2].map((i) => (
-            <div key={i} className="h-10 animate-pulse rounded-[10px] bg-secondary" />
+            <div key={i} className="h-10 animate-pulse rounded-sm bg-secondary" />
           ))}
         </div>
       )}
@@ -50,7 +52,7 @@ export function KycHistory({ companyId }: { companyId: string }) {
                   {[ev.at ? fmtDateTime(ev.at, t) : null, ev.actor].filter(Boolean).join(' · ')}
                 </div>
                 {ev.motif && (
-                  <div className="mt-1.5 rounded-[10px] border border-[#F3C9CB] bg-[#FDECEC] px-3 py-2 dark:border-[#E7464E]/40 dark:bg-[#E7464E]/15">
+                  <div className="mt-1.5 rounded-sm border border-[#F3C9CB] bg-[#FDECEC] px-3 py-2 dark:border-[#E7464E]/40 dark:bg-[#E7464E]/15">
                     <div className="text-[10px] font-extrabold uppercase tracking-[.04em] text-de9-red">
                       {t('kycEvtMotifEnvoye')}
                     </div>
@@ -61,7 +63,7 @@ export function KycHistory({ companyId }: { companyId: string }) {
                 )}
                 {ev.note && (
                   <div className="mt-1.5 text-[11.5px] leading-[1.45] text-de9-slate">
-                    🔒 <bdi>{ev.note}</bdi>
+                    <Glyph icon={Lock} /> <bdi>{ev.note}</bdi>
                   </div>
                 )}
               </div>

@@ -10,11 +10,13 @@ import { useEffect, useMemo, useState } from 'react';
 import type { MouseEvent, ReactElement, ReactNode } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
+import { ArrowRight, Check, Download, Globe, Plus, ReceiptText, TriangleAlert } from 'lucide-react';
 import { useT, useL, type TKey } from '@/lib/i18n';
 import { useLangStore, type Lang } from '@/stores/langStore';
 import { cn } from '@/lib/utils';
 import { problemMessage } from '@/api/problem';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
+import { Glyph } from '@/components/common/Glyph';
 import type { CreditLedgerItem, CreditsLedgerParams, CreditsPeriod, CreditType, PieceFile } from '../schemas/credit';
 import { exportCreditsCsv, useCreditMovement, useCreditsFiltres, useCreditsKpis, useCreditsLedger } from '../api/credits';
 import { RechargeModal, type RechargeModalState } from './RechargeModal';
@@ -49,9 +51,9 @@ const ALGIERS = '+01:00';
 type CreditFilter = 'all' | CreditType;
 
 const TYPE_BADGE: Record<CreditType, { labelKey: TKey; cls: string }> = {
-  rech: { labelKey: 'creditsRecharge', cls: 'bg-[#E7F6EE] text-[#2FA86A]' },
-  deb: { labelKey: 'creditsDebitFacture', cls: 'bg-[#FDECEC] text-de9-red' },
-  vers: { labelKey: 'creditsVersement', cls: 'bg-[#EAF2FD] text-[#2F7FD0]' },
+  rech: { labelKey: 'creditsRecharge', cls: 'bg-[#E7F6EE] text-[#2FA86A] dark:bg-[#2FA86A]/15 dark:text-[#6FCF97]' },
+  deb: { labelKey: 'creditsDebitFacture', cls: 'bg-[#FDECEC] text-de9-red dark:bg-[#E7464E]/15' },
+  vers: { labelKey: 'creditsVersement', cls: 'bg-[#EAF2FD] text-[#2F7FD0] dark:bg-[#2F7FD0]/15 dark:text-[#7EB5EC]' },
 };
 
 const CARDS: ReadonlyArray<{ key: 'vendus' | 'depenses' | 'versementsPro' | 'marge'; labelKey: TKey; colorCls: string }> = [
@@ -78,7 +80,7 @@ const GRID_COLS = 'grid-cols-[1fr_1.2fr_1.8fr_1.4fr_1fr_1.1fr_1fr]';
 const PAGE_SIZE = 25;
 const SEARCH_DEBOUNCE_MS = 300;
 const SELECT_CLS =
-  'rounded-[11px] border-[1.5px] border-de9-line bg-card px-3 py-2.5 text-[12.5px] font-semibold text-de9-slate outline-none';
+  'rounded-xs border border-outline bg-card px-3 py-2.5 text-[12.5px] font-semibold text-de9-slate outline-none';
 const LINK_CLS = 'cursor-pointer underline decoration-[#C7CFD7] decoration-dotted underline-offset-[3px]';
 
 /** Inner clickables must not also open the row's detail. */
@@ -132,11 +134,11 @@ function MovementDialog({
         onClick={() => onOpenPiece({ title, fileName, documentId })}
         className="inline-flex cursor-pointer items-center gap-1 rounded-full border border-[#BFE6D6] bg-[#E7F6EE] px-2.5 py-1 text-[11px] font-bold text-de9-teal-dark dark:border-[#2FA86A]/40 dark:bg-[#2FA86A]/15"
       >
-        🧾 {title}
+        <Glyph icon={ReceiptText} /> {title}
       </button>
     ) : (
       <span className="inline-flex items-center gap-1 rounded-full border border-[#F0E2C0] bg-[#FBF4E4] px-2.5 py-1 text-[11px] font-bold text-[#B68A2E] dark:border-[#B68A2E]/40 dark:bg-[#B68A2E]/15 dark:text-[#D9B36A]">
-        ⚠ {title} · {t('manquant')}
+        <Glyph icon={TriangleAlert} /> {title} · {t('manquant')}
       </span>
     );
 
@@ -150,14 +152,14 @@ function MovementDialog({
       <DialogContent
         showCloseButton={false}
         aria-describedby={undefined}
-        className="block max-h-[90vh] max-w-[calc(100%-2rem)] gap-0 overflow-y-auto rounded-[22px] bg-card p-7 sm:max-w-[480px]"
+        className="block max-h-[90vh] max-w-[calc(100%-2rem)] gap-0 overflow-y-auto rounded-xl bg-card p-7 sm:max-w-[480px]"
       >
         <DialogTitle className="text-[19px] leading-normal font-extrabold text-de9-ink">
           {t('creditsDetailTitle')}
         </DialogTitle>
-        {q.isPending && <div className="mt-4 h-40 animate-pulse rounded-[14px] bg-secondary" />}
+        {q.isPending && <div className="mt-4 h-40 animate-pulse rounded-md bg-secondary" />}
         {q.isError && (
-          <div className="mt-4 rounded-xl border border-[#F3C9CB] bg-[#FDECEC] px-4 py-3 text-[12.5px] font-semibold text-de9-red dark:border-[#E7464E]/40 dark:bg-[#E7464E]/15">
+          <div className="mt-4 rounded-md border border-[#F3C9CB] bg-[#FDECEC] px-4 py-3 text-[12.5px] font-semibold text-de9-red dark:border-[#E7464E]/40 dark:bg-[#E7464E]/15">
             {problemMessage(q.error)}
           </div>
         )}
@@ -177,11 +179,11 @@ function MovementDialog({
                 m.credits > 0 ? 'text-[#2FA86A] dark:text-[#6FCF97]' : 'text-de9-red',
               )}
             >
-              {(m.credits > 0 ? '+' : '') + fmt(m.credits)} cr
+              <span className="num">{(m.credits > 0 ? '+' : '') + fmt(m.credits)}</span> cr
               {m.dzd != null && <span className="ms-2 text-[12px] font-semibold text-de9-gray">≈ {fmt(m.dzd)} DZD</span>}
             </div>
             {(m.soldeAvant || m.soldeApres) && (
-              <div className="rounded-[10px] bg-secondary px-3.5 py-2.5 text-[12px] text-de9-slate">
+              <div className="rounded-sm bg-secondary px-3.5 py-2.5 text-[12px] text-de9-slate">
                 {t('creditsSoldeAvant')} <b>{m.soldeAvant ?? '—'}</b> → {t('creditsSoldeApres')}{' '}
                 <b>{m.soldeApres ?? '—'}</b>
               </div>
@@ -234,7 +236,7 @@ function MovementDialog({
                           }
                           className="inline-flex cursor-pointer items-center gap-1 rounded-full border border-[#BFE6D6] bg-[#E7F6EE] px-2.5 py-1 text-[11px] font-bold text-de9-teal-dark dark:border-[#2FA86A]/40 dark:bg-[#2FA86A]/15"
                         >
-                          🧾 {t('comptaRecuPdf')}
+                          <Glyph icon={ReceiptText} /> {t('comptaRecuPdf')}
                         </button>
                       )
                     : piece(
@@ -250,7 +252,7 @@ function MovementDialog({
                     onClick={() => onOpenPaiement(online.id)}
                     className="cursor-pointer self-start text-[12px] font-bold text-[#2F7FD0] dark:text-[#7EB5EC]"
                   >
-                    {t('comptaVoirDansCompta')} →
+                    {t('comptaVoirDansCompta')} <Glyph icon={ArrowRight} className="rtl:rotate-180" />
                   </button>
                 )}
               </>
@@ -264,7 +266,7 @@ function MovementDialog({
                 {debit.montantFactureCredits != null &&
                   debit.ventilationPrestataireCredits != null &&
                   debit.ventilationMargeCredits != null && (
-                    <div className="rounded-[10px] bg-secondary px-3.5 py-2.5 text-[12px] text-de9-slate">
+                    <div className="rounded-sm bg-secondary px-3.5 py-2.5 text-[12px] text-de9-slate">
                       {t('ventilation')} : <b>{fmt(debit.montantFactureCredits)}</b> →{' '}
                       <b className="text-[#2FA86A] dark:text-[#6FCF97]">{fmt(debit.ventilationPrestataireCredits)}</b>{' '}
                       {t('pro')} · <b className="text-de9-red">{fmt(debit.ventilationMargeCredits)}</b> de9de9
@@ -276,7 +278,7 @@ function MovementDialog({
                     onClick={() => onOpenFacture(factureId)}
                     className="cursor-pointer self-start text-[12px] font-bold text-[#2F7FD0] dark:text-[#7EB5EC]"
                   >
-                    🧾 {t('voirFacture')} {debit.factureRef ?? ''} →
+                    <Glyph icon={ReceiptText} /> {t('voirFacture')} {debit.factureRef ?? ''} <Glyph icon={ArrowRight} className="rtl:rotate-180" />
                   </button>
                 )}
               </>
@@ -286,7 +288,7 @@ function MovementDialog({
         <button
           type="button"
           onClick={onClose}
-          className="mt-5 w-full cursor-pointer rounded-[13px] bg-[#232838] p-3.5 text-center text-sm font-bold text-white"
+          className="mt-5 w-full cursor-pointer rounded-full bg-primary p-3.5 text-center text-sm font-bold text-primary-foreground"
         >
           {t('btnClose')}
         </button>
@@ -435,7 +437,9 @@ export function CreditsPage() {
             : 'border-[#F0E2C0] bg-[#FBF4E4] text-[#B68A2E] dark:border-[#B68A2E]/40 dark:bg-[#B68A2E]/15 dark:text-[#D9B36A]',
         )}
       >
-        {present ? '🧾' : '⚠'} {present ? `${kindLabel} ✓` : `${kindLabel} · ${t('manquant')}`}
+        <Glyph icon={present ? ReceiptText : TriangleAlert} />
+        {present ? kindLabel : `${kindLabel} · ${t('manquant')}`}
+        {present && <Glyph icon={Check} />}
       </button>
     );
   };
@@ -453,7 +457,7 @@ export function CreditsPage() {
       )}
       className="inline-flex cursor-pointer items-center gap-1 rounded-full border border-[#BFE6D6] bg-[#E7F6EE] px-2 py-1 text-[10px] font-bold text-de9-teal-dark dark:border-[#2FA86A]/40 dark:bg-[#2FA86A]/15"
     >
-      🧾 {t('comptaRecu')}
+      <Glyph icon={ReceiptText} /> {t('comptaRecu')}
     </button>
   );
 
@@ -469,17 +473,17 @@ export function CreditsPage() {
           <button
             type="button"
             onClick={() => setModal({ mode: 'create' })}
-            className="cursor-pointer rounded-[11px] bg-de9-teal-dark px-[18px] py-[11px] text-[12.5px] font-bold text-white shadow-[0_8px_18px_rgba(23,138,130,.32)]"
+            className="cursor-pointer rounded-full bg-primary px-[18px] py-[11px] text-[12.5px] font-bold text-primary-foreground"
           >
-            ＋ {t('nouvelleRecharge')}
+            <Glyph icon={Plus} /> {t('nouvelleRecharge')}
           </button>
           <button
             type="button"
             onClick={onExport}
             disabled={exporting}
-            className="cursor-pointer rounded-[11px] border-[1.5px] border-de9-line bg-card px-4 py-[11px] text-[12.5px] font-bold text-de9-slate disabled:opacity-60"
+            className="cursor-pointer rounded-full border border-de9-line bg-card px-4 py-[11px] text-[12.5px] font-bold text-de9-slate disabled:opacity-60"
           >
-            ⤓ {exporting ? t('docTelechargementEnCours') : t('exportCsv')}
+            <Glyph icon={Download} /> {exporting ? t('docTelechargementEnCours') : t('exportCsv')}
           </button>
         </div>
       </div>
@@ -495,8 +499,8 @@ export function CreditsPage() {
               setPage(1);
             }}
             className={cn(
-              'cursor-pointer rounded-full border-[1.5px] px-[13px] py-[7px] text-[12px] font-bold',
-              period === pp.key ? 'border-[#232838] bg-[#232838] text-white' : 'border-de9-line bg-card text-de9-slate',
+              'cursor-pointer rounded-full border px-[13px] py-[7px] text-[12px] font-bold',
+              period === pp.key ? 'border-secondary-container bg-secondary-container text-on-secondary-container' : 'border-de9-line bg-card text-de9-slate',
             )}
           >
             {t(pp.labelKey)}
@@ -537,7 +541,7 @@ export function CreditsPage() {
         )}
         {kpisQ.data?.enCirculation && (
           <span className="ms-auto text-[12px] font-semibold text-de9-gray">
-            {t('creditsEnCirculation')} : <b className="text-de9-ink">{kpisQ.data.enCirculation.formatted}</b> cr
+            {t('creditsEnCirculation')} : <b className="num text-de9-ink">{kpisQ.data.enCirculation.formatted}</b> cr
           </span>
         )}
       </div>
@@ -546,13 +550,13 @@ export function CreditsPage() {
         <div className="mt-4 animate-pulse">
           <div className="grid grid-cols-2 gap-3.5 md:grid-cols-4">
             {[0, 1, 2, 3].map((i) => (
-              <div key={i} className="h-[104px] rounded-2xl border border-de9-line bg-card" />
+              <div key={i} className="h-[104px] rounded-md border border-de9-line bg-card" />
             ))}
           </div>
-          <div className="mt-3.5 h-64 rounded-[18px] border border-de9-line bg-card" />
+          <div className="mt-3.5 h-64 rounded-md border border-de9-line bg-card" />
         </div>
       ) : ledgerQ.isError ? (
-        <div className="mt-4 rounded-xl border border-[#F3C9CB] bg-[#FDECEC] px-4 py-3 text-[12.5px] font-semibold text-de9-red dark:border-[#E7464E]/40 dark:bg-[#E7464E]/15">
+        <div className="mt-4 rounded-md border border-[#F3C9CB] bg-[#FDECEC] px-4 py-3 text-[12.5px] font-semibold text-de9-red dark:border-[#E7464E]/40 dark:bg-[#E7464E]/15">
           {l('Erreur de chargement des crédits', 'خطأ في تحميل الرصيد')} — {problemMessage(ledgerQ.error)}
         </div>
       ) : (
@@ -564,10 +568,10 @@ export function CreditsPage() {
               return (
                 <div
                   key={c.key}
-                  className="rounded-2xl border border-de9-line bg-card px-[18px] py-4 shadow-[0_6px_18px_rgba(38,50,69,.04)]"
+                  className="rounded-md border border-de9-line bg-card px-[18px] py-4"
                 >
                   <div className="text-xs font-semibold text-de9-gray">{t(c.labelKey)}</div>
-                  <div className={cn('mt-1.5 text-[23px] font-extrabold', c.colorCls)}>{bucket?.formatted ?? '—'}</div>
+                  <div className={cn('mt-1.5 text-[23px] font-extrabold', c.colorCls)}><span className="num">{bucket?.formatted ?? '—'}</span></div>
                   <div className="text-[11px] text-de9-gray">
                     {periodSub}
                     {bucket ? ' · ' + t('creditsMouvements').replace('{n}', String(bucket.mouvements)) : ''}
@@ -583,7 +587,7 @@ export function CreditsPage() {
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
               placeholder={t('facSearch')}
-              className="min-w-0 flex-1 rounded-[11px] border-[1.5px] border-de9-line bg-card px-[15px] py-2.5 text-[12.5px] text-de9-ink outline-none sm:flex-[0_0_300px]"
+              className="min-w-0 flex-1 rounded-xs border border-outline bg-card px-[15px] py-2.5 text-[12.5px] text-de9-ink outline-none sm:flex-[0_0_300px]"
             />
             {FILTERS.map((f) => {
               const active = filter === f.key;
@@ -594,8 +598,8 @@ export function CreditsPage() {
                   type="button"
                   onClick={() => setFilterKey(f.key)}
                   className={cn(
-                    'cursor-pointer rounded-full border-[1.5px] px-[15px] py-[9px] text-[12.5px] font-bold',
-                    active ? 'border-[#232838] bg-[#232838] text-white' : 'border-de9-line bg-card text-de9-slate',
+                    'cursor-pointer rounded-full border px-[15px] py-[9px] text-[12.5px] font-bold',
+                    active ? 'border-secondary-container bg-secondary-container text-on-secondary-container' : 'border-de9-line bg-card text-de9-slate',
                   )}
                 >
                   {t(f.labelKey)}
@@ -644,7 +648,7 @@ export function CreditsPage() {
           </div>
 
           {/* ledger */}
-          <div className="mt-3.5 overflow-hidden rounded-[18px] border border-de9-line bg-card shadow-[0_10px_30px_rgba(38,50,69,.06)]">
+          <div className="mt-3.5 overflow-hidden rounded-md border border-de9-line bg-card">
             <div className={cn('overflow-x-auto transition-opacity', ledgerQ.isPlaceholderData && 'opacity-60')}>
               <div className="min-w-[840px]">
                 <div
@@ -681,7 +685,7 @@ export function CreditsPage() {
                         </span>
                         {e.canal === 'en_ligne' && (
                           <span className="rounded-full bg-[#EAF2FD] px-[9px] py-1 text-[11px] font-bold text-[#2F7FD0] dark:bg-[#2F7FD0]/15 dark:text-[#7EB5EC]">
-                            🌐 {t('comptaEnLigne')}
+                            <Glyph icon={Globe} /> {t('comptaEnLigne')}
                           </span>
                         )}
                       </div>
@@ -710,7 +714,7 @@ export function CreditsPage() {
                             onClick={stop(() => openFacture(e.invoiceId ?? ''))}
                             className="mt-[2px] block cursor-pointer text-[10.5px] font-bold text-[#2F7FD0] dark:text-[#7EB5EC]"
                           >
-                            🧾 {e.type === 'vers' ? t('voirFacturePresta') : t('voirFacture')} →
+                            <Glyph icon={ReceiptText} /> {e.type === 'vers' ? t('voirFacturePresta') : t('voirFacture')} <Glyph icon={ArrowRight} className="rtl:rotate-180" />
                           </span>
                         )}
                         {isRech && (
@@ -729,9 +733,11 @@ export function CreditsPage() {
                           e.credits > 0 ? 'text-[#2FA86A] dark:text-[#6FCF97]' : 'text-de9-red',
                         )}
                       >
-                        {(e.credits > 0 ? '+' : '') + fmt(e.credits)}
+                        <span className="num">{(e.credits > 0 ? '+' : '') + fmt(e.credits)}</span>
                       </div>
-                      <div className="text-end text-[12.5px] text-de9-slate">{e.solde ?? '—'}</div>
+                      <div className="text-end text-[12.5px] text-de9-slate">
+                        <span className="num">{e.solde ?? '—'}</span>
+                      </div>
                     </div>
                   );
                 })}
@@ -755,7 +761,7 @@ export function CreditsPage() {
                     type="button"
                     disabled={page <= 1}
                     onClick={() => setPage((n) => Math.max(1, n - 1))}
-                    className="cursor-pointer rounded-[11px] border-[1.5px] border-de9-line bg-card px-[13px] py-2 text-[12.5px] font-bold text-de9-slate disabled:cursor-default disabled:opacity-40"
+                    className="cursor-pointer rounded-full border border-de9-line bg-card px-[13px] py-2 text-[12.5px] font-bold text-de9-slate disabled:cursor-default disabled:opacity-40"
                   >
                     {t('pagePrecedent')}
                   </button>
@@ -763,7 +769,7 @@ export function CreditsPage() {
                     type="button"
                     disabled={!meta.has_more_pages}
                     onClick={() => setPage((n) => n + 1)}
-                    className="cursor-pointer rounded-[11px] border-[1.5px] border-de9-line bg-card px-[13px] py-2 text-[12.5px] font-bold text-de9-slate disabled:cursor-default disabled:opacity-40"
+                    className="cursor-pointer rounded-full border border-de9-line bg-card px-[13px] py-2 text-[12.5px] font-bold text-de9-slate disabled:cursor-default disabled:opacity-40"
                   >
                     {t('pageSuivant')}
                   </button>

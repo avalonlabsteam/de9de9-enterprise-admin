@@ -65,9 +65,6 @@ export const fr = {
   // ---- console commande ----
   retourFile: 'Retour à la file',
   // read-only fallback shown when the console has no detail payload for an id
-  apercuTitre: 'Aperçu depuis la file',
-  apercuTexte:
-    "Vue construite depuis le détail de la file de travail : la prochaine action peut être exécutée ici quand elle ne demande pas de formulaire ; les autres actions ne sont pas encore intégrées.",
   apercuLectureSeule: 'Seule la prochaine action est disponible ici',
   apercuIntrouvable: "Cette commande est introuvable dans la file de travail.",
   apercuType: 'Type de ligne',
@@ -243,7 +240,7 @@ export const fr = {
   consoleBadgePayee: 'Payée',
   consoleBadgeAnnulee: 'Annulée',
   // setup projections
-  consoleAppelerClientBtn: '☎ Appeler le client',
+  consoleAppelerClientBtn: 'Appeler le client',
   consoleContacte: 'Contacté',
   consoleDevisADemander: 'Devis à demander',
   consoleDemanderDevis: 'Demander les devis',
@@ -319,7 +316,7 @@ export const fr = {
   // ---- modals (console) ----
   modalTitle: 'Approuver au nom du client',
   modalBody: "Vous vous apprêtez à approuver cette facture pour le compte du client, sur accord téléphonique.",
-  modalWarn: "⚠ Cette action engage les crédits du client. Elle sera tracée et visible côté client dans le journal d'audit.",
+  modalWarn: "Cette action engage les crédits du client. Elle sera tracée et visible côté client dans le journal d'audit.",
   annuler: 'Annuler',
   confirmerAuNom: 'Confirmer au nom du client',
   titleReprog: "Reprogrammer l'occurrence",
@@ -560,7 +557,6 @@ export const fr = {
   stColDate: 'Date',
   stColAction: 'Action',
   stVoirPros: 'Voir les pros',
-  stDemandeSansStatut: "Demande envoyée — sans statut, à traiter par l'admin",
   stColNom: 'Nom',
   stColLoc: 'Localisation',
   stColServices: 'Catégories / services',
@@ -599,7 +595,6 @@ export const fr = {
   handicapNav: 'Handicap',
   hcTitre: 'Contracter des personnes en situation de handicap',
   hcSub: "Liste d'attente des entreprises prêtes à employer des personnes en situation de handicap — de9de9 les recontacte",
-  hcConfid: "Confidentiel — visible par l'admin uniquement. Aucune donnée médicale n'est collectée.",
   hcColEntreprise: 'Entreprise',
   hcColContact: 'Personne à contacter',
   hcColPoste: 'Type de poste',
@@ -684,7 +679,6 @@ export const fr = {
   // ---- avis / reviews ----
   avis: 'Avis',
   avisSection: 'Avis prestataire',
-  avisVisib: 'Visible admins uniquement — non montré au client',
   noteMoyenne: 'Note moyenne',
   surNAvis: 'avis',
   aucunAvis: 'Aucun avis pour ce filtre',
@@ -711,7 +705,7 @@ export const fr = {
   presTitle: 'Recherche de prestataires',
   presSub: 'Trouvez le prestataire optimal — filtres, profils & références',
   presSearchPh: 'Rechercher par nom, email ou téléphone…',
-  presKycVerifie: '✓ KYC vérifié',
+  presKycVerifie: 'KYC vérifié',
   presCertifie: 'Certifié',
   presDispoNow: 'Disponible maintenant',
   presDispoLe: 'Disponible le',
@@ -845,7 +839,7 @@ export const fr = {
   kycExaminer: 'Examiner',
   kycOuvrir: 'Ouvrir',
   kycTagRevueEnCours: 'Revue en cours',
-  kycTagRenvoye: '↻ Renvoyé',
+  kycTagRenvoye: 'Renvoyé',
   kycTagNonSoumis: 'Non soumis',
   kycAucun: 'Aucun dossier ne correspond',
   kycAucunAExaminer: 'Aucun dossier à examiner — tout est à jour.',
@@ -859,12 +853,6 @@ export const fr = {
   kycRetourFile: 'Retour à la file KYC',
   kycSoumisLe: 'Soumis le',
   kycDerniereDecision: 'Dernière décision',
-  kycRevueInfo:
-    "Revue en cours : l'entreprise n'est notifiée qu'une fois la dernière pièce décidée. D'ici là, un refus reste modifiable.",
-  kycVerifieInfo:
-    "Les trois pièces sont validées : l'entreprise est vérifiée. Refuser une pièce validée lui retire ce statut.",
-  kycNonSoumisInfo:
-    "Dossier non soumis : l'entreprise dépose encore ses pièces. Les décisions se prennent après sa soumission.",
   kycACorrigerInfo: "En attente des pièces corrigées de l'entreprise.",
   kycMotifEnvoye: "Motif envoyé à l'entreprise",
   kycMotifAEnvoyer: 'Motif — envoyé à la fin de la revue',
@@ -1168,9 +1156,6 @@ export const ar: Record<TKey, string> = {
 
   // ---- console commande ----
   retourFile: 'العودة للقائمة',
-  apercuTitre: 'نظرة عامة من القائمة',
-  apercuTexte:
-    'عرض مبني على تفاصيل قائمة العمل: يمكن تنفيذ الإجراء التالي هنا إذا لم يتطلب نموذجًا؛ أما بقية الإجراءات فلم تُدمج بعد.',
   apercuLectureSeule: 'الإجراء التالي فقط متاح هنا',
   apercuIntrouvable: 'هذا الطلب غير موجود في قائمة العمل.',
   apercuType: 'نوع السطر',
@@ -1344,7 +1329,7 @@ export const ar: Record<TKey, string> = {
   consolePayeTransfere: 'مدفوع · محوّل',
   consoleBadgePayee: 'مدفوعة',
   consoleBadgeAnnulee: 'ملغاة',
-  consoleAppelerClientBtn: '☎ اتصل بالعميل',
+  consoleAppelerClientBtn: 'اتصل بالعميل',
   consoleContacte: 'تم الاتصال',
   consoleDevisADemander: 'طلب العروض',
   consoleDemanderDevis: 'طلب العروض',
@@ -1418,7 +1403,7 @@ export const ar: Record<TKey, string> = {
   // ---- modals (console) ----
   modalTitle: 'الموافقة باسم العميل',
   modalBody: 'أنت على وشك الموافقة باسم العميل.',
-  modalWarn: '⚠ هذا الإجراء يلتزم برصيد العميل.',
+  modalWarn: 'هذا الإجراء يلتزم برصيد العميل.',
   annuler: 'إلغاء',
   confirmerAuNom: 'تأكيد باسم العميل',
   titleReprog: 'إعادة جدولة الموعد',
@@ -1659,7 +1644,6 @@ export const ar: Record<TKey, string> = {
   stColDate: 'التاريخ',
   stColAction: 'إجراء',
   stVoirPros: 'عرض المزودين',
-  stDemandeSansStatut: 'طلب مُرسَل — بدون حالة، تعالجه الإدارة',
   stColNom: 'الاسم',
   stColLoc: 'الموقع',
   stColServices: 'الفئات / الخدمات',
@@ -1698,7 +1682,6 @@ export const ar: Record<TKey, string> = {
   handicapNav: 'الإعاقة',
   hcTitre: 'توظيف أشخاص في وضعية إعاقة',
   hcSub: 'قائمة انتظار الشركات المستعدة للتوظيف — يعيد de9de9 الاتصال بهم',
-  hcConfid: 'سري — مرئي للإدارة فقط. لا تُجمع أي بيانات طبية.',
   hcColEntreprise: 'الشركة',
   hcColContact: 'جهة الاتصال',
   hcColPoste: 'نوع الوظيفة',
@@ -1783,7 +1766,6 @@ export const ar: Record<TKey, string> = {
   // ---- avis / reviews ----
   avis: 'التقييمات',
   avisSection: 'تقييمات المزود',
-  avisVisib: 'مرئي للمشرفين فقط — غير مرئي للعميل',
   noteMoyenne: 'متوسط التقييم',
   surNAvis: 'تقييم',
   aucunAvis: 'لا توجد تقييمات',
@@ -1810,7 +1792,7 @@ export const ar: Record<TKey, string> = {
   presTitle: 'البحث عن المزودين',
   presSub: 'جد المزود الأمثل',
   presSearchPh: 'ابحث بالاسم أو البريد أو الهاتف…',
-  presKycVerifie: '✓ موثّق',
+  presKycVerifie: 'موثّق',
   presCertifie: 'معتمد',
   presDispoNow: 'متاح الآن',
   presDispoLe: 'متاح يوم',
@@ -1943,7 +1925,7 @@ export const ar: Record<TKey, string> = {
   kycExaminer: 'فحص',
   kycOuvrir: 'فتح',
   kycTagRevueEnCours: 'مراجعة جارية',
-  kycTagRenvoye: '↻ أُعيد إرساله',
+  kycTagRenvoye: 'أُعيد إرساله',
   kycTagNonSoumis: 'غير مُرسل',
   kycAucun: 'لا يوجد ملف مطابق',
   kycAucunAExaminer: 'لا توجد ملفات للفحص — كل شيء محدَّث.',
@@ -1957,10 +1939,6 @@ export const ar: Record<TKey, string> = {
   kycRetourFile: 'العودة إلى قائمة KYC',
   kycSoumisLe: 'أُرسل في',
   kycDerniereDecision: 'آخر قرار',
-  kycRevueInfo:
-    'مراجعة جارية: لا تُبلَّغ الشركة إلا بعد البتّ في آخر وثيقة. حتى ذلك الحين يبقى الرفض قابلاً للتعديل.',
-  kycVerifieInfo: 'الوثائق الثلاث مقبولة: الشركة موثّقة. رفض وثيقة مقبولة يسحب منها هذه الصفة.',
-  kycNonSoumisInfo: 'ملف غير مُرسل: الشركة ما زالت تودع وثائقها. تُتخذ القرارات بعد إرساله.',
   kycACorrigerInfo: 'في انتظار الوثائق المصحَّحة من الشركة.',
   kycMotifEnvoye: 'السبب المُرسل إلى الشركة',
   kycMotifAEnvoyer: 'السبب — يُرسل عند نهاية المراجعة',

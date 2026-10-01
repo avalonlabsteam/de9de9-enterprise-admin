@@ -7,11 +7,13 @@
 // stays as it is: the mock console chooses by quote index.
 // Visual ground truth: src/admin/views/Console.tsx modals.
 import { useState } from 'react';
+import { Circle, CircleDot, Handshake } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useT } from '@/lib/i18n';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import { Glyph } from '@/components/common/Glyph';
 
 /** One choosable devis, already formatted for display by the caller. */
 export interface ChoosableQuote {
@@ -30,7 +32,7 @@ interface ChoosePrestataireModalProps {
 
 const LABEL_CLASS = 'mb-1.5 text-xs font-semibold text-de9-slate';
 const INPUT_CLASS =
-  'h-auto w-full rounded-xl border-[1.5px] border-de9-line bg-card px-3.5 py-3 text-[14px] text-de9-ink shadow-none outline-none';
+  'h-auto w-full rounded-xs border border-outline bg-card px-3.5 py-3 text-[14px] text-de9-ink shadow-none outline-none';
 
 /** yyyy-mm-dd for a date n days from today — the format the API demands. */
 function isoDay(offsetDays: number): string {
@@ -67,10 +69,10 @@ export function ChoosePrestataireModal({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         showCloseButton={false}
-        className="block max-h-[90vh] max-w-[calc(100%-2rem)] gap-0 overflow-y-auto rounded-[22px] bg-card p-[26px] shadow-[0_30px_70px_rgba(20,30,45,.4)] ring-0 sm:max-w-[460px]"
+        className="block max-h-[90vh] max-w-[calc(100%-2rem)] gap-0 overflow-y-auto rounded-xl bg-card p-[26px] shadow-e3 ring-0 sm:max-w-[460px]"
       >
-        <div className="flex size-[54px] items-center justify-center rounded-[15px] bg-[#EAF2FD] text-[26px] dark:bg-[#2F7FD0]/15">
-          🤝
+        <div className="flex size-[54px] items-center justify-center rounded-md bg-[#EAF2FD] text-[26px] dark:bg-[#2F7FD0]/15 text-[#2F7FD0] dark:text-[#7EB5EC]">
+          <Glyph icon={Handshake} />
         </div>
         <DialogTitle className="mt-4 text-[19px] font-extrabold leading-normal text-de9-ink">
           {t('apercuChoisirTitle')}
@@ -88,12 +90,12 @@ export function ChoosePrestataireModal({
                 aria-checked={active}
                 onClick={() => setSelected(q.devisId)}
                 className={cn(
-                  'flex cursor-pointer items-center gap-[11px] rounded-xl border-[1.5px] px-[15px] py-[13px] text-start',
+                  'flex cursor-pointer items-center gap-[11px] rounded-md border px-[15px] py-[13px] text-start',
                   active ? 'border-[#2F7FD0] bg-[#EAF2FD] dark:bg-[#2F7FD0]/15' : 'border-de9-line bg-card',
                 )}
               >
-                <span className={cn('text-base', active ? 'text-[#2F7FD0] dark:text-[#7EB5EC]' : 'text-[#B6BEC8]')}>
-                  {active ? '◉' : '○'}
+                <span className={cn('text-base', active ? 'text-[#2F7FD0] dark:text-[#7EB5EC]' : 'text-de9-faint')}>
+                  <Glyph icon={active ? CircleDot : Circle} />
                 </span>
                 <span className="min-w-0 flex-1">
                   <span className="block text-sm font-bold text-de9-ink">{q.raison}</span>
@@ -129,7 +131,7 @@ export function ChoosePrestataireModal({
             type="button"
             variant="ghost"
             onClick={() => onOpenChange(false)}
-            className="h-auto flex-1 rounded-[13px] bg-secondary p-3.5 text-center text-sm font-bold text-de9-slate hover:bg-secondary"
+            className="h-auto flex-1 rounded-full bg-secondary p-3.5 text-center text-sm font-bold text-de9-slate hover:bg-secondary"
           >
             {t('annuler')}
           </Button>
@@ -137,7 +139,7 @@ export function ChoosePrestataireModal({
             type="button"
             disabled={pending || !chosen || !dateValid || !timeValid}
             onClick={() => chosen && onConfirm(chosen, { date, time })}
-            className="h-auto flex-1 rounded-[13px] bg-[#2F7FD0] p-3.5 text-center text-sm font-bold text-white shadow-[0_10px_22px_rgba(47,127,208,.38)] hover:bg-[#2A6FB8] disabled:opacity-70"
+            className="h-auto flex-1 rounded-full bg-[#2F7FD0] p-3.5 text-center text-sm font-bold text-white hover:bg-[#2A6FB8] disabled:opacity-70"
           >
             {pending ? t('apercuActionEnCours') : t('apercuChoisirConfirmer')}
           </Button>

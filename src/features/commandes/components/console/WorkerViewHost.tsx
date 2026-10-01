@@ -35,10 +35,10 @@ export function WorkerViewHost() {
     >
       <DialogContent
         showCloseButton={false}
-        className="block max-h-[88vh] w-full max-w-[calc(100%-2rem)] gap-0 overflow-y-auto rounded-[20px] bg-card px-6 pb-[22px] pt-6 text-de9-ink shadow-[0_30px_70px_rgba(20,30,45,.4)] ring-0 sm:max-w-[420px]"
+        className="block max-h-[88vh] w-full max-w-[calc(100%-2rem)] gap-0 overflow-y-auto rounded-xl bg-card px-6 pb-[22px] pt-6 text-de9-ink shadow-e3 ring-0 sm:max-w-[420px]"
       >
         <div className="flex items-center gap-[13px]">
-          <div className="flex h-[52px] w-[52px] flex-none items-center justify-center rounded-[14px] bg-[#232838] text-xl font-extrabold text-white">
+          <div className="flex h-[52px] w-[52px] flex-none items-center justify-center rounded-md bg-primary-container text-xl font-extrabold text-on-primary-container">
             {(worker ?? '').slice(0, 1)}
           </div>
           <div>
@@ -55,7 +55,7 @@ export function WorkerViewHost() {
             <div
               key={c.id}
               onClick={() => navigate('/commandes/' + c.id)}
-              className="flex cursor-pointer items-center gap-2.5 rounded-xl border-[1.5px] border-de9-line px-[13px] py-[11px]"
+              className="flex cursor-pointer items-center gap-2.5 rounded-md border border-de9-line px-[13px] py-[11px]"
             >
               <div className="min-w-0 flex-1">
                 <div className="text-[12.5px] font-bold">
@@ -69,14 +69,14 @@ export function WorkerViewHost() {
             </div>
           ))}
           {missions.length === 0 && (
-            <div className="p-3.5 text-center text-[12.5px] text-[#B0B8C2]">{t('aucuneDonnee')}</div>
+            <div className="p-3.5 text-center text-[12.5px] text-de9-faint">{t('aucuneDonnee')}</div>
           )}
         </div>
 
         <button
           type="button"
           onClick={close}
-          className="mt-[18px] w-full cursor-pointer rounded-[13px] bg-[#232838] p-[13px] text-center text-[13.5px] font-bold text-white"
+          className="mt-[18px] w-full cursor-pointer rounded-full bg-primary p-[13px] text-center text-[13.5px] font-bold text-primary-foreground"
         >
           {t('btnClose')}
         </button>

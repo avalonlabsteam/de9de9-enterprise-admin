@@ -1,6 +1,7 @@
 // Pure derivation helpers for the client fiche — ported from src/admin/logic.ts
 // (buildClientFiche, cmdLineVM, cmdState/occProj/setupProj badges, factStatusMeta,
 // buildKycVM meta, withDay, kycOf defaults).
+import { Check, Hourglass, X, type LucideIcon } from 'lucide-react';
 import type { TKey } from '@/lib/i18n';
 import type {
   FicheCommande,
@@ -257,13 +258,13 @@ export interface KycMeta {
   label: string;
   bg: string;
   fg: string;
-  icon: string;
+  icon: LucideIcon;
 }
 
-const KYC_META: Record<FicheKycStatus, [TKey, string, string, string]> = {
-  verified: ['commonKycVerifie', '#E7F6EE', '#178A82', '✓'],
-  pending: ['commonKycEnAttente', '#FBF4E4', '#B68A2E', '⏳'],
-  rejected: ['commonKycRejete', '#FDECEC', '#E7464E', '✕'],
+const KYC_META: Record<FicheKycStatus, [TKey, string, string, LucideIcon]> = {
+  verified: ['commonKycVerifie', '#E7F6EE', '#178A82', Check],
+  pending: ['commonKycEnAttente', '#FBF4E4', '#B68A2E', Hourglass],
+  rejected: ['commonKycRejete', '#FDECEC', '#E7464E', X],
 };
 
 export function kycMeta(status: FicheKycStatus, t: Translate): KycMeta {

@@ -25,7 +25,7 @@ export function ClientFilter({ clientId, onChange }: { clientId: string; onChang
 
   if (clientId) {
     return (
-      <div className="inline-flex max-w-[280px] items-center gap-1.5 rounded-[11px] border-[1.5px] border-[#232838] bg-[#232838] py-[7px] ps-3 pe-1.5 text-[12.5px] font-bold text-white">
+      <div className="inline-flex max-w-[280px] items-center gap-1.5 rounded-sm border border-secondary-container bg-secondary-container py-[7px] ps-3 pe-1.5 text-[12.5px] font-bold text-on-secondary-container">
         <span className="truncate">
           {t('fClient')} : {chosen.data?.nom ?? '…'}
         </span>
@@ -33,7 +33,7 @@ export function ClientFilter({ clientId, onChange }: { clientId: string; onChang
           type="button"
           onClick={() => onChange(null)}
           aria-label={t('comptaClientRetirer')}
-          className="flex size-6 flex-none cursor-pointer items-center justify-center rounded-md hover:bg-white/15"
+          className="flex size-6 flex-none cursor-pointer items-center justify-center rounded-full hover:bg-white/15"
         >
           <X className="size-3.5" />
         </button>
@@ -52,10 +52,10 @@ export function ClientFilter({ clientId, onChange }: { clientId: string; onChang
         placeholder={t('comptaClientPh')}
         aria-label={t('fClient')}
         autoComplete="off"
-        className="w-full rounded-[11px] border-[1.5px] border-de9-line bg-card px-3 py-2.5 text-[12.5px] text-de9-ink outline-none"
+        className="w-full rounded-xs border border-outline bg-card px-3 py-2.5 text-[12.5px] text-de9-ink outline-none"
       />
       {focused && (
-        <div className="absolute z-20 mt-1 max-h-64 w-full min-w-[260px] overflow-y-auto rounded-xl border border-de9-line bg-card shadow-[0_14px_30px_rgba(20,30,45,.18)]">
+        <div className="absolute z-20 mt-1 max-h-64 w-full min-w-[260px] overflow-y-auto rounded-md border border-de9-line bg-card shadow-e2">
           {suggestions.isPending ? (
             <div className="p-3 text-xs text-de9-gray">…</div>
           ) : items.length === 0 ? (

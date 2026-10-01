@@ -10,12 +10,14 @@ import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { toast } from 'sonner';
+import { type LucideIcon, ClipboardList, ImageIcon, Lock, Paperclip, Plus, X } from 'lucide-react';
 import { useL, useT } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 import { problemMessage } from '@/api/problem';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { Glyph } from '@/components/common/Glyph';
 import { useDemanderDevis, type CtxCommande } from '../api/prestataires';
 import { CADENCE, FREQUENCE, type DemandeDevisPayload } from '../schemas/demandeDevis';
 import { SERVICE_CAT, TAXO, catObj, slugify } from '../lib/taxonomy';
@@ -66,9 +68,9 @@ interface BriefModalProps {
 const labelCls = 'mb-1.5 text-[12px] font-bold text-de9-slate';
 const hintCls = 'font-medium text-de9-gray';
 const inputCls =
-  'h-auto w-full rounded-xl border-[1.5px] border-de9-line bg-card px-3.5 py-3 text-[14px] text-de9-ink shadow-none outline-none';
+  'h-auto w-full rounded-md border border-de9-line bg-card px-3.5 py-3 text-[14px] text-de9-ink shadow-none outline-none';
 const textareaCls =
-  'min-h-[84px] w-full resize-y rounded-xl border-[1.5px] border-de9-line bg-card px-3.5 py-3 text-[13.5px] text-de9-ink shadow-none outline-none';
+  'min-h-[84px] w-full resize-y rounded-xs border border-outline bg-card px-3.5 py-3 text-[13.5px] text-de9-ink shadow-none outline-none';
 const invalidCls = 'border-de9-red';
 
 /** « 2026-09-22 » from a date input → « 2026-09-22T00:00:00Z ». */
@@ -94,15 +96,15 @@ function Field({ label, hint, error, children }: { label: string; hint?: string;
   );
 }
 
-function FileChip({ icon, name, onRemove }: { icon: string; name: string; onRemove: () => void }) {
+function FileChip({ icon, name, onRemove }: { icon: LucideIcon; name: string; onRemove: () => void }) {
   return (
-    <div className="flex items-center gap-[7px] rounded-[10px] border-[1.5px] border-de9-line bg-card px-[11px] py-2">
-      <span className="text-[15px]">{icon}</span>
+    <div className="flex items-center gap-[7px] rounded-sm border border-de9-line bg-card px-[11px] py-2">
+      <Glyph icon={icon} className="text-[15px]" />
       <span className="max-w-[130px] overflow-hidden text-ellipsis whitespace-nowrap text-[12px] font-semibold text-de9-slate">
         {name}
       </span>
-      <button type="button" onClick={onRemove} className="cursor-pointer text-[13px] text-[#C0C8D0]">
-        ✕
+      <button type="button" onClick={onRemove} className="cursor-pointer text-[13px] text-de9-faint">
+        <Glyph icon={X} />
       </button>
     </div>
   );
@@ -123,8 +125,8 @@ function AddFileChip({
     e.target.value = '';
   };
   return (
-    <label className="flex cursor-pointer items-center gap-[7px] rounded-[10px] border-[1.5px] border-dashed border-[#CBD3DB] bg-card px-[13px] py-2">
-      <span className="text-[16px] text-de9-teal">＋</span>
+    <label className="flex cursor-pointer items-center gap-[7px] rounded-sm border border-dashed border-[#CBD3DB] bg-card px-[13px] py-2">
+      <span className="text-[16px] text-de9-teal"><Glyph icon={Plus} /></span>
       <span className="text-[12px] font-bold text-de9-slate">{label}</span>
       <input type="file" accept={accept} multiple onChange={handle} className="hidden" />
     </label>
@@ -232,13 +234,13 @@ function BriefModalContent({ onOpenChange, selected, ctx, filters }: Omit<BriefM
     <>
       <DialogContent
         showCloseButton={false}
-        className="flex max-h-[calc(100vh-48px)] max-w-[calc(100%-2rem)] flex-col gap-0 overflow-hidden rounded-[22px] bg-background p-0 shadow-[0_30px_70px_rgba(20,30,45,.4)] ring-0 sm:max-w-[760px]"
+        className="flex max-h-[calc(100vh-48px)] max-w-[calc(100%-2rem)] flex-col gap-0 overflow-hidden rounded-xl bg-background p-0 shadow-e3 ring-0 sm:max-w-[760px]"
       >
         {/* header */}
         <div className="flex flex-none items-center justify-between gap-3.5 border-b border-de9-line bg-card px-4 py-[22px] sm:px-[26px]">
           <div className="flex items-center gap-[13px]">
-            <div className="flex size-[46px] flex-none items-center justify-center rounded-[13px] bg-[#232838] text-[22px] text-white">
-              📋
+            <div className="flex size-[46px] flex-none items-center justify-center rounded-md bg-primary-container text-[22px] text-on-primary-container">
+              <Glyph icon={ClipboardList} />
             </div>
             <div>
               <DialogTitle className="text-[19px] font-extrabold leading-normal text-de9-ink">
@@ -252,9 +254,9 @@ function BriefModalContent({ onOpenChange, selected, ctx, filters }: Omit<BriefM
           <button
             type="button"
             onClick={() => onOpenChange(false)}
-            className="flex size-[38px] flex-none cursor-pointer items-center justify-center rounded-[11px] bg-secondary text-[18px] text-de9-slate"
+            className="flex size-[38px] flex-none cursor-pointer items-center justify-center rounded-full bg-secondary text-[18px] text-de9-slate"
           >
-            ✕
+            <Glyph icon={X} />
           </button>
         </div>
 
@@ -275,8 +277,8 @@ function BriefModalContent({ onOpenChange, selected, ctx, filters }: Omit<BriefM
                 </div>
               </Field>
             ) : (
-              <div className="rounded-xl border-[1.5px] border-dashed border-de9-line px-3.5 py-3 text-[12.5px] font-semibold text-de9-gray">
-                🔒 {t('briefSansCommande')}
+              <div className="rounded-md border border-dashed border-de9-line px-3.5 py-3 text-[12.5px] font-semibold text-de9-gray">
+                <Glyph icon={Lock} /> {t('briefSansCommande')}
               </div>
             )}
 
@@ -289,7 +291,7 @@ function BriefModalContent({ onOpenChange, selected, ctx, filters }: Omit<BriefM
                   <option value="">{t('briefChoisir')}</option>
                   {TAXO.map((c) => (
                     <option key={c.id} value={String(c.id)}>
-                      {c.icon} {l(c.fr, c.ar)}
+                      {l(c.fr, c.ar)}
                     </option>
                   ))}
                 </select>
@@ -324,7 +326,7 @@ function BriefModalContent({ onOpenChange, selected, ctx, filters }: Omit<BriefM
                 {photos.map((file, i) => (
                   <FileChip
                     key={file.name + i}
-                    icon="🖼️"
+                    icon={ImageIcon}
                     name={file.name}
                     onRemove={() => setPhotos((ps) => ps.filter((_, k) => k !== i))}
                   />
@@ -399,7 +401,7 @@ function BriefModalContent({ onOpenChange, selected, ctx, filters }: Omit<BriefM
                 {docs.map((file, i) => (
                   <FileChip
                     key={file.name + i}
-                    icon="📎"
+                    icon={Paperclip}
                     name={file.name}
                     onRemove={() => setDocs((ds) => ds.filter((_, k) => k !== i))}
                   />
@@ -415,14 +417,14 @@ function BriefModalContent({ onOpenChange, selected, ctx, filters }: Omit<BriefM
             <button
               type="button"
               onClick={() => onOpenChange(false)}
-              className="cursor-pointer rounded-[13px] bg-secondary px-5 py-[13px] text-[13.5px] font-bold text-de9-slate"
+              className="cursor-pointer rounded-full bg-secondary px-5 py-[13px] text-[13.5px] font-bold text-de9-slate"
             >
               {t('annuler')}
             </button>
             <button
               type="submit"
               disabled={!ctx || demander.isPending || selected.length === 0}
-              className="cursor-pointer rounded-[13px] bg-de9-teal px-6 py-[13px] text-[13.5px] font-bold text-white shadow-[0_10px_22px_rgba(101,203,196,.45)] disabled:opacity-60"
+              className="cursor-pointer rounded-full bg-de9-teal px-6 py-[13px] text-[13.5px] font-bold text-white disabled:opacity-60"
             >
               {demander.isPending ? t('briefEnvoiEnCours') : `${t('envoyerBrief')} (${selected.length})`}
             </button>

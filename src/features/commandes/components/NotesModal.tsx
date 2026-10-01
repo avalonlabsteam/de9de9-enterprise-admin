@@ -12,6 +12,7 @@
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
+import { Check, Circle, Lock, MessageSquareText } from 'lucide-react';
 import { useT, useL } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 import { problemMessage } from '@/api/problem';
@@ -19,6 +20,7 @@ import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Field, FieldError } from '@/components/ui/field';
+import { Glyph } from '@/components/common/Glyph';
 import { useWorklistNotes, useAddWorklistNote, useDeleteWorklistNote } from '../api/commandes';
 import { worklistNoteInputSchema, type WorklistNoteInput } from '../schemas/worklistDetail';
 
@@ -77,11 +79,11 @@ export function NotesModal({ commandeId, open, onOpenChange }: NotesModalProps) 
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         showCloseButton={false}
-        className="block max-h-[90vh] w-full max-w-[calc(100%-2rem)] gap-0 overflow-y-auto rounded-[22px] bg-card p-[26px] text-de9-ink shadow-[0_30px_70px_rgba(20,30,45,.4)] ring-0 sm:max-w-[480px]"
+        className="block max-h-[90vh] w-full max-w-[calc(100%-2rem)] gap-0 overflow-y-auto rounded-xl bg-card p-[26px] text-de9-ink shadow-e3 ring-0 sm:max-w-[480px]"
       >
         <div className="flex items-center gap-[13px]">
-          <div className="flex h-[50px] w-[50px] flex-none items-center justify-center rounded-[14px] bg-[#F4EFFB] text-2xl dark:bg-[#7C57C7]/15">
-            💬
+          <div className="flex h-[50px] w-[50px] flex-none items-center justify-center rounded-md bg-[#F4EFFB] text-2xl dark:bg-[#7C57C7]/15 text-[#7C57C7] dark:text-[#A98BE8]">
+            <Glyph icon={MessageSquareText} />
           </div>
           <div className="min-w-0">
             <DialogTitle className="text-lg font-extrabold">{t('notesTitle')}</DialogTitle>
@@ -91,11 +93,11 @@ export function NotesModal({ commandeId, open, onOpenChange }: NotesModalProps) 
             </div>
           </div>
         </div>
-        <div className="mt-2.5 text-[11.5px] font-bold text-[#B6BEC8]">🔒 {t('notesSub')}</div>
+        <div className="mt-2.5 text-[11.5px] font-bold text-de9-faint"><Glyph icon={Lock} /> {t('notesSub')}</div>
 
         <div className="mt-4 flex flex-col gap-[11px]">
           {notesQ.isPending && open && (
-            <div className="p-[18px] text-center text-[13px] text-[#B6BEC8]">{t('apercuActionEnCours')}</div>
+            <div className="p-[18px] text-center text-[13px] text-de9-faint">{t('apercuActionEnCours')}</div>
           )}
           {notesQ.isError && (
             <div className="p-[18px] text-center text-[13px] font-semibold text-de9-red">
@@ -103,17 +105,17 @@ export function NotesModal({ commandeId, open, onOpenChange }: NotesModalProps) 
             </div>
           )}
           {!notesQ.isPending && !notesQ.isError && notes.length === 0 && (
-            <div className="p-[18px] text-center text-[13px] text-[#B6BEC8]">{t('notesEmpty')}</div>
+            <div className="p-[18px] text-center text-[13px] text-de9-faint">{t('notesEmpty')}</div>
           )}
           {notes.map((n) => (
             <div key={n.id} className="flex items-start gap-[11px]">
-              <div className="flex h-8 w-8 flex-none items-center justify-center rounded-full bg-[#232838] text-xs font-bold text-white">
+              <div className="flex h-8 w-8 flex-none items-center justify-center rounded-full bg-primary-container text-xs font-bold text-on-primary-container">
                 {(n.authorDisplayName || '?').slice(0, 1).toUpperCase()}
               </div>
-              <div className="flex-1 rounded-[13px] border border-de9-line bg-secondary px-[13px] py-[11px]">
+              <div className="flex-1 rounded-md border border-de9-line bg-secondary px-[13px] py-[11px]">
                 <div className="flex items-center justify-between gap-2">
                   <span className="truncate text-[12.5px] font-bold text-de9-ink">{n.authorDisplayName}</span>
-                  <span className="flex-none text-[10.5px] text-[#B0B8C2]">{stamp(n.createdAt)}</span>
+                  <span className="flex-none text-[10.5px] text-de9-faint">{stamp(n.createdAt)}</span>
                 </div>
                 <div className="mt-1 whitespace-pre-wrap text-[13px] leading-[1.45] text-de9-slate">{n.body}</div>
                 <div className="mt-2 flex items-center justify-between gap-2">
@@ -124,7 +126,7 @@ export function NotesModal({ commandeId, open, onOpenChange }: NotesModalProps) 
                       n.aFaire ? 'text-de9-gray' : 'text-[#2FA86A] dark:text-[#6FCF97]',
                     )}
                   >
-                    {n.aFaire ? '○ ' + t('worklistAFaire') : '✓ ' + t('worklistTraite')}
+                    <Glyph icon={n.aFaire ? Circle : Check} /> {n.aFaire ? t('worklistAFaire') : t('worklistTraite')}
                   </span>
                   <button
                     type="button"
@@ -149,7 +151,7 @@ export function NotesModal({ commandeId, open, onOpenChange }: NotesModalProps) 
               {...form.register('body')}
               placeholder={t('notesPh')}
               aria-invalid={!!form.formState.errors.body}
-              className="mt-4 min-h-[74px] w-full resize-y rounded-xl border-[1.5px] border-de9-line bg-card px-3.5 py-3 text-[13.5px] text-de9-ink shadow-none md:text-[13.5px]"
+              className="mt-4 min-h-[74px] w-full resize-y rounded-xs border border-outline bg-card px-3.5 py-3 text-[13.5px] text-de9-ink shadow-none md:text-[13.5px]"
             />
             <div className="min-h-[18px] pt-0.5">
               {form.formState.errors.body && (
@@ -164,14 +166,14 @@ export function NotesModal({ commandeId, open, onOpenChange }: NotesModalProps) 
               type="button"
               variant="ghost"
               onClick={() => onOpenChange(false)}
-              className="h-auto flex-1 rounded-[13px] bg-secondary p-3.5 text-center text-sm font-bold text-de9-slate hover:bg-de9-bg hover:text-de9-slate"
+              className="h-auto flex-1 rounded-full bg-secondary p-3.5 text-center text-sm font-bold text-de9-slate hover:bg-de9-bg hover:text-de9-slate"
             >
               {t('fermer')}
             </Button>
             <Button
               type="submit"
               disabled={form.formState.isSubmitting || addNote.isPending}
-              className="h-auto flex-1 rounded-[13px] bg-[#7C57C7] p-3.5 text-center text-sm font-bold text-white shadow-[0_10px_22px_rgba(124,87,199,.4)] hover:bg-[#6C49B5] disabled:opacity-70"
+              className="h-auto flex-1 rounded-full bg-[#7C57C7] p-3.5 text-center text-sm font-bold text-white hover:bg-[#6C49B5] disabled:opacity-70"
             >
               {t('ajouterNote')}
             </Button>

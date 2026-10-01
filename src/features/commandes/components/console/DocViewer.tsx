@@ -1,8 +1,10 @@
 // Document viewer — visual ground truth: src/admin/views/DocViewer.tsx;
 // view-model ported from logic.ts buildDoc() (brief + devis prestataire docs).
 import { toast } from "sonner";
+import { Download, ImageIcon, Paperclip, Timer, X } from "lucide-react";
 import { useT } from "@/lib/i18n";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import { Glyph } from "@/components/common/Glyph";
 import type { Commande } from "../../schemas/commande";
 
 export type DocState = { kind: "brief" } | { kind: "devis"; presId: string };
@@ -65,7 +67,7 @@ export function DocViewer({ commande, doc, onOpenChange }: DocViewerProps) {
     <Dialog open={doc !== null} onOpenChange={onOpenChange}>
       <DialogContent
         showCloseButton={false}
-        className="block max-h-[90vh] w-full max-w-[calc(100%-2rem)] gap-0 overflow-y-auto rounded-[20px] bg-card p-0 text-de9-ink shadow-[0_30px_70px_rgba(20,30,45,.4)] ring-0 sm:max-w-[560px]"
+        className="block max-h-[90vh] w-full max-w-[calc(100%-2rem)] gap-0 overflow-y-auto rounded-xl bg-card p-0 text-de9-ink shadow-e3 ring-0 sm:max-w-[560px]"
       >
         {/* header */}
         <div className="flex items-center justify-between gap-3 border-b border-de9-line px-[22px] py-[18px]">
@@ -76,24 +78,24 @@ export function DocViewer({ commande, doc, onOpenChange }: DocViewerProps) {
             <button
               type="button"
               onClick={downloadDoc}
-              className="flex cursor-pointer items-center gap-1.5 rounded-[10px] bg-[#232838] px-3.5 py-[9px] text-xs font-bold text-white"
+              className="flex cursor-pointer items-center gap-1.5 rounded-full bg-primary px-3.5 py-[9px] text-xs font-bold text-primary-foreground"
             >
-              ⤓ {t("telecharger")}
+              <Glyph icon={Download} /> {t("telecharger")}
             </button>
             <button
               type="button"
               onClick={() => onOpenChange(false)}
-              className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-[10px] bg-secondary text-base text-de9-slate"
+              className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full bg-secondary text-base text-de9-slate"
             >
-              ✕
+              <Glyph icon={X} />
             </button>
           </div>
         </div>
 
         <div className="p-[22px]">
-          <div className="overflow-hidden rounded-xl border border-de9-line shadow-[0_6px_20px_rgba(38,50,69,.06)]">
+          <div className="overflow-hidden rounded-md border border-de9-line">
             {/* document masthead */}
-            <div className="flex items-center justify-between gap-3 bg-[#232838] px-5 py-[18px] text-white">
+            <div className="flex items-center justify-between gap-3 bg-[rgb(35_40_56)] px-5 py-[18px] text-white dark:bg-secondary">
               <div>
                 <div className="text-[15px] font-extrabold">
                   <span className="text-de9-red">De9</span>{" "}
@@ -110,7 +112,7 @@ export function DocViewer({ commande, doc, onOpenChange }: DocViewerProps) {
               )}
               {doc?.kind === "devis" && (
                 <div
-                  className="rounded-full px-[11px] py-[5px] text-[11px] font-extrabold"
+                  className="rounded-full px-[11px] py-[5px] text-[11px] font-extrabold tone-chip"
                   style={{ background: dsm[1], color: dsm[2] }}
                 >
                   {dsm[0]}
@@ -186,10 +188,10 @@ export function DocViewer({ commande, doc, onOpenChange }: DocViewerProps) {
                           {brief.photos.map((ph, i) => (
                             <div
                               key={i}
-                              className="overflow-hidden rounded-[9px] border border-de9-line"
+                              className="overflow-hidden rounded-sm border border-de9-line"
                             >
                               <div className="flex h-[62px] items-center justify-center bg-[repeating-linear-gradient(45deg,#EEF1F4,#EEF1F4_8px,#E4E9ED_8px,#E4E9ED_16px)] text-xl dark:bg-[repeating-linear-gradient(45deg,#1E2430,#1E2430_8px,#2C3345_8px,#2C3345_16px)]">
-                                🖼️
+                                <Glyph icon={ImageIcon} />
                               </div>
                               <div className="truncate px-1.5 py-1 text-[9.5px] text-de9-gray">
                                 {ph.name}
@@ -208,7 +210,7 @@ export function DocViewer({ commande, doc, onOpenChange }: DocViewerProps) {
                               key={i}
                               className="flex items-center gap-[7px] text-xs text-de9-slate"
                             >
-                              📎 {dd.name}
+                              <Glyph icon={Paperclip} /> {dd.name}
                             </div>
                           ))}
                         </div>
@@ -235,21 +237,21 @@ export function DocViewer({ commande, doc, onOpenChange }: DocViewerProps) {
                       <div className="text-2xl font-extrabold text-de9-ink">
                         {devis?.montant ? fmt(devis.montant) : "—"}
                       </div>
-                      <div className="text-[11px] text-[#B0B8C2]">
+                      <div className="text-[11px] text-de9-faint">
                         {t("credits")}
                       </div>
                     </div>
                   </div>
                   <div className="mt-4 flex flex-wrap gap-[13px]">
-                    <div className="min-w-[120px] flex-1 rounded-[11px] bg-secondary p-[13px]">
+                    <div className="min-w-[120px] flex-1 rounded-sm bg-secondary p-[13px]">
                       <div className="text-[10.5px] font-extrabold uppercase text-de9-gray">
                         {t("devisDelai")}
                       </div>
                       <div className="mt-[3px] text-sm font-bold">
-                        ⏱ {devis?.delai || "—"}
+                        <Glyph icon={Timer} /> {devis?.delai || "—"}
                       </div>
                     </div>
-                    <div className="min-w-[200px] flex-[2] rounded-[11px] bg-secondary p-[13px]">
+                    <div className="min-w-[200px] flex-[2] rounded-sm bg-secondary p-[13px]">
                       <div className="text-[10.5px] font-extrabold uppercase text-de9-gray">
                         {t("devisDetails")}
                       </div>
@@ -262,7 +264,7 @@ export function DocViewer({ commande, doc, onOpenChange }: DocViewerProps) {
               )}
             </div>
           </div>
-          <div className="mt-[13px] text-center text-[11px] text-[#B0B8C2]">
+          <div className="mt-[13px] text-center text-[11px] text-de9-faint">
             {t("docFooter")}
           </div>
         </div>

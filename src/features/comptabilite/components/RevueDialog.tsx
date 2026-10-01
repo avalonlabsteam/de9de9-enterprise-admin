@@ -76,13 +76,13 @@ export function RevueDialog({
     >
       <DialogContent
         showCloseButton={false}
-        className="block max-w-[calc(100%-2rem)] gap-0 rounded-[22px] bg-card p-7 sm:max-w-[480px]"
+        className="block max-w-[calc(100%-2rem)] gap-0 rounded-xl bg-card p-7 sm:max-w-[480px]"
       >
         <form onSubmit={onSubmit} noValidate>
           <DialogTitle className="text-[19px] leading-normal font-extrabold text-de9-ink">{action.label}</DialogTitle>
           <DialogDescription
             className={cn(
-              'mt-3 rounded-xl px-4 py-3 text-[13px] leading-relaxed font-semibold',
+              'mt-3 rounded-md px-4 py-3 text-[13px] leading-relaxed font-semibold',
               crediter
                 ? 'bg-[#E7F6EE] text-[#1F7A4C] dark:bg-[#2FA86A]/15 dark:text-[#6FCF97]'
                 : 'bg-[#FDECEC] text-de9-red dark:bg-[#E7464E]/15',
@@ -105,8 +105,8 @@ export function RevueDialog({
               placeholder={t('comptaMotifPh')}
               aria-invalid={!!error}
               className={cn(
-                'w-full resize-y rounded-[11px] border-[1.5px] bg-card px-3.5 py-2.5 text-[13px] text-de9-ink outline-none',
-                error ? 'border-de9-red' : 'border-de9-line focus:border-de9-teal',
+                'w-full resize-y rounded-xs border bg-card px-3.5 py-2.5 text-[13px] text-de9-ink outline-none',
+                error ? 'border-de9-red' : 'border-outline focus:border-de9-teal',
               )}
             />
           </label>
@@ -122,7 +122,7 @@ export function RevueDialog({
               type="button"
               onClick={onClose}
               disabled={run.isPending}
-              className="flex-1 cursor-pointer rounded-[13px] border-[1.5px] border-de9-line bg-card p-3 text-sm font-bold text-de9-slate disabled:opacity-50"
+              className="flex-1 cursor-pointer rounded-full border border-de9-line bg-card p-3 text-sm font-bold text-de9-slate disabled:opacity-50"
             >
               {t('annuler')}
             </button>
@@ -130,8 +130,8 @@ export function RevueDialog({
               type="submit"
               disabled={run.isPending}
               className={cn(
-                'flex-1 cursor-pointer rounded-[13px] p-3 text-sm font-bold text-white disabled:opacity-60',
-                crediter ? 'bg-de9-teal-dark shadow-[0_8px_18px_rgba(23,138,130,.32)]' : 'bg-de9-red',
+                'flex-1 cursor-pointer rounded-full p-3 text-sm font-bold text-white disabled:opacity-60',
+                crediter ? 'bg-primary' : 'bg-de9-red',
               )}
             >
               {run.isPending ? t('comptaEnCours') : action.label}

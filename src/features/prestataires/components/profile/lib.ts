@@ -1,6 +1,7 @@
 // Pure presentation helpers shared by the profile overlay's panels — ported from
 // src/admin/logic.ts (profileReviews stars, buildKycVM meta, setKycStatus labels,
 // logKyc stamps). The payload → view-model mapping itself lives in fromFiche.ts.
+import { Check, Hourglass, X, type LucideIcon } from 'lucide-react';
 import type { TKey } from '@/lib/i18n';
 import type { KycStatus } from '../../schemas/prestataire';
 
@@ -8,11 +9,6 @@ export type Translate = (key: TKey) => string;
 
 /** fr-FR money formatting like the prototype ('15 000'). */
 export const fmtMoney = (n: number): string => n.toLocaleString('fr-FR');
-
-/** '★★★☆☆' star string (logic.ts profileReviews). */
-export function starsOf(note: number): string {
-  return '★★★★★'.slice(0, note) + '☆☆☆☆☆'.slice(0, 5 - note);
-}
 
 /** 'dd/mm/yyyy · hh:mm' stamp for local KYC journal entries (logic.ts logKyc). */
 export function nowStamp(): string {
@@ -36,13 +32,13 @@ export interface KycMeta {
   label: string;
   bg: string;
   fg: string;
-  icon: string;
+  icon: LucideIcon;
 }
 
-const KYC_META: Record<KycStatus, [TKey, string, string, string]> = {
-  verified: ['commonKycVerifie', '#E7F6EE', '#178A82', '✓'],
-  pending: ['commonKycEnAttente', '#FBF4E4', '#B68A2E', '⏳'],
-  rejected: ['commonKycRejete', '#FDECEC', '#E7464E', '✕'],
+const KYC_META: Record<KycStatus, [TKey, string, string, LucideIcon]> = {
+  verified: ['commonKycVerifie', '#E7F6EE', '#178A82', Check],
+  pending: ['commonKycEnAttente', '#FBF4E4', '#B68A2E', Hourglass],
+  rejected: ['commonKycRejete', '#FDECEC', '#E7464E', X],
 };
 
 export function kycMeta(status: KycStatus, t: Translate): KycMeta {

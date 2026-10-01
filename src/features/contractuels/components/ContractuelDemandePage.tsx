@@ -9,7 +9,7 @@ import { problemMessage } from '@/api/problem';
 import { fmtDate } from '@/features/kyc/lib/kyc';
 import { useContractuelCandidats, useContractuelDemande } from '../api/contractuels';
 
-const CARD = 'rounded-[20px] border border-de9-line bg-card p-[22px] shadow-[0_10px_30px_rgba(38,50,69,.06)]';
+const CARD = 'rounded-md border border-de9-line bg-card p-[22px]';
 const LABEL = 'text-[11px] font-bold tracking-[.04em] text-de9-gray uppercase';
 
 /** ISO dates print as « Lundi 28/09/2026 »; anything else as sent. */
@@ -52,7 +52,7 @@ export function ContractuelDemandePage() {
     return (
       <div className="mx-auto max-w-[860px]">
         {backLink}
-        <div className="h-[220px] animate-pulse rounded-[20px] bg-card" />
+        <div className="h-[220px] animate-pulse rounded-md bg-card" />
       </div>
     );
   }
@@ -139,7 +139,7 @@ export function ContractuelDemandePage() {
           {t('ctrCandidats')}
           {candidatsQ.isSuccess && <span className="text-de9-gray">({candidats.length})</span>}
         </div>
-        {candidatsQ.isPending && <div className="h-[90px] animate-pulse rounded-[12px] bg-secondary" />}
+        {candidatsQ.isPending && <div className="h-[90px] animate-pulse rounded-md bg-secondary" />}
         {candidatsQ.isError && (
           <div className="text-[12.5px] font-semibold text-de9-red">{problemMessage(candidatsQ.error)}</div>
         )}

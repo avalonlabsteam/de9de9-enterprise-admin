@@ -3,9 +3,11 @@
 // instead of being silently overridden. The server's `message` is the toast.
 import { useState } from 'react';
 import { toast } from 'sonner';
+import { Check, Lock, TriangleAlert, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useT } from '@/lib/i18n';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
+import { Glyph } from '@/components/common/Glyph';
 import { reloadKycRevue, useKycVerdict, type KycVerdict } from '../api/kyc';
 import { KYC_MOTIF_MAX, KYC_NOTE_MAX, type KycRevuePiece } from '../schemas/kyc';
 import { isStaleProblem, kindLong, kindShort, kycErrorMessage, kycProblem } from '../lib/kyc';
@@ -35,7 +37,7 @@ export function VerdictDialog({ companyId, target, dossierStatut, enRevue, onClo
     >
       <DialogContent
         showCloseButton={false}
-        className="block max-h-[90vh] max-w-[calc(100%-2rem)] gap-0 overflow-y-auto rounded-[22px] bg-card p-6 sm:max-w-[480px] sm:p-7"
+        className="block max-h-[90vh] max-w-[calc(100%-2rem)] gap-0 overflow-y-auto rounded-xl bg-card p-6 sm:max-w-[480px] sm:p-7"
       >
         {target && (
           // Keyed so the fields start empty for every piece / verdict.
@@ -81,7 +83,7 @@ function motifPresets(piece: KycRevuePiece): MotifPreset[] {
 }
 
 const FIELD_CLS =
-  'w-full resize-y rounded-xl border-[1.5px] bg-card px-3.5 py-3 text-[13.5px] leading-[1.5] text-de9-ink outline-none';
+  'w-full resize-y rounded-xs border bg-card px-3.5 py-3 text-[13.5px] leading-[1.5] text-de9-ink outline-none';
 
 function VerdictForm({
   companyId,
@@ -163,13 +165,13 @@ function VerdictForm({
     <>
       <div
         className={cn(
-          'flex h-[54px] w-[54px] items-center justify-center rounded-[15px] text-[24px] font-extrabold',
+          'flex h-[54px] w-[54px] items-center justify-center rounded-md text-[24px] font-extrabold',
           refusing
             ? 'bg-[#FDECEC] text-de9-red dark:bg-[#E7464E]/15'
             : 'bg-[#E7F6EE] text-[#2FA86A] dark:bg-[#2FA86A]/15 dark:text-[#6FCF97]',
         )}
       >
-        {refusing ? '✕' : '✓'}
+        <Glyph icon={refusing ? X : Check} />
       </div>
       <DialogTitle className="mt-4 text-[19px] leading-normal font-extrabold text-de9-ink">
         {t(refusing ? 'kycRefuserTitre' : 'kycValiderTitre').replace('{n}', short)}
@@ -177,7 +179,7 @@ function VerdictForm({
       <DialogDescription className="mt-1 text-[12.5px] text-de9-gray">{long}</DialogDescription>
 
       {/* the number is validated with the document — last look before locking it */}
-      <div className="mt-4 rounded-xl bg-secondary px-4 py-3">
+      <div className="mt-4 rounded-md bg-secondary px-4 py-3">
         <div className="text-[10.5px] font-extrabold uppercase tracking-[.04em] text-de9-gray">
           {piece.numeroLabel || `N° ${short}`}
         </div>
@@ -191,8 +193,8 @@ function VerdictForm({
       </p>
 
       {revoking && (
-        <div className="mt-3 rounded-xl border border-[#F0E2C0] bg-[#FBF4E4] px-[15px] py-[12px] text-[12.5px] leading-[1.5] text-[#92702A] dark:border-[#92702A]/40 dark:bg-[#92702A]/15 dark:text-[#D9B36A]">
-          ⚠ {t(dossierStatut === 'verified' ? 'kycRevocationVerifie' : 'kycRevocation')}
+        <div className="mt-3 rounded-md border border-[#F0E2C0] bg-[#FBF4E4] px-[15px] py-[12px] text-[12.5px] leading-[1.5] text-[#92702A] dark:border-[#92702A]/40 dark:bg-[#92702A]/15 dark:text-[#D9B36A]">
+          <Glyph icon={TriangleAlert} /> {t(dossierStatut === 'verified' ? 'kycRevocationVerifie' : 'kycRevocation')}
         </div>
       )}
 
@@ -208,7 +210,7 @@ function VerdictForm({
                 type="button"
                 onClick={() => addPreset(p.text)}
                 title={p.text}
-                className="cursor-pointer rounded-full border-[1.5px] border-de9-line bg-card px-2.5 py-[5px] text-[11px] font-bold text-de9-slate hover:border-de9-slate"
+                className="cursor-pointer rounded-full border border-de9-line bg-card px-2.5 py-[5px] text-[11px] font-bold text-de9-slate hover:border-de9-slate"
               >
                 + {t(p.key)}
               </button>
@@ -225,7 +227,7 @@ function VerdictForm({
             maxLength={KYC_MOTIF_MAX}
             rows={3}
             aria-invalid={!!motifError}
-            className={cn(FIELD_CLS, motifError ? 'border-de9-red' : 'border-de9-line')}
+            className={cn(FIELD_CLS, motifError ? 'border-de9-red' : 'border-outline')}
           />
           <div className="flex justify-between gap-3 pt-1 text-[11px]">
             <span className="font-semibold text-de9-red">{motifError}</span>
@@ -238,7 +240,7 @@ function VerdictForm({
 
       <div className="mt-3">
         <label htmlFor="kyc-note" className="mb-1.5 block text-xs font-semibold text-de9-slate">
-          🔒 {t('kycChampNote')}
+          <Glyph icon={Lock} /> {t('kycChampNote')}
         </label>
         <textarea
           id="kyc-note"
@@ -247,7 +249,7 @@ function VerdictForm({
           onChange={(e) => setNote(e.target.value)}
           maxLength={KYC_NOTE_MAX}
           rows={2}
-          className={cn(FIELD_CLS, 'border-de9-line')}
+          className={cn(FIELD_CLS, 'border-outline')}
         />
       </div>
 
@@ -255,7 +257,7 @@ function VerdictForm({
         <button
           type="button"
           onClick={onClose}
-          className="flex-1 cursor-pointer rounded-[13px] bg-secondary p-3.5 text-center text-sm font-bold text-de9-slate"
+          className="flex-1 cursor-pointer rounded-full bg-secondary p-3.5 text-center text-sm font-bold text-de9-slate"
         >
           {t('annuler')}
         </button>
@@ -264,10 +266,10 @@ function VerdictForm({
           disabled={mutation.isPending || !documentId}
           onClick={run}
           className={cn(
-            'flex-1 cursor-pointer rounded-[13px] p-3.5 text-center text-sm font-bold text-white disabled:opacity-60',
+            'flex-1 cursor-pointer rounded-full p-3.5 text-center text-sm font-bold text-white disabled:opacity-60',
             refusing
-              ? 'bg-de9-red shadow-[0_10px_22px_rgba(231,70,78,.35)]'
-              : 'bg-[#2FA86A] shadow-[0_10px_22px_rgba(47,168,106,.35)]',
+              ? 'bg-de9-red'
+              : 'bg-[#2FA86A]',
           )}
         >
           {mutation.isPending ? t('kycEnvoi') : refusing ? t('kycRefuser') : t('kycValider')}

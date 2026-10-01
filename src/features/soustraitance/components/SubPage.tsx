@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import { ArrowRight, MessageCircle, Phone, Plus, X } from 'lucide-react';
 import { useT, useL } from '@/lib/i18n';
 import { useLangStore, type Lang } from '@/stores/langStore';
 import { cn } from '@/lib/utils';
@@ -13,6 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Glyph } from '@/components/common/Glyph';
 import type { SubPro } from '../schemas/sub';
 import { useSubDemandes, useSubPros } from '../api/sub';
 import { SalarieModal } from './SalarieModal';
@@ -102,7 +104,7 @@ interface FilterSelectDef {
 
 /* ---------- shared bits ---------- */
 const CARD =
-  'mt-3.5 rounded-[18px] border border-de9-line bg-card shadow-[0_10px_30px_rgba(38,50,69,.06)]';
+  'mt-3.5 rounded-md border border-de9-line bg-card';
 
 function TableSkeleton({ cols }: { cols: number }) {
   return (
@@ -123,7 +125,7 @@ function TableSkeleton({ cols }: { cols: number }) {
 
 function InlineError({ text }: { text: string }) {
   return (
-    <div className="m-4 rounded-[10px] border border-[#F2C9CB] bg-[#FDF0F0] px-[13px] py-2 text-[12px] font-semibold text-de9-red dark:border-[#E7464E]/40 dark:bg-[#E7464E]/15">
+    <div className="m-4 rounded-sm border border-[#F2C9CB] bg-[#FDF0F0] px-[13px] py-2 text-[12px] font-semibold text-de9-red dark:border-[#E7464E]/40 dark:bg-[#E7464E]/15">
       {text}
     </div>
   );
@@ -239,7 +241,7 @@ export function SubPage() {
         onValueChange={(v) => setTab(v === 'pros' ? 'pros' : 'demandes')}
         className="mt-4 gap-0"
       >
-        <TabsList className="inline-flex w-fit max-w-full flex-wrap gap-1.5 rounded-xl border-[1.5px] border-de9-line bg-card p-[5px] group-data-horizontal/tabs:h-auto">
+        <TabsList className="inline-flex w-fit max-w-full flex-wrap gap-1.5 rounded-full border border-de9-line bg-card p-[5px] group-data-horizontal/tabs:h-auto">
           {(
             [
               ['demandes', t('stDemandes')],
@@ -249,7 +251,7 @@ export function SubPage() {
             <TabsTrigger
               key={key}
               value={key}
-              className="h-auto flex-none rounded-lg border-0 px-4 py-[9px] text-[12.5px] font-bold text-de9-slate transition-none after:hidden hover:text-de9-slate data-active:bg-[#232838] data-active:text-white data-active:shadow-none dark:data-active:bg-[#232838] dark:data-active:text-white"
+              className="h-auto flex-none rounded-full border-0 px-4 py-[9px] text-[12.5px] font-bold text-de9-slate transition-none after:hidden hover:text-de9-slate data-active:bg-secondary-container data-active:text-on-secondary-container data-active:shadow-none"
             >
               {label}
             </TabsTrigger>
@@ -258,9 +260,6 @@ export function SubPage() {
 
         {/* ---------- DEMANDES ---------- */}
         <TabsContent value="demandes">
-          <div className="mt-3.5 inline-flex items-center gap-[7px] rounded-[10px] border border-[#F0E2C0] bg-[#FBF4E4] px-[13px] py-2 text-[11.5px] font-bold text-[#B68A2E] dark:border-[#B68A2E]/40 dark:bg-[#B68A2E]/15 dark:text-[#D9B36A]">
-            ⓘ {t('stDemandeSansStatut')}
-          </div>
           <div className={cn(CARD, 'overflow-x-auto')}>
             <div className="min-w-[720px]">
               <div className={cn(demandesGrid, headRow, 'text-[10.5px] tracking-[.04em]')}>
@@ -295,9 +294,9 @@ export function SubPage() {
                       onClick={() =>
                         openDemandePros({ entreprise: dm.entreprise, cat: dm.cat, sub: dm.sub })
                       }
-                      className="inline-block cursor-pointer rounded-[10px] bg-[#E5F7F4] px-[13px] py-2 text-[11.5px] font-bold text-de9-teal-dark dark:bg-[#178A82]/20"
+                      className="inline-block cursor-pointer rounded-sm bg-[#E5F7F4] px-[13px] py-2 text-[11.5px] font-bold text-de9-teal-dark dark:bg-[#178A82]/20"
                     >
-                      {t('stVoirPros')} →
+                      {t('stVoirPros')} <Glyph icon={ArrowRight} className="rtl:rotate-180" />
                     </span>
                   </div>
                 </div>
@@ -314,15 +313,15 @@ export function SubPage() {
         {/* ---------- PROS DISPONIBLES ---------- */}
         <TabsContent value="pros">
           {ctx && (
-            <div className="mt-3.5 flex flex-wrap items-center gap-2.5 rounded-xl border-[1.5px] border-[#D7EFEC] bg-[#ECFAF8] px-[15px] py-[11px] dark:border-[#2C9C94]/40 dark:bg-[#2C9C94]/15">
+            <div className="mt-3.5 flex flex-wrap items-center gap-2.5 rounded-md border border-[#D7EFEC] bg-[#ECFAF8] px-[15px] py-[11px] dark:border-[#2C9C94]/40 dark:bg-[#2C9C94]/15">
               <span className="text-[13px] font-bold text-[#2C9C94] dark:text-[#5FC9BF]">
                 {t('stContexte')} <b>{ctx.entreprise}</b> · {ctx.cat}
               </span>
               <div
                 onClick={() => setCtx(null)}
-                className="cursor-pointer rounded-[9px] border-[1.5px] border-[#CFE6E3] bg-card px-3 py-1.5 text-[11.5px] font-bold text-de9-slate dark:border-[#2C9C94]/40"
+                className="cursor-pointer rounded-sm border border-[#CFE6E3] bg-card px-3 py-1.5 text-[11.5px] font-bold text-de9-slate dark:border-[#2C9C94]/40"
               >
-                ✕ {t('stQuitterCtx')}
+                <Glyph icon={X} /> {t('stQuitterCtx')}
               </div>
             </div>
           )}
@@ -332,7 +331,7 @@ export function SubPage() {
               value={f.q}
               onChange={(e) => setF((prev) => ({ ...prev, q: e.target.value }))}
               placeholder={t('stRecherche')}
-              className="h-auto w-full flex-none rounded-[11px] border-[1.5px] border-de9-line bg-card px-[15px] py-2.5 text-[12.5px] text-de9-ink shadow-none sm:w-[230px]"
+              className="h-auto w-full flex-none rounded-xs border border-outline bg-card px-[15px] py-2.5 text-[12.5px] text-de9-ink shadow-none sm:w-[230px]"
             />
             {filterSelects.map((sel) => (
               <Select
@@ -340,7 +339,7 @@ export function SubPage() {
                 value={sel.value}
                 onValueChange={(v) => setField(sel.field, v)}
               >
-                <SelectTrigger className="h-auto rounded-[11px] border-[1.5px] border-de9-line bg-card px-[13px] py-2.5 text-[12.5px] font-semibold text-de9-slate">
+                <SelectTrigger className="h-auto rounded-xs border border-outline bg-card px-[13px] py-2.5 text-[12.5px] font-semibold text-de9-slate">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent position="popper">
@@ -360,7 +359,7 @@ export function SubPage() {
                   if (isSortKey(v)) setF((prev) => ({ ...prev, sort: v }));
                 }}
               >
-                <SelectTrigger className="h-auto rounded-[11px] border-[1.5px] border-de9-line bg-card px-[13px] py-2.5 text-[12.5px] font-semibold text-de9-slate">
+                <SelectTrigger className="h-auto rounded-xs border border-outline bg-card px-[13px] py-2.5 text-[12.5px] font-semibold text-de9-slate">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent position="popper">
@@ -430,23 +429,23 @@ export function SubPage() {
                   <div className="flex items-center justify-end gap-1.5">
                     <a
                       href={`tel:+213${pr.phone.replace(/^0/, '')}`}
-                      className="flex size-[30px] items-center justify-center rounded-[9px] border-[1.5px] border-de9-line text-[13px] no-underline"
+                      className="flex size-[30px] items-center justify-center rounded-full border border-de9-line text-[13px] no-underline"
                     >
-                      📞
+                      <Glyph icon={Phone} />
                     </a>
                     <a
                       href={`https://wa.me/${pr.wa}`}
                       target="_blank"
                       rel="noreferrer"
-                      className="flex size-[30px] items-center justify-center rounded-[9px] border-[1.5px] border-de9-line text-[13px] no-underline"
+                      className="flex size-[30px] items-center justify-center rounded-full border border-de9-line text-[13px] no-underline"
                     >
-                      💬
+                      <Glyph icon={MessageCircle} />
                     </a>
                     <div
                       onClick={() => setSalarieTarget({ id: pr.id, name: pr.name })}
-                      className="cursor-pointer rounded-[9px] bg-de9-teal-dark px-2.5 py-[7px] text-[11px] font-bold whitespace-nowrap text-white"
+                      className="cursor-pointer rounded-sm bg-primary px-2.5 py-[7px] text-[11px] font-bold whitespace-nowrap text-primary-foreground"
                     >
-                      ＋ {t('stAjouterSalarie')}
+                      <Glyph icon={Plus} /> {t('stAjouterSalarie')}
                     </div>
                   </div>
                 </div>

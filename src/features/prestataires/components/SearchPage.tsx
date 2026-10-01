@@ -6,13 +6,15 @@
 // Dropped vs the mock-era page (no API param exists): the € tarif-level and
 // langue filters, and the reviews-store rating overlay (`note`/`nombreAvis`
 // are server-authoritative now).
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
+import { Check, Mail, MapPin, MessageCircle, Phone, Search, Star, Timer, X } from 'lucide-react';
 import { useL, useT } from '@/lib/i18n';
-import { cn } from '@/lib/utils';
+import { cn, isInk } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Glyph } from '@/components/common/Glyph';
 import { useCommunes, useWilayas } from '@/features/geo/api/geo';
 import { useContextCommande, useRecherchePrestataires, type CtxCommande } from '../api/prestataires';
 import type { PrestataireSearchItem, RechercheParams } from '../schemas/recherche';
@@ -30,6 +32,7 @@ import { selectionActions, useSelectionStore } from '../stores/selectionStore';
 import { SelectionBar } from './SelectionBar';
 import { BriefModal } from './BriefModal';
 import { ReviewModal } from './ReviewModal';
+import { CategoryIcon } from './CategoryIcon';
 
 /* ===================== filters ===================== */
 
@@ -95,6 +98,8 @@ function initialsOf(nom: string): string {
 interface Opt {
   v: string;
   l: string;
+  /** Shown before the label — the categories' 3D icon. */
+  icon?: ReactNode;
 }
 
 function FilterSelect({ value, options, onChange }: { value: string; options: Opt[]; onChange: (v: string) => void }) {
@@ -103,12 +108,15 @@ function FilterSelect({ value, options, onChange }: { value: string; options: Op
   const opts = options.some((o) => o.v === value) ? options : [...options, { v: value, l: value }];
   return (
     <Select value={value} onValueChange={onChange}>
-      <SelectTrigger className="h-auto max-w-full cursor-pointer gap-1.5 rounded-[11px] border-[1.5px] border-de9-line bg-card px-[13px] py-[10px] text-[12.5px] font-semibold text-de9-slate shadow-none">
+      {/* The chosen option's icon is mirrored into the trigger: held to the
+          line height there, so this select stays as tall as its neighbours. */}
+      <SelectTrigger className="h-auto max-w-full cursor-pointer gap-1.5 rounded-xs border border-outline bg-card px-[13px] py-[10px] text-[12.5px] font-semibold text-de9-slate shadow-none [&_img]:size-[18px]">
         <SelectValue />
       </SelectTrigger>
       <SelectContent>
         {opts.map((op) => (
           <SelectItem key={op.v} value={op.v} className="text-[12.5px]">
+            {op.icon}
             {op.l}
           </SelectItem>
         ))}
@@ -125,7 +133,8 @@ function TogglePill({
   onClick,
 }: {
   active: boolean;
-  color: string;
+  /** A family's own colour; without one the pill takes the tonal selected state. */
+  color?: string;
   label: string;
   dot?: string;
   onClick: () => void;
@@ -134,14 +143,27 @@ function TogglePill({
     <button
       type="button"
       onClick={onClick}
-      className="flex cursor-pointer items-center gap-1.5 rounded-full border-[1.5px] border-de9-line bg-card px-[15px] py-[9px] text-[12.5px] font-bold text-de9-slate"
-      style={{
-        borderColor: active || dot ? color : undefined,
-        background: active ? color : undefined,
-        color: active ? '#fff' : undefined,
-      }}
+      className={cn(
+        'flex cursor-pointer items-center gap-1.5 rounded-full border border-de9-line bg-card px-[15px] py-[9px] text-[12.5px] font-bold text-de9-slate',
+        active && !color && 'border-secondary-container bg-secondary-container text-on-secondary-container',
+        active && color && isInk(color) && 'tone-ink-chip',
+      )}
+      style={
+        color
+          ? {
+              borderColor: active || dot ? color : undefined,
+              background: active ? color : undefined,
+              color: active ? '#fff' : undefined,
+            }
+          : undefined
+      }
     >
-      {dot && <span className="size-[9px] rounded-full" style={{ background: active ? '#fff' : dot }} />}
+      {dot && (
+        <span
+          className={cn('size-[9px] rounded-full', isInk(dot) && 'tone-ink-bg')}
+          style={{ background: active ? '#fff' : dot }}
+        />
+      )}
       {label}
     </button>
   );
@@ -242,7 +264,7 @@ function SearchPageContent({ ctxCmd }: { ctxCmd: CtxCommande | null }) {
 
   const catOpts: Opt[] = TAXO.filter(
     (c) => !filters.families.length || filters.families.includes(c.c.toUpperCase() as FamKey),
-  ).map((c) => ({ v: String(c.id), l: c.icon + ' ' + l(c.fr, c.ar) }));
+  ).map((c) => ({ v: String(c.id), l: l(c.fr, c.ar), icon: <CategoryIcon id={c.id} /> }));
   const subOpts: Opt[] = (catObj(filters.cat)?.subs ?? []).map((s) => ({ v: s, l: s }));
 
   const sortOptions: Opt[] = [
@@ -283,9 +305,9 @@ function SearchPageContent({ ctxCmd }: { ctxCmd: CtxCommande | null }) {
     <div className="animate-fade-in">
       {/* ---- search context banner (?ctx=) ---- */}
       {ctxCmd && (
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-[13px] border-[1.5px] border-[#F0E2C0] bg-[#FEF3E2] px-[18px] py-3 dark:border-[#92702A]/40 dark:bg-[#92702A]/15">
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-md border border-[#F0E2C0] bg-[#FEF3E2] px-[18px] py-3 dark:border-[#92702A]/40 dark:bg-[#92702A]/15">
           <div className="text-[13px] text-[#92702A] dark:text-[#D9B36A]">
-            🔎 {t('presContexte')}{' '}
+            <Glyph icon={Search} /> {t('presContexte')}{' '}
             <b>
               {ctxCmd.reference ?? ctxCmd.id} · {ctxCmd.clientName}
             </b>{' '}
@@ -296,7 +318,7 @@ function SearchPageContent({ ctxCmd }: { ctxCmd: CtxCommande | null }) {
             onClick={() => stripParam('ctx')}
             className="flex-none cursor-pointer text-[12px] font-bold text-[#92702A] dark:text-[#D9B36A]"
           >
-            {t('presQuitter')} ✕
+            {t('presQuitter')} <Glyph icon={X} />
           </button>
         </div>
       )}
@@ -326,7 +348,7 @@ function SearchPageContent({ ctxCmd }: { ctxCmd: CtxCommande | null }) {
           value={qInput}
           onChange={(e) => setQInput(e.target.value)}
           placeholder={t('presSearchPh')}
-          className="h-auto min-w-0 flex-[1_1_320px] rounded-xl border-[1.5px] border-de9-line bg-card px-[15px] py-[11px] text-[13px] text-de9-ink shadow-none outline-none"
+          className="h-auto min-w-0 flex-[1_1_320px] rounded-xs border border-outline bg-card px-[15px] py-[11px] text-[13px] text-de9-ink shadow-none outline-none"
         />
       </div>
 
@@ -389,19 +411,16 @@ function SearchPageContent({ ctxCmd }: { ctxCmd: CtxCommande | null }) {
         />
         <TogglePill
           active={filters.dispoNow}
-          color="#232838"
           label={t('presDispoNow')}
           onClick={() => setField({ dispoNow: !filters.dispoNow })}
         />
         <TogglePill
           active={filters.kycOnly}
-          color="#232838"
           label={t('presKycVerifie')}
           onClick={() => setField({ kycOnly: !filters.kycOnly })}
         />
         <TogglePill
           active={filters.certifOnly}
-          color="#232838"
           label={t('presCertifie')}
           onClick={() => setField({ certifOnly: !filters.certifOnly })}
         />
@@ -409,7 +428,7 @@ function SearchPageContent({ ctxCmd }: { ctxCmd: CtxCommande | null }) {
 
       {/* ---- results ---- */}
       {searchQ.isError && (
-        <div className="mt-4 rounded-[13px] bg-[#FDEBEC] px-4 py-3 text-[13px] font-semibold text-de9-red dark:bg-[#E7464E]/15">
+        <div className="mt-4 rounded-md bg-[#FDEBEC] px-4 py-3 text-[13px] font-semibold text-de9-red dark:bg-[#E7464E]/15">
           {searchQ.error instanceof Error ? searchQ.error.message : 'Erreur'}
         </div>
       )}
@@ -417,7 +436,7 @@ function SearchPageContent({ ctxCmd }: { ctxCmd: CtxCommande | null }) {
       {searchQ.isPending ? (
         <div className="mt-6 grid grid-cols-1 gap-[14px] md:grid-cols-2 xl:grid-cols-3">
           {[0, 1, 2, 3].map((i) => (
-            <div key={i} className="h-[280px] animate-pulse rounded-[18px] border-[1.5px] border-de9-line bg-card" />
+            <div key={i} className="h-[280px] animate-pulse rounded-md border border-de9-line bg-card" />
           ))}
         </div>
       ) : (
@@ -447,10 +466,10 @@ function SearchPageContent({ ctxCmd }: { ctxCmd: CtxCommande | null }) {
                 <div
                   key={p.id}
                   className={
-                    'rounded-[18px] border-[1.5px] bg-card p-[18px] ' +
+                    'rounded-md border bg-card p-[18px] ' +
                     (isSel
                       ? 'border-de9-teal shadow-[0_0_0_2px_#65CBC4]'
-                      : 'border-de9-line shadow-[0_8px_22px_rgba(38,50,69,.05)]')
+                      : 'border-de9-line')
                   }
                 >
                   <div className="flex items-start gap-3">
@@ -458,17 +477,20 @@ function SearchPageContent({ ctxCmd }: { ctxCmd: CtxCommande | null }) {
                       type="button"
                       onClick={() => selectionActions.toggle(selKey, p.nom)}
                       className={
-                        'mt-0.5 flex size-6 flex-none cursor-pointer items-center justify-center rounded-[7px] border-2 text-[14px] font-extrabold text-white ' +
+                        'mt-0.5 flex size-6 flex-none cursor-pointer items-center justify-center rounded-full border-2 text-[14px] font-extrabold text-white ' +
                         (isSel ? 'border-de9-teal bg-de9-teal' : 'border-[#CBD3DB] bg-card')
                       }
                     >
-                      {isSel ? '✓' : ''}
+                      {isSel && <Glyph icon={Check} className="stroke-[3]" />}
                     </button>
                     {p.logoUrl ? (
-                      <img src={p.logoUrl} alt="" className="size-[46px] flex-none rounded-[13px] object-cover" />
+                      <img src={p.logoUrl} alt="" className="size-[46px] flex-none rounded-md object-cover" />
                     ) : (
                       <div
-                        className="flex size-[46px] flex-none items-center justify-center rounded-[13px] text-[15px] font-extrabold text-white"
+                        className={cn(
+                          'flex size-[46px] flex-none items-center justify-center rounded-md text-[15px] font-extrabold text-white',
+                          isInk(famColor) && 'tone-ink-bg',
+                        )}
                         style={{ background: famColor }}
                       >
                         {initialsOf(p.nom)}
@@ -483,30 +505,36 @@ function SearchPageContent({ ctxCmd }: { ctxCmd: CtxCommande | null }) {
                         >
                           {p.nom}
                         </button>
-                        <span className="size-[9px] rounded-full" style={{ background: famColor }} />
+                        <span
+                          className={cn('size-[9px] rounded-full', isInk(famColor) && 'tone-ink-bg')}
+                          style={{ background: famColor }}
+                        />
                         {p.kycVerifie && (
                           <span className="rounded-full bg-[#E7F6EE] px-2 py-[3px] text-[10px] font-extrabold text-[#2FA86A] dark:bg-[#2FA86A]/15 dark:text-[#6FCF97]">
-                            ✓ KYC
+                            <Glyph icon={Check} /> KYC
                           </span>
                         )}
                       </div>
                       {catLabel && (
-                        <div className="mt-[3px] text-[12px] font-bold" style={{ color: famColor }}>
+                        <div
+                          className={cn('mt-[3px] text-[12px] font-bold', isInk(famColor) && 'tone-ink')}
+                          style={{ color: famColor }}
+                        >
                           {catLabel}
                         </div>
                       )}
                       <div className="mt-0.5 text-[11.5px] text-de9-slate">{subsLabel}</div>
-                      {zonesLabel && <div className="mt-px text-[11.5px] text-de9-gray">📍 {zonesLabel}</div>}
+                      {zonesLabel && <div className="mt-px text-[11.5px] text-de9-gray"><Glyph icon={MapPin} /> {zonesLabel}</div>}
                     </div>
                     <div className="flex-none text-end">
                       <div className="text-[15px] font-extrabold text-de9-ink">
-                        ★ {p.note == null ? '—' : p.note.toFixed(1)}
+                        <Glyph icon={Star} filled /> {p.note == null ? '—' : p.note.toFixed(1)}
                       </div>
-                      <div className="text-[10.5px] text-[#B0B8C2]">
+                      <div className="text-[10.5px] text-de9-faint">
                         {p.nombreAvis} {t('surNAvis')}
                       </div>
                       {hasRefs && (
-                        <div className="mt-px whitespace-nowrap text-[9px] text-[#C0C8D0]">
+                        <div className="mt-px whitespace-nowrap text-[9px] text-de9-faint">
                           {p.referencesDe9de9} de9de9 · {p.referencesClient} {l('client', 'عميل')}
                         </div>
                       )}
@@ -514,21 +542,21 @@ function SearchPageContent({ ctxCmd }: { ctxCmd: CtxCommande | null }) {
                   </div>
 
                   <div className="mt-3.5 grid grid-cols-2 gap-2 sm:grid-cols-4">
-                    <div className="rounded-[10px] bg-secondary p-[9px] text-center">
+                    <div className="rounded-sm bg-secondary p-[9px] text-center">
                       <div className="text-[14px] font-extrabold text-de9-ink">{p.missions}</div>
                       <div className="text-[9.5px] text-de9-gray">{t('presMissionsCount')}</div>
                     </div>
-                    <div className="rounded-[10px] bg-secondary p-[9px] text-center">
+                    <div className="rounded-sm bg-secondary p-[9px] text-center">
                       <div className="text-[14px] font-extrabold text-[#2FA86A] dark:text-[#6FCF97]">
                         {p.satisfactionPercent != null ? p.satisfactionPercent + '%' : '—'}
                       </div>
                       <div className="text-[9.5px] text-de9-gray">{t('presSatisfaction')}</div>
                     </div>
-                    <div className="rounded-[10px] bg-secondary p-[9px] text-center">
+                    <div className="rounded-sm bg-secondary p-[9px] text-center">
                       <div className="text-[14px] font-extrabold text-de9-ink">{delaiLabel(p.delaiReponseHeures)}</div>
                       <div className="text-[9.5px] text-de9-gray">{t('presDelaiMoyen')}</div>
                     </div>
-                    <div className="rounded-[10px] bg-secondary p-[9px] text-center">
+                    <div className="rounded-sm bg-secondary p-[9px] text-center">
                       <div className="text-[14px] font-extrabold text-de9-ink">{p.effectif ?? '—'}</div>
                       <div className="text-[9.5px] text-de9-gray">{t('presPers')}</div>
                     </div>
@@ -543,9 +571,8 @@ function SearchPageContent({ ctxCmd }: { ctxCmd: CtxCommande | null }) {
                           : 'bg-[#FBF1DF] text-[#C77C1F] dark:bg-[#C77C1F]/15 dark:text-[#D9B36A]')
                       }
                     >
-                      {dn
-                        ? '● ' + t('presDispoNow')
-                        : '⏱ ' + l('Répond sous', 'يرد خلال') + ' ' + delaiLabel(p.delaiReponseHeures)}
+                      {dn ? <span className="size-2 rounded-full bg-current" /> : <Glyph icon={Timer} />}
+                      {dn ? t('presDispoNow') : l('Répond sous', 'يرد خلال') + ' ' + delaiLabel(p.delaiReponseHeures)}
                     </span>
                   </div>
 
@@ -556,20 +583,20 @@ function SearchPageContent({ ctxCmd }: { ctxCmd: CtxCommande | null }) {
                           key={c}
                           className="rounded-full bg-secondary px-[9px] py-1 text-[10.5px] font-bold text-de9-slate"
                         >
-                          ✓ {c}
+                          <Glyph icon={Check} /> {c}
                         </span>
                       ))}
                     </div>
-                    <span className="text-[12.5px] font-extrabold text-de9-ink">{tarifLabel(p)}</span>
+                    <span className="num text-[12.5px] font-extrabold text-de9-ink">{tarifLabel(p)}</span>
                   </div>
 
                   <div className="mt-[13px] flex flex-wrap gap-2">
                     {p.contactPhone && (
                       <a
                         href={'tel:' + p.contactPhone}
-                        className="flex-[1_1_30%] rounded-[11px] border-[1.5px] border-de9-line bg-card p-2.5 text-center text-[12px] font-bold text-de9-slate no-underline"
+                        className="flex-[1_1_30%] rounded-full border border-de9-line bg-card p-2.5 text-center text-[12px] font-bold text-de9-slate no-underline"
                       >
-                        📞 {t('tel')}
+                        <Glyph icon={Phone} /> {t('tel')}
                       </a>
                     )}
                     {whatsAppHref && (
@@ -577,17 +604,17 @@ function SearchPageContent({ ctxCmd }: { ctxCmd: CtxCommande | null }) {
                         href={whatsAppHref}
                         target="_blank"
                         rel="noreferrer"
-                        className="flex-[1_1_30%] rounded-[11px] border-[1.5px] border-de9-line bg-card p-2.5 text-center text-[12px] font-bold text-de9-slate no-underline"
+                        className="flex-[1_1_30%] rounded-full border border-de9-line bg-card p-2.5 text-center text-[12px] font-bold text-de9-slate no-underline"
                       >
-                        💬 WhatsApp
+                        <Glyph icon={MessageCircle} /> WhatsApp
                       </a>
                     )}
                     {p.contactEmail && (
                       <a
                         href={'mailto:' + p.contactEmail}
-                        className="flex-[1_1_30%] rounded-[11px] border-[1.5px] border-de9-line bg-card p-2.5 text-center text-[12px] font-bold text-de9-slate no-underline"
+                        className="flex-[1_1_30%] rounded-full border border-de9-line bg-card p-2.5 text-center text-[12px] font-bold text-de9-slate no-underline"
                       >
-                        ✉️ Email
+                        <Glyph icon={Mail} /> Email
                       </a>
                     )}
                   </div>
@@ -596,14 +623,14 @@ function SearchPageContent({ ctxCmd }: { ctxCmd: CtxCommande | null }) {
                     <button
                       type="button"
                       onClick={() => openProfile(p.companyId ?? p.id)}
-                      className="flex-1 cursor-pointer rounded-[11px] bg-secondary p-2.5 text-center text-[12px] font-bold text-de9-slate"
+                      className="flex-1 cursor-pointer rounded-full bg-secondary p-2.5 text-center text-[12px] font-bold text-de9-slate"
                     >
                       {t('presVoirProfil')}
                     </button>
                     <button
                       type="button"
                       onClick={() => addCandidate(p)}
-                      className="flex-1 cursor-pointer rounded-[11px] bg-[#232838] p-2.5 text-center text-[12px] font-bold text-white"
+                      className="flex-1 cursor-pointer rounded-full bg-primary p-2.5 text-center text-[12px] font-bold text-primary-foreground"
                     >
                       {t('presDemanderDevis')}
                     </button>
@@ -631,7 +658,7 @@ function SearchPageContent({ ctxCmd }: { ctxCmd: CtxCommande | null }) {
                   type="button"
                   disabled={page <= 1}
                   onClick={() => setPage((n) => Math.max(1, n - 1))}
-                  className="cursor-pointer rounded-[11px] border-[1.5px] border-de9-line bg-card px-[13px] py-2 text-[12.5px] font-bold text-de9-slate disabled:cursor-default disabled:opacity-40"
+                  className="cursor-pointer rounded-full border border-de9-line bg-card px-[13px] py-2 text-[12.5px] font-bold text-de9-slate disabled:cursor-default disabled:opacity-40"
                 >
                   {t('pagePrecedent')}
                 </button>
@@ -639,7 +666,7 @@ function SearchPageContent({ ctxCmd }: { ctxCmd: CtxCommande | null }) {
                   type="button"
                   disabled={!meta.has_more_pages}
                   onClick={() => setPage((n) => n + 1)}
-                  className="cursor-pointer rounded-[11px] border-[1.5px] border-de9-line bg-card px-[13px] py-2 text-[12.5px] font-bold text-de9-slate disabled:cursor-default disabled:opacity-40"
+                  className="cursor-pointer rounded-full border border-de9-line bg-card px-[13px] py-2 text-[12.5px] font-bold text-de9-slate disabled:cursor-default disabled:opacity-40"
                 >
                   {t('pageSuivant')}
                 </button>

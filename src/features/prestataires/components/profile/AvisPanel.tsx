@@ -2,12 +2,24 @@
 // logic.ts profileReviews / setReviewFilter / openReviewPres. Rows and the
 // rating roll-up come from GET /prestataires/{companyId} (see fromFiche).
 import { useState } from 'react';
+import { Plus, Star } from 'lucide-react';
+import { Glyph } from '@/components/common/Glyph';
 import { cn } from '@/lib/utils';
 import { useT } from '@/lib/i18n';
-import { starsOf } from './lib';
 import type { AvisView } from './fromFiche';
 
 type ReviewFilter = 'all' | 'client' | 'de9de9';
+
+/** Five stars, the first `note` of them solid. */
+function Stars({ note }: { note: number }) {
+  return (
+    <span role="img" aria-label={`${note} / 5`} className="inline-flex gap-0.5">
+      {[1, 2, 3, 4, 5].map((n) => (
+        <Glyph key={n} icon={Star} filled={n <= note} />
+      ))}
+    </span>
+  );
+}
 
 const SRC_META: Record<'client' | 'de9de9', { key: 'sourceClient' | null; bg: string; fg: string }> = {
   client: { key: 'sourceClient', bg: '#EAF2FD', fg: '#2F7FD0' },
@@ -25,7 +37,6 @@ export function AvisPanel({ avis, onAddReview }: AvisPanelProps) {
 
   const list = filter === 'all' ? avis.rows : avis.rows.filter((r) => r.source === filter);
   const avgRating = avis.count ? avis.avg.toFixed(1) : '—';
-  const avgStars = starsOf(Math.round(avis.avg));
 
   const filters: { key: ReviewFilter; label: string; n: number }[] = [
     { key: 'all', label: t('tous'), n: avis.count },
@@ -40,9 +51,9 @@ export function AvisPanel({ avis, onAddReview }: AvisPanelProps) {
         <button
           type="button"
           onClick={onAddReview}
-          className="cursor-pointer rounded-[10px] bg-[#F4EFFB] px-[13px] py-2 text-[11.5px] font-bold text-[#7C57C7] dark:bg-[#7C57C7]/15 dark:text-[#A98BE8]"
+          className="cursor-pointer rounded-full bg-[#F4EFFB] px-[13px] py-2 text-[11.5px] font-bold text-[#7C57C7] dark:bg-[#7C57C7]/15 dark:text-[#A98BE8]"
         >
-          ＋ {t('ajouterAvis')}
+          <Glyph icon={Plus} /> {t('ajouterAvis')}
         </button>
       </div>
 
@@ -54,7 +65,9 @@ export function AvisPanel({ avis, onAddReview }: AvisPanelProps) {
           </div>
         </div>
         <div className="min-w-0 flex-1">
-          <div className="text-[17px] tracking-[1px] text-[#F2A93B]">{avgStars}</div>
+          <div className="text-[17px] text-[#F2A93B]">
+            <Stars note={Math.round(avis.avg)} />
+          </div>
           <div className="mt-2 flex flex-wrap gap-[7px]">
             {filters.map((rf) => {
               const active = filter === rf.key;
@@ -64,9 +77,9 @@ export function AvisPanel({ avis, onAddReview }: AvisPanelProps) {
                   type="button"
                   onClick={() => setFilter(rf.key)}
                   className={cn(
-                    'cursor-pointer rounded-full border-[1.5px] px-[11px] py-1.5 text-[11px] font-bold',
+                    'cursor-pointer rounded-full border px-[11px] py-1.5 text-[11px] font-bold',
                     active
-                      ? 'border-de9-ink bg-de9-ink text-white dark:text-[#151923]'
+                      ? 'border-secondary-container bg-secondary-container text-on-secondary-container'
                       : 'border-de9-line bg-card text-de9-slate',
                   )}
                 >
@@ -78,26 +91,24 @@ export function AvisPanel({ avis, onAddReview }: AvisPanelProps) {
         </div>
       </div>
 
-      <div className="mt-2.5 inline-block rounded-lg border border-[#F0E2C0] bg-[#FBF4E4] px-[11px] py-1.5 text-[10.5px] font-bold text-[#92702A] dark:border-[#92702A]/40 dark:bg-[#92702A]/15 dark:text-[#D9B36A]">
-        🔒 {t('avisVisib')}
-      </div>
-
       <div className="mt-[11px] flex flex-col gap-2.5">
         {list.map((rv) => {
           const sm = SRC_META[rv.source];
           return (
-            <div key={rv.id} className="rounded-xl border border-de9-line px-3.5 py-3">
+            <div key={rv.id} className="rounded-md border border-de9-line px-3.5 py-3">
               <div className="flex flex-wrap items-center justify-between gap-2.5">
                 <div className="flex items-center gap-2">
                   <span
-                    className="rounded-full px-[9px] py-[3px] text-[10px] font-extrabold"
+                    className="rounded-full px-[9px] py-[3px] text-[10px] font-extrabold tone-chip"
                     style={{ background: sm.bg, color: sm.fg }}
                   >
                     {sm.key ? t(sm.key) : 'de9de9'}
                   </span>
                   <span className="text-[12.5px] font-bold">{rv.auteur}</span>
                 </div>
-                <div className="text-[13px] tracking-[1px] text-[#F2A93B]">{starsOf(rv.note)}</div>
+                <div className="text-[13px] text-[#F2A93B]">
+                  <Stars note={rv.note} />
+                </div>
               </div>
               <div className="mt-[7px] text-[12.5px] leading-normal text-de9-slate">{rv.comment}</div>
               <div className="mt-1.5 text-[10.5px] text-de9-gray">{rv.sub}</div>

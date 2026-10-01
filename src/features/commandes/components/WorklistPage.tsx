@@ -5,6 +5,16 @@
 // (The mock twin of the endpoint lives in src/api/mock/worklist.ts.)
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import {
+  Calendar1,
+  Check,
+  Circle,
+  Diamond,
+  MessageSquareText,
+  Repeat,
+  Timer,
+  type LucideIcon,
+} from 'lucide-react';
 import { useL, useT } from '@/lib/i18n';
 import { useUiStore } from '@/stores/uiStore';
 import { cn } from '@/lib/utils';
@@ -16,6 +26,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Glyph } from '@/components/common/Glyph';
 import { useWorklist, useWorklistKpis, useToggleTraite, useWorklistFilters } from '../api/commandes';
 import { toast } from 'sonner';
 import { problemMessage } from '@/api/problem';
@@ -164,31 +175,31 @@ export function WorklistPage() {
   /** Clicking an active chip clears it, so every chip is its own toggle. */
   const cadenceChip = (value: WorklistCadence) => ({
     label: value === 'recurrent' ? t('commonRecurrent') : t('commonPonctuel'),
-    icon: value === 'recurrent' ? '↻' : '•',
+    icon: value === 'recurrent' ? Repeat : Calendar1,
     active: filter.cadence === value,
     onClick: () => setField('cadence', filter.cadence === value ? 'all' : value),
   });
-  const traiteChip = (value: 'true' | 'false', label: string, icon: string) => ({
+  const traiteChip = (value: 'true' | 'false', label: string, icon: LucideIcon) => ({
     label,
     icon,
     active: filter.traite === value,
     onClick: () => setField('traite', filter.traite === value ? 'all' : value),
   });
-  const filterChips: { label: string; icon: string; active: boolean; onClick: () => void }[] = [
+  const filterChips: { label: string; icon: LucideIcon; active: boolean; onClick: () => void }[] = [
     {
       label: t('worklistNecessiteDe9'),
-      icon: '◆',
+      icon: Diamond,
       active: filter.needsDe9de9,
       onClick: () => setField('needsDe9de9', !filter.needsDe9de9),
     },
     {
       label: t('worklistFiltreEnRetard'),
-      icon: '⏱',
+      icon: Timer,
       active: filter.enRetard,
       onClick: () => setField('enRetard', !filter.enRetard),
     },
-    traiteChip('false', t('worklistFiltreATraiter'), '○'),
-    traiteChip('true', t('worklistFiltreTraitees'), '✓'),
+    traiteChip('false', t('worklistFiltreATraiter'), Circle),
+    traiteChip('true', t('worklistFiltreTraitees'), Check),
     cadenceChip('recurrent'),
     cadenceChip('ponctuel'),
   ];
@@ -296,7 +307,7 @@ export function WorklistPage() {
             key={k.label}
             onClick={() => k.statut && toggleStatut(k.statut)}
             className={cn(
-              'rounded-2xl border-[1.5px] bg-card px-[17px] py-[15px] shadow-[0_6px_18px_rgba(38,50,69,.04)]',
+              'rounded-md border bg-card px-[17px] py-[15px]',
               k.statut ? 'cursor-pointer' : 'cursor-default',
               k.alert ? 'border-[#F6D2D4] dark:border-[#E7464E]/40' : 'border-de9-line',
             )}
@@ -320,11 +331,11 @@ export function WorklistPage() {
             key={i}
             onClick={f.onClick}
             className={cn(
-              'flex cursor-pointer items-center gap-1.5 rounded-full border-[1.5px] px-[15px] py-[9px] text-[12.5px] font-bold',
-              f.active ? 'border-[#232838] bg-[#232838] text-white' : 'border-de9-line bg-card text-de9-slate',
+              'flex cursor-pointer items-center gap-1.5 rounded-full border px-[15px] py-[9px] text-[12.5px] font-bold',
+              f.active ? 'border-secondary-container bg-secondary-container text-on-secondary-container' : 'border-de9-line bg-card text-de9-slate',
             )}
           >
-            <span className="text-[13px]">{f.icon}</span>
+            <Glyph icon={f.icon} className="text-[13px]" />
             {f.label}
           </div>
         ))}
@@ -336,11 +347,11 @@ export function WorklistPage() {
           value={searchInput}
           onChange={(e) => setSearchInput(e.target.value)}
           placeholder={t('rechercher')}
-          className="h-auto w-auto min-w-0 flex-1 rounded-[11px] border-[1.5px] border-de9-line bg-card px-3.5 py-2.5 text-[13px] text-de9-ink shadow-none outline-none sm:flex-[0_0_250px] md:text-[13px]"
+          className="h-auto w-full min-w-0 flex-none rounded-xs border border-outline bg-card px-3.5 py-2.5 text-[13px] text-de9-ink shadow-none outline-none sm:w-auto sm:flex-[0_0_300px] md:text-[13px]"
         />
         {selects.map((sel) => (
           <Select key={sel.field} value={sel.value} onValueChange={(v) => setFilterField(sel.field, v)}>
-            <SelectTrigger className="h-auto w-full cursor-pointer gap-1.5 rounded-[11px] border-[1.5px] border-de9-line bg-card px-[13px] py-2.5 text-[12.5px] font-semibold text-de9-slate shadow-none sm:w-auto">
+            <SelectTrigger className="h-auto w-[calc(50%-5px)] cursor-pointer gap-1.5 rounded-xs border border-outline bg-card px-[13px] py-2.5 text-[12.5px] font-semibold text-de9-slate shadow-none sm:w-auto">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -355,7 +366,7 @@ export function WorklistPage() {
       </div>
 
       {/* Rows table */}
-      <div className="mt-4 overflow-hidden rounded-[18px] border border-de9-line bg-card shadow-[0_10px_30px_rgba(38,50,69,.06)]">
+      <div className="mt-4 overflow-hidden rounded-md border border-de9-line bg-card">
         <div className={cn('overflow-x-auto transition-opacity', isPlaceholderData && 'opacity-60')}>
         <div
           className={cn(
@@ -376,7 +387,7 @@ export function WorklistPage() {
         {isPending && (
           <div className="flex flex-col gap-3 p-[22px]">
             {[0, 1, 2, 3].map((i) => (
-              <div key={i} className="h-[46px] animate-pulse rounded-xl bg-secondary" />
+              <div key={i} className="h-[46px] animate-pulse rounded-md bg-secondary" />
             ))}
           </div>
         )}
@@ -446,16 +457,16 @@ export function WorklistPage() {
                 <div>
                   <div className="text-[13.5px] font-semibold">{c.serviceLabel}</div>
                   <div className="flex items-center gap-[5px] text-[11.5px] text-de9-gray">
-                    {c.kind === 'recurrent' ? '↻' : '•'}{' '}
+                    <Glyph icon={c.kind === 'recurrent' ? Repeat : Calendar1} />
                     {c.kind === 'recurrent' ? t('commonRecurrent') : t('commonPonctuel')} · {c.wilaya ?? '—'}
                   </div>
                 </div>
                 <div>
                   <span
-                    className="inline-flex items-center gap-1.5 rounded-full px-[11px] py-1.5 text-xs font-bold"
+                    className="inline-flex items-center gap-1.5 rounded-full px-[11px] py-1.5 text-xs font-bold tone-chip"
                     style={{ background: badge.bg, color: badge.fg }}
                   >
-                    <span className="inline-flex min-w-[18px] flex-none items-center justify-center rounded-md bg-[#232838] px-[5px] py-[2px] text-[9.5px] font-extrabold leading-[1.4] tracking-[.02em] text-white">
+                    <span className="inline-flex min-w-[18px] flex-none items-center justify-center rounded-xs bg-inverse-surface px-[5px] py-[2px] text-[9.5px] font-extrabold leading-[1.4] tracking-[.02em] text-inverse-on-surface">
                       {c.currentStatus.code}
                     </span>
                     {c.currentStatus.label}
@@ -470,7 +481,7 @@ export function WorklistPage() {
                     {ballLabel(c.ball, t)}
                   </span>
                 </div>
-                <div className={cn('text-[13px] font-semibold', c.prestataireName ? 'text-de9-ink' : 'text-[#C0C8D0]')}>
+                <div className={cn('text-[13px] font-semibold', c.prestataireName ? 'text-de9-ink' : 'text-de9-faint')}>
                   <span
                     onClick={(e) => {
                       e.stopPropagation();
@@ -483,7 +494,7 @@ export function WorklistPage() {
                 </div>
                 <div>
                   <div className={cn('text-[13px] font-bold', slaClass)}>{slaLabel}</div>
-                  <div className="text-[11px] text-[#B0B8C2]">{slaSub}</div>
+                  <div className="text-[11px] text-de9-faint">{slaSub}</div>
                 </div>
                 <div
                   onClick={(e) => {
@@ -500,11 +511,11 @@ export function WorklistPage() {
                 >
                   <div
                     className={cn(
-                      'flex h-5 w-5 flex-none items-center justify-center rounded-md border-[1.8px] text-xs text-white',
+                      'flex h-5 w-5 flex-none items-center justify-center rounded-sm border-2 text-xs text-white',
                       isHandled ? 'border-[#2FA86A] bg-[#2FA86A]' : 'border-[#D7DEE4] bg-card dark:border-[#3A4459]',
                     )}
                   >
-                    {isHandled ? '✓' : ''}
+                    {isHandled && <Glyph icon={Check} className="stroke-[3]" />}
                   </div>
                   <span
                     className={cn(
@@ -522,10 +533,10 @@ export function WorklistPage() {
                   }}
                   className={cn(
                     'flex cursor-pointer items-center gap-[5px] text-[13px] font-bold',
-                    c.noteCount ? 'text-[#7C57C7] dark:text-[#A98BE8]' : 'text-[#C0C8D0]',
+                    c.noteCount ? 'text-[#7C57C7] dark:text-[#A98BE8]' : 'text-de9-faint',
                   )}
                 >
-                  <span className="text-base">💬</span>
+                  <Glyph icon={MessageSquareText} className="text-base" />
                   {c.noteCount}
                 </div>
               </div>
@@ -552,7 +563,7 @@ export function WorklistPage() {
                 type="button"
                 disabled={page <= 1}
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
-                className="cursor-pointer rounded-[11px] border-[1.5px] border-de9-line bg-card px-[13px] py-2 text-[12.5px] font-bold text-de9-slate disabled:cursor-default disabled:opacity-40"
+                className="cursor-pointer rounded-full border border-de9-line bg-card px-[13px] py-2 text-[12.5px] font-bold text-de9-slate disabled:cursor-default disabled:opacity-40"
               >
                 {t('pagePrecedent')}
               </button>
@@ -560,7 +571,7 @@ export function WorklistPage() {
                 type="button"
                 disabled={!meta.has_more_pages}
                 onClick={() => setPage((p) => p + 1)}
-                className="cursor-pointer rounded-[11px] border-[1.5px] border-de9-line bg-card px-[13px] py-2 text-[12.5px] font-bold text-de9-slate disabled:cursor-default disabled:opacity-40"
+                className="cursor-pointer rounded-full border border-de9-line bg-card px-[13px] py-2 text-[12.5px] font-bold text-de9-slate disabled:cursor-default disabled:opacity-40"
               >
                 {t('pageSuivant')}
               </button>
