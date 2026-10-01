@@ -7,6 +7,7 @@
 // validate or refuse each received devis (POST /devis/{devisId}/valider | /refuser),
 // then propose the validated ones to the client (POST /appels-offres/{rfqId}/devis/proposer).
 import { useState } from 'react';
+import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { useT, type TKey } from '@/lib/i18n';
@@ -108,6 +109,22 @@ function actionError(err: unknown, t: Tr): string {
   });
 }
 
+/**
+ * Where « Planifier » must go after a refusal: 409 `commande_en_execution`
+ * (someone planned it meanwhile) names the live row in `newId`; 409
+ * `partially_applied` the visit to plan in `visitId`; 404 the list.
+ */
+function planifierRedirect(err: unknown): string | null {
+  if (!axios.isAxiosError(err)) return null;
+  const status = err.response?.status;
+  const body = (err.response?.data ?? {}) as { code?: unknown; newId?: unknown; visitId?: unknown };
+  if (status === 404) return '/commandes';
+  if (status !== 409) return null;
+  const target =
+    body.code === 'commande_en_execution' ? body.newId : body.code === 'partially_applied' ? body.visitId : null;
+  return typeof target === 'string' && target ? '/commandes/' + target : null;
+}
+
 interface FieldProps {
   label: string;
   value: string;
@@ -183,7 +200,9 @@ export function WorklistSummary({ detail: d, onRefresh, refreshing = false }: Wo
   const next = d.nextAction;
   const form = next?.form ?? null;
   const code = d.currentStatus.code;
-  const visitStep = VISIT_FORM_STEP[code] ?? null;
+  // An S5 commande waiting for its first occurrence (`form: planifier-occurrence`,
+  // no visit yet) takes the same date form as a V0 visit.
+  const visitStep = VISIT_FORM_STEP[code] ?? (form === 'planifier-occurrence' ? 'reprogram' : null);
   // S4 → V1: the server marks the rows the client may retain with `choosable`,
   // and every choosable row observed carries a devisId. With none of them the
   // step has nothing to act on, so it stays locked rather than posting a choice
@@ -595,11 +614,20 @@ export function WorklistSummary({ detail: d, onRefresh, refreshing = false }: Wo
           defaultDate={d.nextVisitAt ? d.nextVisitAt.slice(0, 10) : new Date().toISOString().slice(0, 10)}
           onSubmit={async (v) => {
             try {
-              await planifier.mutateAsync({ date: v.date, time: v.time });
+              const updated = await planifier.mutateAsync({ date: v.date, time: v.time });
               toast.success(t('consoleToastOccPlanifiee'));
               setVisitForm(null);
+              // S5 → V1 creates the visit: the commande now lives on that row — follow it.
+              // On a V0 row the id does not change.
+              const nextId = updated.newId ?? updated.id;
+              if (nextId && nextId !== d.id) navigate('/commandes/' + nextId, { replace: true });
             } catch (err) {
               toast.error(actionError(err, t));
+              const target = planifierRedirect(err);
+              if (target) {
+                setVisitForm(null);
+                navigate(target, { replace: target !== '/commandes' });
+              }
             }
           }}
         />
