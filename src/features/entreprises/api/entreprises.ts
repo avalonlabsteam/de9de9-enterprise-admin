@@ -4,7 +4,7 @@ import { asRecord, pickText } from '@/lib/pick';
 
 // GET /companies/{companyId} — the company as de9de9 sees it. No guide lists
 // its fields (the KYC screen reads and PUTs it back raw), so only what is
-// there is shown.
+// there is shown. The two access flags are the exception (guide « Accès »).
 
 export interface EntrepriseSummary {
   id: string;
@@ -16,6 +16,15 @@ export interface EntrepriseSummary {
   nif: string | null;
   nis: string | null;
   creeLe: string | null;
+  /** B2B access — false = suspended by de9de9. Null on an API that predates the flag. */
+  b2bEnabled: boolean | null;
+  /** B2C access — true = granted (the bridge to the de9de9 app). Null likewise. */
+  b2cEnabled: boolean | null;
+}
+
+function flagOf(raw: unknown, key: string): boolean | null {
+  const value = asRecord(raw)?.[key];
+  return typeof value === 'boolean' ? value : null;
 }
 
 function summaryOf(companyId: string, raw: unknown): EntrepriseSummary {
@@ -29,6 +38,8 @@ function summaryOf(companyId: string, raw: unknown): EntrepriseSummary {
     nif: pickText(raw, 'nif'),
     nis: pickText(raw, 'nis'),
     creeLe: pickText(raw, 'createdAt', 'creeLe', 'dateInscription'),
+    b2bEnabled: flagOf(raw, 'b2bEnabled'),
+    b2cEnabled: flagOf(raw, 'b2cEnabled'),
   };
 }
 

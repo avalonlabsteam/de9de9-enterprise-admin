@@ -30,7 +30,8 @@ export type Fiche = z.infer<typeof ficheSchema>;
 export const avisResumeSchema = z.object({
   prestataireCompanyId: z.string().nullish(),
   reviewCount: z.number(),
-  averageRating: z.number(),
+  /** Null until the prestataire has at least one review (verified live). */
+  averageRating: z.number().nullish(),
   clientCount: z.number(),
   de9de9Count: z.number(),
   ratingHistogram: z.record(z.string(), z.number()).nullish(),

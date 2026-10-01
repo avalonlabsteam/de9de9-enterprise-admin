@@ -813,6 +813,20 @@ passthrough('PUT', '/companies/:companyId');
 // The dossier's history.
 passthrough('GET', '/audit/Company/:companyId');
 
+// ===================== Accès B2C / B2B (admin) =====================
+// Real API only — no mock twin. The two b2c routes are the fiche's one-company
+// grant (resume) and revoke (suspend); their names are historical.
+passthrough('GET', '/admin/acces-entreprises');
+passthrough('GET', '/admin/acces-entreprises/compteurs');
+passthrough('POST', '/admin/acces-entreprises/b2c/accorder');
+passthrough('POST', '/admin/acces-entreprises/b2c/retirer');
+passthrough('POST', '/admin/acces-entreprises/b2b/activer');
+passthrough('POST', '/admin/acces-entreprises/b2b/desactiver');
+passthrough('GET', '/admin/companies/:id/legacy-sync');
+passthrough('POST', '/admin/companies/:id/legacy-sync/retry');
+passthrough('POST', '/admin/companies/:id/b2c/suspend');
+passthrough('POST', '/admin/companies/:id/b2c/resume');
+
 // ===================== Alertes (admin bell) =====================
 // Real-only, no mock twin: platform rows, their shared read state and the
 // counters live on the server and are pushed over /hubs/notifications.
