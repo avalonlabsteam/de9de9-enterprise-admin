@@ -19,6 +19,8 @@ import type { CreditLedgerItem, CreditsLedgerParams, CreditsPeriod, CreditType, 
 import { exportCreditsCsv, useCreditMovement, useCreditsFiltres, useCreditsKpis, useCreditsLedger } from '../api/credits';
 import { RechargeModal, type RechargeModalState } from './RechargeModal';
 import { PieceViewer, type PieceView } from './PieceViewer';
+import { rel } from '@/features/comptabilite/api/comptabilite';
+import { PdfPreviewDialog, type PdfPreview } from '@/features/comptabilite/components/PdfPreviewDialog';
 
 /* ---- dates: re-derived from ISO so the day name follows the UI language (the
    server's `date` string is pre-formatted in French) ---- */
@@ -102,17 +104,24 @@ function MovementDialog({
   onClose,
   onOpenFacture,
   onOpenPiece,
+  onOpenRecu,
+  onOpenPaiement,
 }: {
   id: string;
   onClose: () => void;
   onOpenFacture: (invoiceId: string) => void;
   onOpenPiece: (piece: PieceView) => void;
+  /** A card payment's receipt (guide 18 §11). */
+  onOpenRecu: (recu: PdfPreview) => void;
+  /** « Voir dans Comptabilité ». */
+  onOpenPaiement: (paiementId: string) => void;
 }) {
   const t = useT();
   const lang = useLangStore((s) => s.lang);
   const q = useCreditMovement(id);
   const m = q.data;
   const recharge = m?.recharge;
+  const online = recharge?.paiementEnLigne;
   const debit = m?.debit;
   const factureId = debit?.factureId;
 
@@ -183,14 +192,67 @@ function MovementDialog({
             {recharge && (
               <>
                 {recharge.methode && <Line label={t('rMethode')}>{recharge.methode}</Line>}
+                {online && (
+                  <>
+                    {online.payeurNom && (
+                      <Line label={t('comptaPayePar')}>
+                        {online.payeurNom}
+                        {online.payeurEmail && (
+                          <span className="block text-[11.5px] font-normal text-de9-gray">{online.payeurEmail}</span>
+                        )}
+                      </Line>
+                    )}
+                    {online.orderNumber && (
+                      <Line label={t('comptaNumCommande')}>
+                        <span className="font-mono text-[12px]">{online.orderNumber}</span>
+                      </Line>
+                    )}
+                    {online.approvalCode && (
+                      <Line label={t('comptaNumAutorisation')}>
+                        <span className="font-mono text-[12px]">{online.approvalCode}</span>
+                      </Line>
+                    )}
+                    {online.panMasque && (
+                      <Line label={t('comptaCarte')}>
+                        <span className="font-mono text-[12px]">{online.panMasque}</span>
+                      </Line>
+                    )}
+                  </>
+                )}
                 <div className="flex flex-wrap gap-2">
-                  {piece(
-                    t('pieceJustif'),
-                    recharge.justificatifFileName,
-                    recharge.justificatifDocumentId ?? recharge.justificatifUrl,
-                  )}
+                  {/* A card payment's proof is the bank's approval: its receipt, nothing to upload. */}
+                  {online
+                    ? online.recuHref && (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            onOpenRecu({
+                              title: `${t('comptaRecuPdf')} · ${online.reference ?? m.reference ?? ''}`,
+                              url: rel(online.recuHref ?? ''),
+                              fileName: `recu-${online.reference ?? m.reference ?? 'paiement'}.pdf`,
+                            })
+                          }
+                          className="inline-flex cursor-pointer items-center gap-1 rounded-full border border-[#BFE6D6] bg-[#E7F6EE] px-2.5 py-1 text-[11px] font-bold text-de9-teal-dark dark:border-[#2FA86A]/40 dark:bg-[#2FA86A]/15"
+                        >
+                          🧾 {t('comptaRecuPdf')}
+                        </button>
+                      )
+                    : piece(
+                        t('pieceJustif'),
+                        recharge.justificatifFileName,
+                        recharge.justificatifDocumentId ?? recharge.justificatifUrl,
+                      )}
                   {piece(t('pieceFacture'), recharge.factureFileName, recharge.factureDocumentId ?? recharge.factureUrl)}
                 </div>
+                {online && (
+                  <button
+                    type="button"
+                    onClick={() => onOpenPaiement(online.id)}
+                    className="cursor-pointer self-start text-[12px] font-bold text-[#2F7FD0] dark:text-[#7EB5EC]"
+                  >
+                    {t('comptaVoirDansCompta')} →
+                  </button>
+                )}
               </>
             )}
 
@@ -252,6 +314,7 @@ export function CreditsPage() {
   const [tri, setTri] = useState('');
   const [modal, setModal] = useState<RechargeModalState | null>(null);
   const [piece, setPiece] = useState<PieceView | null>(null);
+  const [recu, setRecu] = useState<PdfPreview | null>(null);
   // One movement's detail is addressable (?mouvement=<id>): an alert opens it (guide 11a §6, adm.credits).
   const detailId = searchParams.get('mouvement');
   const setDetailId = (movementId: string | null): void => {
@@ -376,6 +439,23 @@ export function CreditsPage() {
       </button>
     );
   };
+
+  /* ---- « 🧾 Reçu » — an online payment's receipt (guide 18 §11) ---- */
+  const recuChip = (p: NonNullable<CreditLedgerItem['paiementEnLigne']>): ReactElement => (
+    <button
+      type="button"
+      onClick={stop(() =>
+        setRecu({
+          title: `${t('comptaRecuPdf')} · ${p.reference}`,
+          url: rel(p.recuHref),
+          fileName: `recu-${p.reference}.pdf`,
+        }),
+      )}
+      className="inline-flex cursor-pointer items-center gap-1 rounded-full border border-[#BFE6D6] bg-[#E7F6EE] px-2 py-1 text-[10px] font-bold text-de9-teal-dark dark:border-[#2FA86A]/40 dark:bg-[#2FA86A]/15"
+    >
+      🧾 {t('comptaRecu')}
+    </button>
+  );
 
   return (
     <div>
@@ -595,10 +675,15 @@ export function CreditsPage() {
                       )}
                     >
                       <div className="text-[12.5px] text-de9-slate">{dateLabel(e.occurredAt, lang)}</div>
-                      <div>
+                      <div className="flex flex-wrap items-center gap-1.5">
                         <span className={cn('rounded-full px-[9px] py-1 text-[11px] font-bold', badge.cls)}>
                           {t(badge.labelKey)}
                         </span>
+                        {e.canal === 'en_ligne' && (
+                          <span className="rounded-full bg-[#EAF2FD] px-[9px] py-1 text-[11px] font-bold text-[#2F7FD0] dark:bg-[#2F7FD0]/15 dark:text-[#7EB5EC]">
+                            🌐 {t('comptaEnLigne')}
+                          </span>
+                        )}
                       </div>
                       <div className="text-[13px] font-semibold">
                         {e.client === 'de9de9' ? (
@@ -630,7 +715,10 @@ export function CreditsPage() {
                         )}
                         {isRech && (
                           <div className="mt-1.5 flex flex-wrap gap-[5px]">
-                            {pieceChip(e, e.justif, t('justifCourt'), t('pieceJustif'))}
+                            {/* Paid online: the bank's receipt stands in for the justificatif. */}
+                            {e.canal === 'en_ligne' && e.paiementEnLigne
+                              ? recuChip(e.paiementEnLigne)
+                              : pieceChip(e, e.justif, t('justifCourt'), t('pieceJustif'))}
                             {pieceChip(e, e.facture, t('factureCourt'), t('pieceFacture'))}
                           </div>
                         )}
@@ -710,9 +798,15 @@ export function CreditsPage() {
             setDetailId(null);
             setPiece(p);
           }}
+          onOpenRecu={(r) => {
+            setDetailId(null);
+            setRecu(r);
+          }}
+          onOpenPaiement={(paiementId) => navigate('/comptabilite?paiement=' + encodeURIComponent(paiementId))}
         />
       )}
       {piece && <PieceViewer piece={piece} onClose={() => setPiece(null)} />}
+      {recu && <PdfPreviewDialog preview={recu} onClose={() => setRecu(null)} />}
     </div>
   );
 }

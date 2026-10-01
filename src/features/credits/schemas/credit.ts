@@ -54,6 +54,12 @@ export const creditLedgerItemSchema = z.object({
   beneficiaireId: z.string().nullish(),
   /** Recharges only. */
   methode: z.string().nullish(),
+  /** « en_ligne » (a card payment, guide 18) · « manuel » on the other recharges · null on deb / vers. */
+  canal: z.string().nullish(),
+  /** Null unless `canal` is en_ligne. `recuHref` is a host path (/api/v1/…). */
+  paiementEnLigne: z
+    .object({ id: z.string(), reference: z.string(), payeurNom: z.string().nullish(), recuHref: z.string() })
+    .nullish(),
 });
 export type CreditLedgerItem = z.infer<typeof creditLedgerItemSchema>;
 
@@ -203,6 +209,21 @@ export const creditMovementSchema = z.object({
       factureUrl: z.string().nullish(),
       effectueParUserId: z.string().nullish(),
       rechargeId: z.string().nullish(),
+      /** A card payment (guide 18 §11): the bank's proof replaces the justificatif. */
+      paiementEnLigne: z
+        .object({
+          id: z.string(),
+          reference: z.string().nullish(),
+          orderNumber: z.string().nullish(),
+          orderId: z.string().nullish(),
+          approvalCode: z.string().nullish(),
+          panMasque: z.string().nullish(),
+          payeurNom: z.string().nullish(),
+          payeurEmail: z.string().nullish(),
+          recuHref: z.string().nullish(),
+          detailHref: z.string().nullish(),
+        })
+        .nullish(),
     })
     .nullish(),
 });

@@ -546,6 +546,19 @@ passthrough('GET', '/credits/clients/:clientId');
 passthrough('GET', '/credits/:movementId');
 passthrough('POST', '/credits/recharges');
 passthrough('POST', '/credits/recharges/:rechargeId/pieces');
+
+// ===================== Comptabilité — paiements en ligne (guide 18) =====================
+// Real-only, no mock twin. Literal segments (totaux, export) outrank ':id'.
+passthrough('GET', '/comptabilite/paiements');
+passthrough('GET', '/comptabilite/paiements/totaux');
+passthrough('GET', '/comptabilite/paiements/export');
+passthrough('GET', '/comptabilite/paiements/:id');
+passthrough('POST', '/comptabilite/paiements/:id/reverifier');
+passthrough('POST', '/comptabilite/paiements/:id/revue/crediter');
+passthrough('POST', '/comptabilite/paiements/:id/revue/rejeter');
+passthrough('GET', '/comptabilite/paiements/:id/recu');
+passthrough('GET', '/comptabilite/paiements/:id/recu-banque');
+passthrough('GET', '/comptabilite/bilan');
 // Stored documents (KYC pieces, contracts, recharge pieces) — the download
 // every document's `url` points at.
 passthrough('GET', '/documents/:documentId/download');

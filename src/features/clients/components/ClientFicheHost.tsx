@@ -6,7 +6,7 @@ import type { ChangeEvent, ReactNode } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Dialog as DialogPrimitive } from 'radix-ui';
 import { toast } from 'sonner';
-import { cn } from '@/lib/utils';
+import { cn, isLiveId } from '@/lib/utils';
 import { Dialog, DialogOverlay, DialogPortal, DialogTitle } from '@/components/ui/dialog';
 import { useL, useT } from '@/lib/i18n';
 import { uiActions } from '@/stores/uiStore';
@@ -53,7 +53,8 @@ export function ClientFicheHost() {
     });
   };
 
-  if (!client) return null;
+  // A company id is another page's filter (Comptabilité's ?client=<companyId>), never a client name.
+  if (!client || isLiveId(client)) return null;
   return <ClientFiche key={client} name={client} initialTab={initialTab} onClose={close} />;
 }
 
@@ -140,6 +141,8 @@ function ClientFiche({
     () => (creditsQ.data ?? []).filter((r) => r.client === name),
     [creditsQ.data, name],
   );
+  // Live ledger rows carry the client's company id: the « Paiements à vérifier » link filters on it.
+  const companyId = myCredits.map((r) => r['clientId']).find((v): v is string => typeof v === 'string' && !!v);
   const balRow = myCredits.find((r) => r.solde && r.solde !== '—');
   const balance = balRow ? balRow.solde : '—';
 
@@ -460,6 +463,18 @@ function ClientFiche({
                       {balance} <span className="text-xs text-de9-gray">{t('credits')}</span>
                     </div>
                   </div>
+                  {/* Online card payments waiting on a review (guide 18 §12). */}
+                  <button
+                    type="button"
+                    onClick={() =>
+                      navigate(
+                        `/comptabilite?statut=a_verifier${companyId ? `&client=${encodeURIComponent(companyId)}` : ''}`,
+                      )
+                    }
+                    className="cursor-pointer self-start text-[12.5px] font-bold text-de9-teal-dark hover:underline"
+                  >
+                    {t('comptaPaiementsAVerifier')} ›
+                  </button>
                   <div>
                     <SectionLabel>{t('rechargeTitle')}</SectionLabel>
                     <div className="flex flex-col gap-2">
