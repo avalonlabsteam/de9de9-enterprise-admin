@@ -6,8 +6,20 @@ import type { ChangeEvent, ReactNode } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Dialog as DialogPrimitive } from 'radix-ui';
 import { toast } from 'sonner';
+import {
+  Eye,
+  FileText,
+  Mail,
+  MapPin,
+  MessageCircle,
+  Phone,
+  Plus,
+  ReceiptText,
+  TriangleAlert,
+} from 'lucide-react';
 import { cn, isLiveId } from '@/lib/utils';
 import { Dialog, DialogOverlay, DialogPortal, DialogTitle } from '@/components/ui/dialog';
+import { Glyph } from '@/components/common/Glyph';
 import { useL, useT } from '@/lib/i18n';
 import { uiActions } from '@/stores/uiStore';
 import { useClientKyc, useCommandes, useCredits, useFactures } from '../api/clients';
@@ -86,7 +98,7 @@ function PanelSkeleton({ rows = 3 }: { rows?: number }) {
   return (
     <div className="flex flex-col gap-[9px]">
       {Array.from({ length: rows }).map((_, i) => (
-        <div key={i} className="h-[58px] animate-pulse rounded-[13px] bg-secondary" />
+        <div key={i} className="h-[58px] animate-pulse rounded-md bg-secondary" />
       ))}
     </div>
   );
@@ -95,7 +107,7 @@ function PanelSkeleton({ rows = 3 }: { rows?: number }) {
 function ErrorBlock() {
   const l = useL();
   return (
-    <div className="rounded-xl bg-[#FDECEC] px-3.5 py-3 text-[12.5px] font-bold text-de9-red dark:bg-[#E7464E]/15">
+    <div className="rounded-md bg-[#FDECEC] px-3.5 py-3 text-[12.5px] font-bold text-de9-red dark:bg-[#E7464E]/15">
       {l('Erreur de chargement des données', 'خطأ في تحميل البيانات')}
     </div>
   );
@@ -228,12 +240,12 @@ function ClientFiche({
           onInteractOutside={(e) => {
             if (piece) e.preventDefault();
           }}
-          className="fixed start-1/2 top-1/2 z-[92] max-h-[90vh] w-full max-w-[560px] -translate-x-1/2 -translate-y-1/2 animate-sheet-up overflow-y-auto rounded-[22px] bg-card text-de9-ink shadow-[0_30px_70px_rgba(20,30,45,.35)] outline-none sm:w-[calc(100%-48px)] rtl:translate-x-1/2"
+          className="fixed start-1/2 top-1/2 z-[92] max-h-[90vh] w-full max-w-[560px] -translate-x-1/2 -translate-y-1/2 animate-sheet-up overflow-y-auto rounded-xl bg-card text-de9-ink shadow-e3 outline-none sm:w-[calc(100%-48px)] rtl:translate-x-1/2"
         >
           {/* ---------- header ---------- */}
           <div className="border-b border-de9-line px-4 py-6 sm:px-[26px]">
             <div className="flex items-center gap-3.5">
-              <div className="flex h-14 w-14 flex-none items-center justify-center rounded-[15px] bg-[#2F7FD0] text-[18px] font-extrabold text-white">
+              <div className="flex h-14 w-14 flex-none items-center justify-center rounded-md bg-[#2F7FD0] text-[18px] font-extrabold text-white">
                 {clientInit(name)}
               </div>
               <div className="min-w-0 flex-1">
@@ -242,49 +254,51 @@ function ClientFiche({
                     {name}
                   </DialogTitle>
                   <span
-                    className="rounded-full px-2 py-[3px] text-[10px] font-extrabold"
+                    className="rounded-full px-2 py-[3px] text-[10px] font-extrabold tone-chip"
                     style={{ background: headerKyc.bg, color: headerKyc.fg }}
                   >
-                    {headerKyc.icon} KYC
+                    <Glyph icon={headerKyc.icon} /> KYC
                   </span>
                 </div>
                 <div className="mt-[3px] text-[12.5px] text-de9-gray">
-                  {first?.service ?? '—'} · 📍 {first?.wilaya ?? '—'}
+                  {first?.service ?? '—'} · <Glyph icon={MapPin} /> {first?.wilaya ?? '—'}
                 </div>
               </div>
               <div className="flex-none text-end">
-                <div className="text-[17px] font-extrabold text-de9-teal-dark">{balance}</div>
+                <div className="text-[17px] font-extrabold text-de9-teal-dark">
+                  <span className="num">{balance}</span>
+                </div>
                 <div className="text-[10px] text-de9-gray">{t('soldeCredits')}</div>
               </div>
             </div>
             <div className="mt-4 flex gap-[9px]">
               <a
                 href={tel}
-                className="flex-1 rounded-xl border-[1.5px] border-de9-line bg-card py-[11px] text-center text-[12.5px] font-bold text-de9-slate no-underline"
+                className="flex-1 rounded-full border border-de9-line bg-card py-[11px] text-center text-[12.5px] font-bold text-de9-slate no-underline"
               >
-                📞 Tél
+                <Glyph icon={Phone} /> Tél
               </a>
               <a
                 href={wa}
                 target="_blank"
                 rel="noreferrer"
-                className="flex-1 rounded-xl border-[1.5px] border-de9-line bg-card py-[11px] text-center text-[12.5px] font-bold text-de9-slate no-underline"
+                className="flex-1 rounded-full border border-de9-line bg-card py-[11px] text-center text-[12.5px] font-bold text-de9-slate no-underline"
               >
-                💬 WhatsApp
+                <Glyph icon={MessageCircle} /> WhatsApp
               </a>
               <a
                 href={mail}
-                className="flex-1 rounded-xl border-[1.5px] border-de9-line bg-card py-[11px] text-center text-[12.5px] font-bold text-de9-slate no-underline"
+                className="flex-1 rounded-full border border-de9-line bg-card py-[11px] text-center text-[12.5px] font-bold text-de9-slate no-underline"
               >
-                ✉️ Email
+                <Glyph icon={Mail} /> Email
               </a>
             </div>
             <button
               type="button"
               onClick={viewAsClient}
-              className="mt-[9px] w-full cursor-pointer rounded-xl bg-[#EAF2FD] py-[11px] text-center text-[12.5px] font-bold text-[#2F7FD0] dark:bg-[#2F7FD0]/15 dark:text-[#7EB5EC]"
+              className="mt-[9px] w-full cursor-pointer rounded-full bg-[#EAF2FD] py-[11px] text-center text-[12.5px] font-bold text-[#2F7FD0] dark:bg-[#2F7FD0]/15 dark:text-[#7EB5EC]"
             >
-              👁 {t('voirEnTantClient')}
+              <Glyph icon={Eye} /> {t('voirEnTantClient')}
             </button>
           </div>
 
@@ -296,8 +310,8 @@ function ClientFiche({
                 type="button"
                 onClick={() => setTab(tb.key)}
                 className={cn(
-                  'flex-none cursor-pointer rounded-t-[10px] px-[13px] py-[9px] text-xs font-bold',
-                  tab === tb.key ? 'bg-[#232838] text-white' : 'bg-card text-de9-slate',
+                  'flex-none cursor-pointer rounded-t-full px-[13px] py-[9px] text-xs font-bold',
+                  tab === tb.key ? 'bg-secondary-container text-on-secondary-container' : 'bg-card text-de9-slate',
                 )}
               >
                 {tb.label}
@@ -316,27 +330,27 @@ function ClientFiche({
               ) : (
                 <div className="flex flex-col gap-3">
                   <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
-                    <div className="rounded-xl bg-secondary px-3.5 py-3">
+                    <div className="rounded-md bg-secondary px-3.5 py-3">
                       <div className="text-[10.5px] font-extrabold text-de9-gray uppercase">
                         {t('cContact')}
                       </div>
                       <div className="mt-[3px] text-[13px] font-bold">{first?.contact ?? '—'}</div>
                       <div className="text-[11.5px] text-de9-slate">{first?.phone ?? '—'}</div>
                     </div>
-                    <div className="rounded-xl bg-secondary px-3.5 py-3">
+                    <div className="rounded-md bg-secondary px-3.5 py-3">
                       <div className="text-[10.5px] font-extrabold text-de9-gray uppercase">
                         {t('cSecteur')}
                       </div>
                       <div className="mt-[3px] text-[13px] font-bold">{first?.service ?? '—'}</div>
                     </div>
-                    <div className="rounded-xl bg-secondary px-3.5 py-3">
+                    <div className="rounded-md bg-secondary px-3.5 py-3">
                       <div className="text-[10.5px] font-extrabold text-de9-gray uppercase">
                         {t('cAdresse')}
                       </div>
                       <div className="mt-[3px] text-[13px] font-bold">{first?.wilaya ?? '—'}</div>
                       <div className="text-[11.5px] text-de9-slate">{first?.commune ?? '—'}</div>
                     </div>
-                    <div className="min-w-0 rounded-xl bg-secondary px-3.5 py-3">
+                    <div className="min-w-0 rounded-md bg-secondary px-3.5 py-3">
                       <div className="text-[10.5px] font-extrabold text-de9-gray uppercase">Email</div>
                       <div className="mt-[3px] truncate text-xs font-bold">
                         {first?.clientEmail ?? '—'}
@@ -382,7 +396,7 @@ function ClientFiche({
                       key={cm.id}
                       type="button"
                       onClick={() => navigate('/commandes/' + cm.id)}
-                      className="flex cursor-pointer items-center gap-[11px] rounded-[13px] border-[1.5px] border-de9-line px-3.5 py-3 text-start"
+                      className="flex cursor-pointer items-center gap-[11px] rounded-md border border-de9-line px-3.5 py-3 text-start"
                     >
                       <div className="min-w-0 flex-1">
                         <div className="text-[13px] font-bold">
@@ -393,7 +407,7 @@ function ClientFiche({
                         </div>
                       </div>
                       <span
-                        className="flex-none rounded-full px-2.5 py-[5px] text-[10.5px] font-bold whitespace-nowrap"
+                        className="flex-none rounded-full px-2.5 py-[5px] text-[10.5px] font-bold whitespace-nowrap tone-chip"
                         style={{ background: cm.status.bg, color: cm.status.fg }}
                       >
                         {cm.status.label}
@@ -416,10 +430,10 @@ function ClientFiche({
                   {factures.map((fc, i) => (
                     <div
                       key={i}
-                      className="flex items-center gap-[11px] rounded-[13px] border-[1.5px] border-de9-line px-3.5 py-3"
+                      className="flex items-center gap-[11px] rounded-md border border-de9-line px-3.5 py-3"
                     >
-                      <div className="flex h-9 w-9 flex-none items-center justify-center rounded-[11px] bg-[#F4EFFB] text-[16px] dark:bg-[#7C57C7]/15">
-                        🧾
+                      <div className="flex h-9 w-9 flex-none items-center justify-center rounded-sm bg-[#F4EFFB] text-[16px] dark:bg-[#7C57C7]/15 text-[#7C57C7] dark:text-[#A98BE8]">
+                        <Glyph icon={ReceiptText} />
                       </div>
                       <div className="min-w-0 flex-1">
                         <div className="text-[13px] font-bold">
@@ -431,7 +445,7 @@ function ClientFiche({
                         </div>
                       </div>
                       <span
-                        className="flex-none rounded-full px-2.5 py-[5px] text-[10.5px] font-bold whitespace-nowrap"
+                        className="flex-none rounded-full px-2.5 py-[5px] text-[10.5px] font-bold whitespace-nowrap tone-chip"
                         style={{ background: fc.status.bg, color: fc.status.fg }}
                       >
                         {fc.status.label}
@@ -439,7 +453,7 @@ function ClientFiche({
                       <button
                         type="button"
                         onClick={() => openPiece(fc.title, fc.file)}
-                        className="flex-none cursor-pointer rounded-[9px] bg-[#232838] px-[11px] py-[7px] text-[11px] font-bold text-white"
+                        className="flex-none cursor-pointer rounded-full bg-primary px-[11px] py-[7px] text-[11px] font-bold text-primary-foreground"
                       >
                         {t('voir')}
                       </button>
@@ -457,10 +471,10 @@ function ClientFiche({
                 <ErrorBlock />
               ) : (
                 <div className="flex flex-col gap-3.5">
-                  <div className="rounded-2xl bg-[#232838] px-[18px] py-4 text-white">
+                  <div className="rounded-md bg-[rgb(35_40_56)] px-[18px] py-4 text-white dark:bg-secondary dark:ring-1 dark:ring-de9-line">
                     <div className="text-[11px] font-semibold text-[#AEB6C2]">{t('soldeCredits')}</div>
                     <div className="mt-[2px] text-[26px] font-extrabold">
-                      {balance} <span className="text-xs text-de9-gray">{t('credits')}</span>
+                      <span className="num">{balance}</span> <span className="text-xs text-de9-gray">{t('credits')}</span>
                     </div>
                   </div>
                   {/* Online card payments waiting on a review (guide 18 §12). */}
@@ -479,7 +493,7 @@ function ClientFiche({
                     <SectionLabel>{t('rechargeTitle')}</SectionLabel>
                     <div className="flex flex-col gap-2">
                       {recharges.map((rc, i) => (
-                        <div key={i} className="rounded-xl border-[1.5px] border-de9-line px-[13px] py-[11px]">
+                        <div key={i} className="rounded-md border border-de9-line px-[13px] py-[11px]">
                           <div className="flex flex-wrap items-center justify-between gap-2">
                             <div className="text-[12.5px] font-bold">
                               +{rc.montant}{' '}
@@ -496,7 +510,7 @@ function ClientFiche({
                                 onClick={() => openPiece(rc.justifTitle, rc.justifName)}
                                 className="cursor-pointer rounded-full bg-[#E7F6EE] px-[9px] py-1 text-[10px] font-bold text-de9-teal-dark dark:bg-[#2FA86A]/15"
                               >
-                                🧾 {t('justifCourt')}
+                                <Glyph icon={ReceiptText} /> {t('justifCourt')}
                               </button>
                             )}
                             {rc.facture && (
@@ -505,12 +519,12 @@ function ClientFiche({
                                 onClick={() => openPiece(rc.factTitle, rc.factName)}
                                 className="cursor-pointer rounded-full bg-[#E7F6EE] px-[9px] py-1 text-[10px] font-bold text-de9-teal-dark dark:bg-[#2FA86A]/15"
                               >
-                                🧾 {t('factureCourt')}
+                                <Glyph icon={ReceiptText} /> {t('factureCourt')}
                               </button>
                             )}
                             {rc.refBadge && (
                               <span className="rounded-full bg-[#FBF4E4] px-[9px] py-1 text-[10px] font-bold text-[#B68A2E] dark:bg-[#B68A2E]/15 dark:text-[#D9B36A]">
-                                ⚠ {rc.refBadge}
+                                <Glyph icon={TriangleAlert} /> {rc.refBadge}
                               </span>
                             )}
                           </div>
@@ -525,7 +539,7 @@ function ClientFiche({
                       {moves.map((mv, i) => (
                         <div
                           key={i}
-                          className="flex items-center justify-between gap-2 rounded-[10px] bg-secondary px-3 py-[9px]"
+                          className="flex items-center justify-between gap-2 rounded-sm bg-secondary px-3 py-[9px]"
                         >
                           <div className="text-xs">
                             <b>{mv.label}</b>{' '}
@@ -556,8 +570,8 @@ function ClientFiche({
                     <div className="text-[11px] font-extrabold tracking-[.04em] text-de9-gray uppercase">
                       {t('docsLies')}
                     </div>
-                    <label className="cursor-pointer rounded-[9px] bg-[#E5F7F4] px-3 py-[7px] text-[11.5px] font-bold text-de9-teal-dark dark:bg-[#2AB3A8]/15">
-                      ＋ {t('ajouterDocClient')}
+                    <label className="cursor-pointer rounded-sm bg-[#E5F7F4] px-3 py-[7px] text-[11.5px] font-bold text-de9-teal-dark dark:bg-[#2AB3A8]/15">
+                      <Glyph icon={Plus} /> {t('ajouterDocClient')}
                       <input
                         type="file"
                         accept="image/*,application/pdf"
@@ -569,9 +583,9 @@ function ClientFiche({
                   {docsList.map((dl, i) => (
                     <div
                       key={i}
-                      className="flex items-center gap-2.5 rounded-xl border-[1.5px] border-de9-line px-[13px] py-[11px]"
+                      className="flex items-center gap-2.5 rounded-md border border-de9-line px-[13px] py-[11px]"
                     >
-                      <span className="flex-none text-[17px]">📄</span>
+                      <span className="flex-none text-[17px]"><Glyph icon={FileText} /></span>
                       <div className="min-w-0 flex-1">
                         <div className="text-[12.5px] font-bold text-de9-ink">{dl.title}</div>
                         <div className="truncate text-[10.5px] text-de9-gray">{dl.file}</div>
@@ -579,7 +593,7 @@ function ClientFiche({
                       <button
                         type="button"
                         onClick={() => openPiece(dl.title, dl.file)}
-                        className="flex-none cursor-pointer rounded-[9px] bg-[#232838] px-[11px] py-[7px] text-[11px] font-bold text-white"
+                        className="flex-none cursor-pointer rounded-full bg-primary px-[11px] py-[7px] text-[11px] font-bold text-primary-foreground"
                       >
                         {t('voir')}
                       </button>
@@ -595,7 +609,7 @@ function ClientFiche({
             <button
               type="button"
               onClick={onClose}
-              className="w-full cursor-pointer rounded-[13px] bg-secondary py-[13px] text-center text-[13.5px] font-bold text-de9-slate"
+              className="w-full cursor-pointer rounded-full bg-secondary py-[13px] text-center text-[13.5px] font-bold text-de9-slate"
             >
               {t('fermer')}
             </button>

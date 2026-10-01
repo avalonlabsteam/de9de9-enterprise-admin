@@ -6,6 +6,8 @@
 // client-side store, which then shadows the server value for this session.
 import type { ChangeEvent } from 'react';
 import { toast } from 'sonner';
+import { Check, Circle, Download, Eye, FileText, Paperclip } from 'lucide-react';
+import { Glyph } from '@/components/common/Glyph';
 import { useT } from '@/lib/i18n';
 import { documentIdFrom, useDownloadDocument } from '@/api/documents';
 import { contractsActions, useContractsStore } from './contractsStore';
@@ -60,7 +62,7 @@ export function ContratPanel({ presId, contrat, onOpenPiece }: ContratPanelProps
         color: signed ? '#178A82' : '#8A94A0',
       }}
     >
-      {signed ? '✓' : '○'} {signed ? t('contratSigne') : t('contratNonSigne')}
+      <Glyph icon={signed ? Check : Circle} /> {signed ? t('contratSigne') : t('contratNonSigne')}
     </span>
   );
 
@@ -75,10 +77,10 @@ export function ContratPanel({ presId, contrat, onOpenPiece }: ContratPanelProps
       </div>
 
       {has && contract && (
-        <div className="mt-3 overflow-hidden rounded-[14px] border-[1.5px] border-de9-line">
+        <div className="mt-3 overflow-hidden rounded-md border border-de9-line">
           <div className="flex items-center gap-3 bg-secondary px-4 py-3.5">
-            <div className="flex h-[42px] w-[42px] flex-none items-center justify-center rounded-[11px] bg-de9-ink text-[20px] text-white dark:text-[#151923]">
-              📄
+            <div className="flex h-[42px] w-[42px] flex-none items-center justify-center rounded-sm bg-primary-container text-[20px] text-on-primary-container">
+              <Glyph icon={FileText} />
             </div>
             <div className="min-w-0 flex-1">
               <div className="truncate text-[13px] font-bold text-de9-ink">{contract.fileName}</div>
@@ -105,9 +107,9 @@ export function ContratPanel({ presId, contrat, onOpenPiece }: ContratPanelProps
             <button
               type="button"
               onClick={() => onOpenPiece(t('contratSection'), contract.fileName, contrat?.url)}
-              className="cursor-pointer rounded-[10px] bg-de9-ink px-[15px] py-[9px] text-xs font-bold text-white dark:text-[#151923]"
+              className="cursor-pointer rounded-full bg-primary px-[15px] py-[9px] text-xs font-bold text-primary-foreground"
             >
-              👁 {t('voir')}
+              <Glyph icon={Eye} /> {t('voir')}
             </button>
             <button
               type="button"
@@ -120,18 +122,18 @@ export function ContratPanel({ presId, contrat, onOpenPiece }: ContratPanelProps
               }}
               disabled={!docId || download.isPending}
               title={docId ? undefined : t('docIndisponible')}
-              className="cursor-pointer rounded-[10px] bg-secondary px-[15px] py-[9px] text-xs font-bold text-de9-slate disabled:cursor-not-allowed disabled:opacity-50"
+              className="cursor-pointer rounded-full bg-secondary px-[15px] py-[9px] text-xs font-bold text-de9-slate disabled:cursor-not-allowed disabled:opacity-50"
             >
-              ⤓ {download.isPending ? t('docTelechargementEnCours') : t('telecharger')}
+              <Glyph icon={Download} /> {download.isPending ? t('docTelechargementEnCours') : t('telecharger')}
             </button>
-            <label className="cursor-pointer rounded-[10px] border-[1.5px] border-de9-line bg-card px-[15px] py-[9px] text-xs font-bold text-de9-slate">
+            <label className="cursor-pointer rounded-sm border border-de9-line bg-card px-[15px] py-[9px] text-xs font-bold text-de9-slate">
               {t('remplacer')}
               <input type="file" accept="application/pdf" onChange={onFile} className="hidden" />
             </label>
             <button
               type="button"
               onClick={() => contractsActions.toggle(presId)}
-              className="cursor-pointer rounded-[10px] px-[15px] py-[9px] text-xs font-bold"
+              className="cursor-pointer rounded-full px-[15px] py-[9px] text-xs font-bold"
               style={{
                 background: signed ? '#FBF4E4' : '#E7F6EE',
                 color: signed ? '#B68A2E' : '#178A82',
@@ -142,7 +144,7 @@ export function ContratPanel({ presId, contrat, onOpenPiece }: ContratPanelProps
             <button
               type="button"
               onClick={onRemove}
-              className="cursor-pointer rounded-[10px] bg-[#FDECEC] px-[15px] py-[9px] text-xs font-bold text-de9-red dark:bg-[#E7464E]/15"
+              className="cursor-pointer rounded-full bg-[#FDECEC] px-[15px] py-[9px] text-xs font-bold text-de9-red dark:bg-[#E7464E]/15"
             >
               {t('supprimer')}
             </button>
@@ -153,8 +155,8 @@ export function ContratPanel({ presId, contrat, onOpenPiece }: ContratPanelProps
       {!has && (
         <div className="mt-3">
           <div className="mb-2.5 text-[12.5px] text-de9-gray">{t('contratAbsent')}</div>
-          <label className="flex cursor-pointer items-center gap-2.5 rounded-xl border-[1.5px] border-dashed border-de9-line p-4">
-            <span className="text-[20px]">📎</span>
+          <label className="flex cursor-pointer items-center gap-2.5 rounded-md border border-dashed border-de9-line p-4">
+            <span className="text-[20px]"><Glyph icon={Paperclip} /></span>
             <div className="flex-1">
               <div className="text-[13px] font-bold text-de9-slate">{t('televerserContrat')}</div>
               <div className="text-[11px] text-de9-gray">{t('deposerFichier')}</div>

@@ -1,7 +1,9 @@
 // Piece / document viewer overlay — ported from src/admin/views/RechargeAndPiece.tsx (PieceViewer).
 import { Dialog as DialogPrimitive } from 'radix-ui';
 import { toast } from 'sonner';
+import { Download, FileText, X } from 'lucide-react';
 import { Dialog, DialogOverlay, DialogPortal, DialogTitle } from '@/components/ui/dialog';
+import { Glyph } from '@/components/common/Glyph';
 import { useT } from '@/lib/i18n';
 import { documentIdFrom, useDownloadDocument } from '@/api/documents';
 
@@ -39,7 +41,7 @@ export function PieceViewer({ piece, onClose }: { piece: PieceView | null; onClo
         <DialogOverlay className="z-[98] animate-fade-in bg-[rgba(20,28,40,.5)] supports-backdrop-filter:backdrop-blur-none" />
         <DialogPrimitive.Content
           aria-describedby={undefined}
-          className="fixed start-1/2 top-1/2 z-[98] max-h-[90vh] w-[calc(100%-24px)] max-w-[520px] -translate-x-1/2 -translate-y-1/2 animate-sheet-up overflow-y-auto rounded-[20px] bg-card text-de9-ink shadow-[0_30px_70px_rgba(20,30,45,.4)] outline-none sm:w-[calc(100%-48px)] rtl:translate-x-1/2"
+          className="fixed start-1/2 top-1/2 z-[98] max-h-[90vh] w-[calc(100%-24px)] max-w-[520px] -translate-x-1/2 -translate-y-1/2 animate-sheet-up overflow-y-auto rounded-xl bg-card text-de9-ink shadow-e3 outline-none sm:w-[calc(100%-48px)] rtl:translate-x-1/2"
         >
           {piece && (
             <>
@@ -53,23 +55,23 @@ export function PieceViewer({ piece, onClose }: { piece: PieceView | null; onClo
                     onClick={onDownload}
                     disabled={!docId || download.isPending}
                     title={docId ? undefined : t('docIndisponible')}
-                    className="flex cursor-pointer items-center gap-1.5 rounded-[10px] bg-[#232838] px-3.5 py-[9px] text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-50"
+                    className="flex cursor-pointer items-center gap-1.5 rounded-full bg-primary px-3.5 py-[9px] text-xs font-bold text-primary-foreground disabled:cursor-not-allowed disabled:opacity-50"
                   >
-                    ⤓ {download.isPending ? t('docTelechargementEnCours') : t('telecharger')}
+                    <Glyph icon={Download} /> {download.isPending ? t('docTelechargementEnCours') : t('telecharger')}
                   </button>
                   <button
                     type="button"
                     onClick={onClose}
-                    className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-[10px] bg-secondary text-base text-de9-slate"
+                    className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full bg-secondary text-base text-de9-slate"
                   >
-                    ✕
+                    <Glyph icon={X} />
                   </button>
                 </div>
               </div>
               <div className="p-[22px]">
-                <div className="overflow-hidden rounded-xl border border-de9-line shadow-[0_6px_20px_rgba(38,50,69,.06)]">
+                <div className="overflow-hidden rounded-md border border-de9-line">
                   <div className="bg-secondary px-[22px] py-[52px] text-center">
-                    <div className="text-[48px]">📄</div>
+                    <div className="text-[48px] text-de9-faint"><Glyph icon={FileText} className="stroke-[1.25]" /></div>
                     <div className="mt-2.5 text-[13.5px] font-bold text-de9-slate">{piece.fileName}</div>
                     <div className="mt-[2px] text-[11px] text-de9-gray">{t('apercu')}</div>
                   </div>

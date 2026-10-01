@@ -5,6 +5,8 @@
 // lands on the queue exactly as it was left.
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
+import { Check, Circle, Dot, Repeat, X, type LucideIcon } from 'lucide-react';
+import { Glyph } from '@/components/common/Glyph';
 import { cn } from '@/lib/utils';
 import { useT, type TKey } from '@/lib/i18n';
 import { KYC_TAB_QUERY, useKycKpis, useKycQueue, type KycQueueParams, type KycTab } from '../api/kyc';
@@ -114,7 +116,7 @@ const CARDS: ReadonlyArray<Card> = [
 ];
 
 /** A glyph next to each chip colour, so the state reads without colour too. */
-const DOC_GLYPH: Record<string, string> = { valide: '✓', refuse: '✕', a_verifier: '•', manquant: '○' };
+const DOC_GLYPH: Record<string, LucideIcon | undefined> = { valide: Check, refuse: X, a_verifier: Dot, manquant: Circle };
 
 export function KycQueuePage() {
   const t = useT();
@@ -192,7 +194,7 @@ export function KycQueuePage() {
               type="button"
               onClick={() => setTab(c.tab)}
               className={cn(
-                'cursor-pointer rounded-2xl border-[1.5px] bg-card px-[17px] py-[15px] text-start shadow-[0_6px_18px_rgba(38,50,69,.04)]',
+                'cursor-pointer rounded-md border bg-card px-[17px] py-[15px] text-start',
                 kpis && c.alert?.(kpis) ? 'border-[#F6D2D4] dark:border-[#E7464E]/40' : 'border-de9-line',
               )}
               style={active ? { borderColor: c.color } : undefined}
@@ -217,7 +219,7 @@ export function KycQueuePage() {
           onChange={(e) => setSearchInput(e.target.value)}
           placeholder={t('kycRecherche')}
           aria-label={t('kycRecherche')}
-          className="w-full flex-none rounded-[11px] border-[1.5px] border-de9-line bg-card px-[15px] py-2.5 text-[12.5px] text-de9-ink outline-none sm:w-[320px]"
+          className="w-full flex-none rounded-xs border border-outline bg-card px-[15px] py-2.5 text-[12.5px] text-de9-ink outline-none sm:w-[320px]"
         />
         {TABS.map((tb) => {
           const active = tab === tb.key;
@@ -228,8 +230,8 @@ export function KycQueuePage() {
               onClick={() => setTab(tb.key)}
               aria-pressed={active}
               className={cn(
-                'cursor-pointer rounded-full border-[1.5px] px-[15px] py-[9px] text-[12.5px] font-bold',
-                active ? 'border-[#232838] bg-[#232838] text-white' : 'border-de9-line bg-card text-de9-slate',
+                'cursor-pointer rounded-full border px-[15px] py-[9px] text-[12.5px] font-bold',
+                active ? 'border-secondary-container bg-secondary-container text-on-secondary-container' : 'border-de9-line bg-card text-de9-slate',
               )}
             >
               {t(tb.labelKey)} · {kpis ? tb.count(kpis) : '—'}
@@ -239,7 +241,7 @@ export function KycQueuePage() {
       </div>
 
       {/* ===== table ===== */}
-      <div className="mt-3.5 overflow-hidden rounded-[18px] border border-de9-line bg-card shadow-[0_10px_30px_rgba(38,50,69,.06)]">
+      <div className="mt-3.5 overflow-hidden rounded-md border border-de9-line bg-card">
         <div className={cn('overflow-x-auto transition-opacity', listQ.isPlaceholderData && 'opacity-60')}>
           <div className="min-w-[940px]">
             <div
@@ -256,7 +258,7 @@ export function KycQueuePage() {
             {listQ.isPending && (
               <div className="px-[22px] py-3.5">
                 {[0, 1, 2, 3].map((i) => (
-                  <div key={i} className="mb-3 h-10 animate-pulse rounded-[10px] bg-de9-row last:mb-0" />
+                  <div key={i} className="mb-3 h-10 animate-pulse rounded-sm bg-de9-row last:mb-0" />
                 ))}
               </div>
             )}
@@ -291,7 +293,7 @@ export function KycQueuePage() {
                 type="button"
                 disabled={page <= 1}
                 onClick={() => setPage(page - 1)}
-                className="cursor-pointer rounded-[11px] border-[1.5px] border-de9-line bg-card px-[13px] py-2 text-[12.5px] font-bold text-de9-slate disabled:cursor-default disabled:opacity-40"
+                className="cursor-pointer rounded-full border border-de9-line bg-card px-[13px] py-2 text-[12.5px] font-bold text-de9-slate disabled:cursor-default disabled:opacity-40"
               >
                 {t('pagePrecedent')}
               </button>
@@ -299,7 +301,7 @@ export function KycQueuePage() {
                 type="button"
                 disabled={!meta.has_more_pages}
                 onClick={() => setPage(page + 1)}
-                className="cursor-pointer rounded-[11px] border-[1.5px] border-de9-line bg-card px-[13px] py-2 text-[12.5px] font-bold text-de9-slate disabled:cursor-default disabled:opacity-40"
+                className="cursor-pointer rounded-full border border-de9-line bg-card px-[13px] py-2 text-[12.5px] font-bold text-de9-slate disabled:cursor-default disabled:opacity-40"
               >
                 {t('pageSuivant')}
               </button>
@@ -328,7 +330,9 @@ function QueueRow({ dossier: d }: { dossier: KycDossier }) {
       className={`grid ${GRID_COLS} items-center gap-3 border-b border-de9-line px-[22px] py-3.5 text-de9-ink no-underline last:border-b-0 hover:bg-de9-row`}
     >
       <div className="min-w-0">
-        <div className="truncate text-[13px] font-extrabold">{d.nom}</div>
+        <div dir="auto" className="truncate text-[13px] font-extrabold ltr:text-left rtl:text-right">
+          {d.nom}
+        </div>
         {sub && <div className="truncate text-[11px] text-de9-gray">{sub}</div>}
       </div>
 
@@ -337,17 +341,18 @@ function QueueRow({ dossier: d }: { dossier: KycDossier }) {
         {KYC_KINDS.map((kind) => {
           const doc = d.documents?.find((x) => x.kind === kind);
           const statut = doc?.statut ?? 'manquant';
+          const StatutIcon = DOC_GLYPH[statut];
           return (
             <span
               key={kind}
               title={`${kindLong(kind, doc?.kindLabel, t)} · ${docStatutLabel(statut, doc?.statutLabel, t)}`}
               className={cn(
-                'inline-flex items-center gap-1 rounded-md px-1.5 py-[3px] text-[10.5px] font-extrabold',
+                'inline-flex items-center gap-1 rounded-sm px-1.5 py-[3px] text-[10.5px] font-extrabold',
                 docTone(statut).chip,
               )}
             >
               {kindShort(kind)}
-              <span aria-hidden>{DOC_GLYPH[statut] ?? ''}</span>
+              {StatutIcon && <Glyph icon={StatutIcon} />}
             </span>
           );
         })}
@@ -373,7 +378,12 @@ function QueueRow({ dossier: d }: { dossier: KycDossier }) {
         />
         {d.statut === 'pending' && !enRevue && <Tag tone="grey">{t('kycTagNonSoumis')}</Tag>}
         {d.revueCommencee && <Tag>{t('kycTagRevueEnCours')}</Tag>}
-        {d.resoumission && <Tag tone="amber">{t('kycTagRenvoye')}</Tag>}
+        {d.resoumission && (
+          <Tag tone="amber">
+            <Glyph icon={Repeat} className="me-1" />
+            {t('kycTagRenvoye')}
+          </Tag>
+        )}
       </div>
 
       <div className="text-[12px] text-de9-slate">
@@ -384,10 +394,10 @@ function QueueRow({ dossier: d }: { dossier: KycDossier }) {
       <div className="text-end">
         <span
           className={cn(
-            'inline-flex items-center rounded-[10px] px-3 py-2 text-[11.5px] font-bold',
+            'inline-flex items-center rounded-full px-4 py-2 text-[11.5px] font-bold',
             enRevue
-              ? 'bg-[#232838] text-white'
-              : 'border-[1.5px] border-de9-line bg-secondary text-de9-slate',
+              ? 'bg-secondary-container text-on-secondary-container'
+              : 'border border-de9-line bg-secondary text-de9-slate',
           )}
         >
           {enRevue ? t('kycExaminer') : t('kycOuvrir')}

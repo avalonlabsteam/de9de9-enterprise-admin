@@ -8,7 +8,7 @@
 // the credits drawer can deep-link here.
 import { useEffect, useMemo, useState, type MouseEvent } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { ChevronDown, RefreshCw } from 'lucide-react';
+import { ChevronDown, Download, Eye, Info, RefreshCw, TriangleAlert } from 'lucide-react';
 import { toast } from 'sonner';
 import { useT, type TKey } from '@/lib/i18n';
 import { cn, isLiveId } from '@/lib/utils';
@@ -19,6 +19,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { Glyph } from '@/components/common/Glyph';
 import {
   BILAN_FALLBACK_NAME,
   bilanUrl,
@@ -48,13 +49,13 @@ import { PdfPreviewDialog, type PdfPreview } from './PdfPreviewDialog';
 const PAGE_SIZE = 25;
 const SEARCH_DEBOUNCE_MS = 300;
 const GRID_COLS = 'grid-cols-[1.05fr_1.7fr_1.5fr_1.05fr_1.35fr]';
-const PILL = 'cursor-pointer rounded-full border-[1.5px] px-[13px] py-[7px] text-[12px] font-bold';
-const PILL_ON = 'border-[#232838] bg-[#232838] text-white dark:border-de9-ink dark:bg-de9-ink dark:text-[#151923]';
+const PILL = 'cursor-pointer rounded-full border px-[13px] py-[7px] text-[12px] font-bold';
+const PILL_ON = 'border-secondary-container bg-secondary-container text-on-secondary-container';
 const PILL_OFF = 'border-de9-line bg-card text-de9-slate';
 const BTN_SECONDARY =
-  'cursor-pointer rounded-[11px] border-[1.5px] border-de9-line bg-card px-4 py-[11px] text-[12.5px] font-bold text-de9-slate hover:bg-de9-row disabled:cursor-not-allowed disabled:opacity-60';
+  'cursor-pointer rounded-full border border-de9-line bg-card px-4 py-[11px] text-[12.5px] font-bold text-de9-slate hover:bg-de9-row disabled:cursor-not-allowed disabled:opacity-60';
 const INPUT_CLS =
-  'rounded-[11px] border-[1.5px] border-de9-line bg-card px-3 py-2 text-[12.5px] font-semibold text-de9-slate outline-none';
+  'rounded-xs border border-outline bg-card px-3 py-2 text-[12.5px] font-semibold text-de9-slate outline-none';
 const LINK_CLS = 'cursor-pointer underline decoration-[#C7CFD7] decoration-dotted underline-offset-[3px]';
 
 type CardKey = Exclude<keyof Totaux, 'mention'>;
@@ -235,7 +236,7 @@ export function ComptabilitePage() {
             <RefreshCw className={cn('size-4', listQ.isFetching && 'animate-spin')} />
           </button>
           <button type="button" onClick={onExport} disabled={exporting} className={BTN_SECONDARY}>
-            ⤓ {exporting ? t('docTelechargementEnCours') : t('comptaExportCsv')}
+            <Glyph icon={Download} /> {exporting ? t('docTelechargementEnCours') : t('comptaExportCsv')}
           </button>
           {/* « ⤓ Bilan PDF ▾ » — download by default, preview from the menu */}
           <div className="flex">
@@ -246,7 +247,7 @@ export function ComptabilitePage() {
               title={bilanReady ? undefined : t('comptaBilanPeriodeRequise')}
               className={cn(BTN_SECONDARY, 'rounded-e-none border-e-0')}
             >
-              ⤓ {bilanBusy ? t('docTelechargementEnCours') : t('comptaBilanPdf')}
+              <Glyph icon={Download} /> {bilanBusy ? t('docTelechargementEnCours') : t('comptaBilanPdf')}
             </button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild disabled={!bilanReady}>
@@ -260,10 +261,10 @@ export function ComptabilitePage() {
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="min-w-[160px]">
                 <DropdownMenuItem onSelect={onBilan} className="cursor-pointer text-[12.5px] font-semibold">
-                  ⤓ {t('telecharger')}
+                  <Glyph icon={Download} /> {t('telecharger')}
                 </DropdownMenuItem>
                 <DropdownMenuItem onSelect={onBilanPreview} className="cursor-pointer text-[12.5px] font-semibold">
-                  👁 {t('comptaApercu')}
+                  <Glyph icon={Eye} /> {t('comptaApercu')}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -318,7 +319,7 @@ export function ComptabilitePage() {
           maxLength={128}
           placeholder={t('comptaRecherche')}
           aria-label={t('comptaRecherche')}
-          className="min-w-0 flex-1 rounded-[11px] border-[1.5px] border-de9-line bg-card px-[15px] py-2.5 text-[12.5px] text-de9-ink outline-none sm:max-w-[420px]"
+          className="min-w-0 flex-1 rounded-xs border border-outline bg-card px-[15px] py-2.5 text-[12.5px] text-de9-ink outline-none sm:max-w-[420px]"
         />
       </div>
 
@@ -335,14 +336,14 @@ export function ComptabilitePage() {
               onClick={() => patch({ statut: active ? null : c.pill, page: null })}
               title={c.key === 'approuves' ? t('comptaEncaisseInfo') : undefined}
               className={cn(
-                'cursor-pointer rounded-2xl border bg-card px-[18px] py-4 text-start shadow-[0_6px_18px_rgba(38,50,69,.04)]',
+                'cursor-pointer rounded-md border bg-card px-[18px] py-4 text-start',
                 warn ? 'border-[#E6C77E] dark:border-[#B68A2E]/60' : 'border-de9-line',
-                active && 'ring-2 ring-[#232838] dark:ring-de9-ink',
+                active && 'ring-2 ring-primary',
               )}
             >
               <div className="text-xs font-semibold text-de9-gray">
                 {t(c.labelKey)}
-                {c.key === 'approuves' && <span className="ms-1 text-[10.5px]">ⓘ</span>}
+                {c.key === 'approuves' && <span className="ms-1 text-[10.5px]"><Glyph icon={Info} /></span>}
               </div>
               <div
                 className={cn(
@@ -350,15 +351,21 @@ export function ComptabilitePage() {
                   c.key === 'approuves' ? 'text-[#2FA86A] dark:text-[#6FCF97]' : warn ? 'text-[#B68A2E] dark:text-[#D9B36A]' : 'text-de9-ink',
                 )}
               >
-                {cardFigure(c.key)}
-                {warn && <span className="ms-1.5 text-[16px]">⚠</span>}
+                <span className="num">{cardFigure(c.key)}</span>
+                {warn && <span className="ms-1.5 text-[16px]"><Glyph icon={TriangleAlert} /></span>}
               </div>
-              <div className="min-h-[15px] truncate text-[11px] text-de9-gray">{sub ?? ' '}</div>
+              <div dir="auto" className="min-h-[15px] text-[11px] leading-snug text-de9-gray ltr:text-left rtl:text-right">
+                {sub ?? ' '}
+              </div>
             </button>
           );
         })}
       </div>
-      <div className="mt-2 text-[11.5px] font-semibold text-de9-gray">{totaux?.mention ?? t('comptaMentionBrut')}</div>
+      {/* Written by the server in French: `dir="auto"` keeps its punctuation in place in the Arabic UI,
+          and the alignment stays on the page's side. */}
+      <div dir="auto" className="mt-2 text-[11.5px] font-semibold text-de9-gray ltr:text-left rtl:text-right">
+        {totaux?.mention ?? t('comptaMentionBrut')}
+      </div>
 
       {/* ===== status pills · sort ===== */}
       <div className="mt-4 flex flex-wrap items-center gap-[9px]">
@@ -390,7 +397,7 @@ export function ComptabilitePage() {
       </div>
 
       {/* ===== list ===== */}
-      <div className="mt-3.5 overflow-hidden rounded-[18px] border border-de9-line bg-card shadow-[0_10px_30px_rgba(38,50,69,.06)]">
+      <div className="mt-3.5 overflow-hidden rounded-md border border-de9-line bg-card">
         <div className={cn('overflow-x-auto transition-opacity', listQ.isPlaceholderData && 'opacity-60')}>
           <div className="min-w-[900px]">
             <div
@@ -409,7 +416,7 @@ export function ComptabilitePage() {
             {listQ.isPending && (
               <div className="px-[22px] py-3.5">
                 {[0, 1, 2, 3].map((i) => (
-                  <div key={i} className="mb-3 h-11 animate-pulse rounded-[10px] bg-de9-row last:mb-0" />
+                  <div key={i} className="mb-3 h-11 animate-pulse rounded-sm bg-de9-row last:mb-0" />
                 ))}
               </div>
             )}
@@ -433,7 +440,9 @@ export function ComptabilitePage() {
                   )}
                 >
                   <div className="min-w-0">
-                    <div className="text-[12.5px] text-de9-slate">{r.payeLeLabel ?? r.creeLeLabel ?? '—'}</div>
+                    <div className="text-[12.5px] text-de9-slate">
+                      <span className="num">{r.payeLeLabel ?? r.creeLeLabel ?? '—'}</span>
+                    </div>
                     <div className="mt-0.5 font-mono text-[12px] font-bold text-de9-ink">{r.reference}</div>
                   </div>
                   <div className="min-w-0">
@@ -456,8 +465,14 @@ export function ComptabilitePage() {
                     {r.payeur?.email && <div className="mt-0.5 truncate text-[11.5px] text-de9-gray">{r.payeur.email}</div>}
                   </div>
                   <div className="text-end">
-                    <div className="text-[13.5px] font-extrabold text-de9-ink">{r.montantLabel ?? '—'}</div>
-                    {r.creditsLabel && <div className="mt-0.5 text-[11.5px] text-de9-gray">{r.creditsLabel}</div>}
+                    <div className="text-[13.5px] font-extrabold text-de9-ink">
+                      <span className="num">{r.montantLabel ?? '—'}</span>
+                    </div>
+                    {r.creditsLabel && (
+                      <div className="mt-0.5 text-[11.5px] text-de9-gray">
+                        <span className="num">{r.creditsLabel}</span>
+                      </div>
+                    )}
                   </div>
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-1.5">
@@ -474,11 +489,15 @@ export function ComptabilitePage() {
                               : 'bg-[#FBF4E4] text-[#B68A2E] dark:bg-[#B68A2E]/15 dark:text-[#D9B36A]',
                           )}
                         >
-                          ⚠ {isOrphanFlag(r.drapeau) ? t('comptaOrpheline') : t('comptaCarteAVerifier')}
+                          <Glyph icon={TriangleAlert} /> {isOrphanFlag(r.drapeau) ? t('comptaOrpheline') : t('comptaCarteAVerifier')}
                         </span>
                       )}
                     </div>
-                    {r.drapeauLabel && <div className="mt-1 line-clamp-2 text-[11px] text-de9-gray">{r.drapeauLabel}</div>}
+                    {r.drapeauLabel && (
+                      <div dir="auto" className="mt-1 line-clamp-2 text-[11px] text-de9-gray ltr:text-left rtl:text-right">
+                        {r.drapeauLabel}
+                      </div>
+                    )}
                     {proof && <div className="mt-1 font-mono text-[11px] text-de9-gray">{proof}</div>}
                   </div>
                 </div>
@@ -503,7 +522,7 @@ export function ComptabilitePage() {
                 type="button"
                 disabled={page <= 1}
                 onClick={() => patch({ page: page > 2 ? String(page - 1) : null })}
-                className="cursor-pointer rounded-[11px] border-[1.5px] border-de9-line bg-card px-[13px] py-2 text-[12.5px] font-bold text-de9-slate disabled:cursor-default disabled:opacity-40"
+                className="cursor-pointer rounded-full border border-de9-line bg-card px-[13px] py-2 text-[12.5px] font-bold text-de9-slate disabled:cursor-default disabled:opacity-40"
               >
                 {t('pagePrecedent')}
               </button>
@@ -511,7 +530,7 @@ export function ComptabilitePage() {
                 type="button"
                 disabled={!meta.has_more_pages}
                 onClick={() => patch({ page: String(page + 1) })}
-                className="cursor-pointer rounded-[11px] border-[1.5px] border-de9-line bg-card px-[13px] py-2 text-[12.5px] font-bold text-de9-slate disabled:cursor-default disabled:opacity-40"
+                className="cursor-pointer rounded-full border border-de9-line bg-card px-[13px] py-2 text-[12.5px] font-bold text-de9-slate disabled:cursor-default disabled:opacity-40"
               >
                 {t('pageSuivant')}
               </button>

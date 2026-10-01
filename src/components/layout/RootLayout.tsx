@@ -1,8 +1,11 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Outlet } from 'react-router-dom';
+import { Direction } from 'radix-ui';
 import { Toaster } from '@/components/ui/sonner';
 import { dirOf, useLangStore } from '@/stores/langStore';
 import { resolveTheme, useThemeStore } from '@/stores/themeStore';
+
+const DARK_QUERY = '(prefers-color-scheme: dark)';
 
 /**
  * Document-level chrome shared by every route, signed in or not: text
@@ -19,24 +22,26 @@ export function RootLayout() {
     document.documentElement.lang = lang;
   }, [dir, lang]);
 
-  // Apply the theme class; track OS preference while in "system" mode.
+  // Track the OS preference, which decides the theme while in "system" mode.
+  const [systemDark, setSystemDark] = useState(() => window.matchMedia(DARK_QUERY).matches);
   useEffect(() => {
-    const media = window.matchMedia('(prefers-color-scheme: dark)');
-    const apply = () => {
-      document.documentElement.classList.toggle(
-        'dark',
-        resolveTheme(mode, media.matches) === 'dark',
-      );
-    };
-    apply();
-    media.addEventListener('change', apply);
-    return () => media.removeEventListener('change', apply);
-  }, [mode]);
+    const media = window.matchMedia(DARK_QUERY);
+    const onChange = (): void => setSystemDark(media.matches);
+    media.addEventListener('change', onChange);
+    return () => media.removeEventListener('change', onChange);
+  }, []);
+
+  const theme = resolveTheme(mode, systemDark);
+  useEffect(() => {
+    document.documentElement.classList.toggle('dark', theme === 'dark');
+  }, [theme]);
 
   return (
-    <>
+    // Radix components (tabs, selects, menus) lay out left-to-right unless told otherwise.
+    <Direction.Provider dir={dir}>
       <Outlet />
-      <Toaster position="bottom-center" />
-    </>
+      {/* The app's own theme and direction — not the OS's. */}
+      <Toaster position="bottom-center" theme={theme} dir={dir} />
+    </Direction.Provider>
   );
 }

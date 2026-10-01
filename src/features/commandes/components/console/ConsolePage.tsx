@@ -1,9 +1,34 @@
 // COMMANDES — command detail console. Visual ground truth: src/admin/views/Console.tsx;
 // behavioral ground truth: logic.ts buildConsole()/buildAgir()/act()/devisAct()
 // (status projections, band, prochaine action, devis flow, occurrences, agir, audit).
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
+import {
+  Calendar1,
+  Camera,
+  Check,
+  ChevronDown,
+  CirclePlus,
+  ClipboardList,
+  Download,
+  Eye,
+  FileText,
+  HardHat,
+  Hourglass,
+  Inbox,
+  Lock,
+  Mail,
+  MessageCircle,
+  Paperclip,
+  Phone,
+  ReceiptText,
+  RefreshCw,
+  Repeat,
+  Timer,
+  Undo2,
+} from 'lucide-react';
+import { Glyph } from '@/components/common/Glyph';
 import { useT, useL, type TKey } from '@/lib/i18n';
 import { useUiStore } from '@/stores/uiStore';
 import { cn, isLiveId } from '@/lib/utils';
@@ -38,6 +63,12 @@ import { WorklistSummary } from './WorklistSummary';
 import { DEVIS_ANCHOR } from '../../lib/worklistDisplay';
 
 type Tr = (key: TKey) => string;
+
+/** The light theme's ink, as the ported prototype hard-codes it on labels. */
+const INK = '#232838';
+
+/** The accent a `tone-surface` tints itself with in dark mode (see index.css). */
+const tone = (accent: string): CSSProperties => ({ '--tone': accent }) as CSSProperties;
 
 /** Prototype's static worker team (logic.ts `workers`). */
 const WORKERS: readonly string[] = ['Karim B.', 'Sofiane M.', 'Yacine T.', 'Nadia R.'];
@@ -366,17 +397,17 @@ function buildAgir(cmd: Commande, occ: Occurrence | null, t: Tr) {
 
 function NumChip({ num }: { num: string }) {
   return (
-    <span className="inline-flex min-w-[18px] flex-none items-center justify-center rounded-md bg-[#232838] px-[5px] py-[2px] text-[9.5px] font-extrabold leading-[1.4] tracking-[.02em] text-white">
+    <span className="inline-flex min-w-[18px] flex-none items-center justify-center rounded-xs bg-inverse-surface px-[5px] py-[2px] text-[9.5px] font-extrabold leading-[1.4] tracking-[.02em] text-inverse-on-surface">
       {num}
     </span>
   );
 }
 
 const CARD =
-  'rounded-[20px] border border-de9-line bg-card px-6 py-[22px] shadow-[0_10px_30px_rgba(38,50,69,.06)]';
+  'rounded-md border border-de9-line bg-card px-6 py-[22px]';
 
 const CONTACT_LINK =
-  'rounded-[10px] border-[1.5px] border-de9-line bg-card px-3 py-2 text-[11.5px] font-bold text-de9-slate no-underline';
+  'rounded-full border border-de9-line bg-card px-3 py-2 text-[11.5px] font-bold text-de9-slate no-underline';
 
 // ===================== modal state =====================
 
@@ -595,9 +626,9 @@ export function ConsolePage() {
       <div className="mx-auto max-w-[980px]">
         {backLink}
         <div className="flex flex-col gap-4">
-          <div className="h-[150px] animate-pulse rounded-[20px] bg-secondary" />
-          <div className="h-[110px] animate-pulse rounded-[20px] bg-secondary" />
-          <div className="h-[220px] animate-pulse rounded-[20px] bg-secondary" />
+          <div className="h-[150px] animate-pulse rounded-md bg-secondary" />
+          <div className="h-[110px] animate-pulse rounded-md bg-secondary" />
+          <div className="h-[220px] animate-pulse rounded-md bg-secondary" />
         </div>
       </div>
     );
@@ -608,7 +639,7 @@ export function ConsolePage() {
       return (
         <div className="mx-auto max-w-[980px]">
           {backLink}
-          <div className="h-[260px] animate-pulse rounded-[20px] bg-secondary" />
+          <div className="h-[260px] animate-pulse rounded-md bg-secondary" />
         </div>
       );
     }
@@ -622,7 +653,7 @@ export function ConsolePage() {
               <button
                 type="button"
                 onClick={() => navigate('/factures?invoice=' + encodeURIComponent(factureParam))}
-                className="cursor-pointer rounded-[10px] bg-de9-ink px-3.5 py-2 text-[12.5px] font-bold text-white dark:text-[#151923]"
+                className="cursor-pointer rounded-full bg-primary px-3.5 py-2 text-[12.5px] font-bold text-primary-foreground"
               >
                 {t('alerteOuvrirFacture')}
               </button>
@@ -655,9 +686,15 @@ export function ConsolePage() {
             type="button"
             onClick={retryAll}
             disabled={detailQ.isFetching}
-            className="cursor-pointer rounded-[10px] border-[1.5px] border-de9-line bg-card px-2.5 py-1.5 text-[11.5px] font-bold text-de9-slate disabled:cursor-not-allowed disabled:opacity-50"
+            className="cursor-pointer rounded-full border border-de9-line bg-card px-2.5 py-1.5 text-[11.5px] font-bold text-de9-slate disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {detailQ.isFetching ? t('apercuActionEnCours') : '⟳ ' + t('apercuRafraichir')}
+            {detailQ.isFetching ? (
+              t('apercuActionEnCours')
+            ) : (
+              <>
+                <Glyph icon={RefreshCw} /> {t('apercuRafraichir')}
+              </>
+            )}
           </button>
         </div>
       </div>
@@ -694,7 +731,9 @@ export function ConsolePage() {
       ring = '0 0 0 4px ' + color + '40';
     }
     return {
-      title: sel ? '👁 ' + title : title,
+      title,
+      // « viewing as » this role — an eye in front of its title
+      viewing: sel,
       dot: color,
       titleColor: color,
       bg: bbg,
@@ -806,7 +845,7 @@ export function ConsolePage() {
                 </span>
               </div>
               <span
-                className="inline-flex items-center gap-1.5 rounded-full px-[11px] py-[5px] text-[11.5px] font-bold"
+                className="inline-flex items-center gap-1.5 rounded-full px-[11px] py-[5px] text-[11.5px] font-bold tone-chip"
                 style={{ background: sb[1], color: sb[2] }}
               >
                 <NumChip num={STATUS_NUM[cmd.setup] ?? ''} />
@@ -817,23 +856,23 @@ export function ConsolePage() {
               {cmd.id} · {cmd.contact} · {cmd.service}
             </div>
             <div className="mt-[3px] flex items-center gap-1.5 text-[12.5px] text-de9-gray">
-              {cmd.type === 'recurrent' ? '↻' : '•'} {cmd.pattern} · {cmd.wilaya}
+              <Glyph icon={cmd.type === 'recurrent' ? Repeat : Calendar1} /> {cmd.pattern} · {cmd.wilaya}
             </div>
           </div>
           <div className="flex flex-none flex-wrap gap-2.5">
             <a
               href="tel:+213000000000"
-              className="flex items-center gap-2 rounded-[13px] border-[1.5px] border-de9-line bg-card px-4 py-3 text-[13px] font-bold text-de9-slate no-underline"
+              className="flex items-center gap-2 rounded-full border border-de9-line bg-card px-4 py-3 text-[13px] font-bold text-de9-slate no-underline"
             >
-              <span className="text-[15px]">📞</span>
+              <span className="text-[15px]"><Glyph icon={Phone} /></span>
               {t('appelerClient')}
             </a>
             {cmd.prestataire && (
               <a
                 href="tel:+213000000000"
-                className="flex items-center gap-2 rounded-[13px] border-[1.5px] border-de9-line bg-card px-4 py-3 text-[13px] font-bold text-de9-slate no-underline"
+                className="flex items-center gap-2 rounded-full border border-de9-line bg-card px-4 py-3 text-[13px] font-bold text-de9-slate no-underline"
               >
-                <span className="text-[15px]">📞</span>
+                <span className="text-[15px]"><Glyph icon={Phone} /></span>
                 {t('appelerPrestataire')}
               </a>
             )}
@@ -845,19 +884,20 @@ export function ConsolePage() {
           {band.map((b, i) => (
             <div
               key={i}
-              className="rounded-[14px] border-[1.5px] px-[15px] py-[13px]"
-              style={{ borderColor: b.border, background: b.bg, boxShadow: b.ring }}
+              className="tone-surface rounded-md border px-[15px] py-[13px]"
+              style={{ borderColor: b.border, background: b.bg, boxShadow: b.ring, ...tone(b.dot) }}
             >
               <div
                 className="flex items-center gap-[7px] text-[11px] font-extrabold uppercase tracking-[.04em]"
                 style={{ color: b.titleColor }}
               >
                 <span className="h-2 w-2 rounded-full" style={{ background: b.dot }} />
+                {b.viewing && <Glyph icon={Eye} />}
                 {b.title}
               </div>
               <div className="mt-2 flex items-center gap-[7px]">
                 <NumChip num={bandNum} />
-                <span className="text-[13.5px] font-bold" style={{ color: b.labelColor }}>
+                <span className={cn('text-[13.5px] font-bold', b.labelColor === INK && 'tone-ink')} style={{ color: b.labelColor }}>
                   {b.label}
                 </span>
               </div>
@@ -869,8 +909,8 @@ export function ConsolePage() {
       {/* ===== prochaine action ===== */}
       {prim && (
         <div
-          className="mt-4 rounded-[20px] border-[1.8px] px-6 py-[22px]"
-          style={{ background: proBg, borderColor: proColor + '55' }}
+          className="tone-surface mt-4 rounded-md border-2 px-6 py-[22px]"
+          style={{ background: proBg, borderColor: proColor + '55', ...tone(proColor) }}
         >
           <div className="flex flex-wrap items-center justify-between gap-[18px]">
             <div>
@@ -878,21 +918,21 @@ export function ConsolePage() {
                 className="flex items-center gap-[7px] text-[11px] font-extrabold uppercase tracking-[.08em]"
                 style={{ color: proColor }}
               >
-                <span className="text-[13px]">●</span>
+                <span className="size-2 rounded-full bg-current" />
                 {t('prochaineAction')}
                 <NumChip num={bandNum} />
               </div>
-              <div className="mt-[7px] text-lg font-extrabold text-[#232838]">{prim.label}</div>
-              <div className="mt-[3px] text-[12.5px] text-[#6B7280]">{proSub}</div>
+              <div className="mt-[7px] text-lg font-extrabold text-de9-ink">{prim.label}</div>
+              <div className="mt-[3px] text-[12.5px] text-de9-slate">{proSub}</div>
             </div>
             <div
               onClick={() => act(prim.kind, stOcc)}
-              className="flex max-w-full flex-none flex-wrap animate-pulse-ring cursor-pointer items-center rounded-[14px] px-6 py-[15px] text-[14.5px] font-bold text-white"
+              className="flex max-w-full flex-none flex-wrap animate-pulse-ring cursor-pointer items-center rounded-md px-6 py-[15px] text-[14.5px] font-bold text-white"
               style={{ background: proColor, boxShadow: '0 12px 26px ' + proColor + '55' }}
             >
               {prim.label}
               {prim.next && (
-                <span className="ms-2 inline-flex items-center rounded-md bg-white/25 px-2 py-[2px] text-xs font-extrabold leading-[1.4] text-white">
+                <span className="ms-2 inline-flex items-center rounded-sm bg-white/25 px-2 py-[2px] text-xs font-extrabold leading-[1.4] text-white">
                   → {STATUS_NUM[prim.next] ?? ''}
                 </span>
               )}
@@ -908,12 +948,12 @@ export function ConsolePage() {
             <div className="text-base font-extrabold">{t('devisSection')}</div>
             {!proposed && (
               <span className="inline-flex items-center gap-1.5 rounded-full border border-[#F0E2C0] bg-[#FBF4E4] px-[11px] py-1.5 text-[11px] font-extrabold text-[#92702A] dark:border-[#92702A]/40 dark:bg-[#92702A]/15 dark:text-[#D9B36A]">
-                🔒 {t('visibleAdmin')}
+                <Glyph icon={Lock} /> {t('visibleAdmin')}
               </span>
             )}
             {proposed && (
               <span className="inline-flex items-center gap-1.5 rounded-full border border-[#BFD9F2] bg-[#EAF2FD] px-[11px] py-1.5 text-[11px] font-extrabold text-[#2F7FD0] dark:border-[#2F7FD0]/40 dark:bg-[#2F7FD0]/15 dark:text-[#7EB5EC]">
-                👁 {t('transmisClient')}
+                <Glyph icon={Eye} /> {t('transmisClient')}
               </span>
             )}
           </div>
@@ -921,15 +961,15 @@ export function ConsolePage() {
 
           {/* brief recap */}
           {brief && (
-            <div className="mt-3.5 rounded-[15px] border-[1.5px] border-de9-line bg-secondary px-[17px] py-4">
+            <div className="mt-3.5 rounded-md border border-de9-line bg-secondary px-[17px] py-4">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="flex items-center gap-[11px]">
-                  <div className="flex h-10 w-10 flex-none items-center justify-center rounded-[11px] bg-[#232838] text-lg text-white">
-                    📋
+                  <div className="flex h-10 w-10 flex-none items-center justify-center rounded-sm bg-primary-container text-lg text-on-primary-container">
+                    <Glyph icon={ClipboardList} />
                   </div>
                   <div>
                     <div className="text-sm font-extrabold">
-                      {t('briefTitle')} <span className="font-semibold text-[#B6BEC8]">· {brief.ref}</span>
+                      {t('briefTitle')} <span className="font-semibold text-de9-faint">· {brief.ref}</span>
                     </div>
                     <div className="text-[11.5px] text-de9-gray">
                       {t('envoyeLe')} {withDay(brief.sentAt, t)} · {dv.length} {t('prestatairesContactes')}
@@ -939,15 +979,15 @@ export function ConsolePage() {
                 <div className="flex flex-none gap-2">
                   <div
                     onClick={() => setDoc({ kind: 'brief' })}
-                    className="flex cursor-pointer items-center gap-1.5 rounded-[10px] border-[1.5px] border-de9-line bg-card px-[13px] py-[9px] text-xs font-bold text-de9-slate"
+                    className="flex cursor-pointer items-center gap-1.5 rounded-sm border border-de9-line bg-card px-[13px] py-[9px] text-xs font-bold text-de9-slate"
                   >
-                    👁 {t('voir')}
+                    <Glyph icon={Eye} /> {t('voir')}
                   </div>
                   <div
                     onClick={() => toast.success(t('docToastTelechargement'))}
-                    className="flex cursor-pointer items-center gap-1.5 rounded-[10px] border-[1.5px] border-de9-line bg-card px-[13px] py-[9px] text-xs font-bold text-de9-slate"
+                    className="flex cursor-pointer items-center gap-1.5 rounded-sm border border-de9-line bg-card px-[13px] py-[9px] text-xs font-bold text-de9-slate"
                   >
-                    ⤓ {t('telecharger')}
+                    <Glyph icon={Download} /> {t('telecharger')}
                   </div>
                 </div>
               </div>
@@ -959,8 +999,13 @@ export function ConsolePage() {
                     [t('bBudget'), briefBudget],
                     [t('bLoc'), briefLoc],
                     [t('bFreq'), brief.frequence || '—'],
-                    [t('bPhotos'), '📷 ' + brief.photos.length + ' · 📎 ' + brief.docs.length],
-                  ] as [string, string][]
+                    [
+                      t('bPhotos'),
+                      <>
+                        <Glyph icon={Camera} /> {brief.photos.length} · <Glyph icon={Paperclip} /> {brief.docs.length}
+                      </>,
+                    ],
+                  ] as [string, ReactNode][]
                 ).map(([lab, val], i) => (
                   <div key={i}>
                     <div className="text-[10px] font-extrabold uppercase tracking-[.03em] text-de9-gray">{lab}</div>
@@ -974,13 +1019,13 @@ export function ConsolePage() {
           {/* status summary */}
           <div className="mt-3.5 flex flex-wrap items-center gap-[9px]">
             <span className="rounded-full bg-[#FEF3E2] px-3 py-1.5 text-[11.5px] font-bold text-[#D9871F] dark:bg-[#D9871F]/15 dark:text-[#E9A962]">
-              ⏳ {nAttente} {t('enAttente')}
+              <Glyph icon={Hourglass} /> {nAttente} {t('enAttente')}
             </span>
             <span className="rounded-full bg-[#EAF2FD] px-3 py-1.5 text-[11.5px] font-bold text-[#2F7FD0] dark:bg-[#2F7FD0]/15 dark:text-[#7EB5EC]">
-              📨 {nRecu} {t('recus')}
+              <Glyph icon={Inbox} /> {nRecu} {t('recus')}
             </span>
             <span className="rounded-full bg-[#E7F6EE] px-3 py-1.5 text-[11.5px] font-bold text-[#2FA86A] dark:bg-[#2FA86A]/15 dark:text-[#6FCF97]">
-              ✓ {nValide} {t('valides')}
+              <Glyph icon={Check} /> {nValide} {t('valides')}
             </span>
           </div>
 
@@ -993,7 +1038,7 @@ export function ConsolePage() {
               return (
                 <div
                   key={d.presId}
-                  className="rounded-[14px] border-[1.5px] px-[17px] py-[15px]"
+                  className="rounded-md border px-[17px] py-[15px]"
                   style={{ borderColor: d.status === 'attente' ? '#EDF1F3' : sm[3] }}
                 >
                   <div className="flex flex-wrap items-start justify-between gap-3">
@@ -1005,14 +1050,14 @@ export function ConsolePage() {
                         {d.raison}
                       </span>
                       <span
-                        className="rounded-full px-2.5 py-1 text-[10.5px] font-extrabold"
+                        className="rounded-full px-2.5 py-1 text-[10.5px] font-extrabold tone-chip"
                         style={{ background: sm[1], color: sm[2] }}
                       >
                         {sm[0]}
                       </span>
                       {clientVisible && (
                         <span className="rounded-full bg-[#EAF2FD] px-[9px] py-1 text-[10px] font-extrabold text-[#2F7FD0] dark:bg-[#2F7FD0]/15 dark:text-[#7EB5EC]">
-                          👁 {t('vuClient')}
+                          <Glyph icon={Eye} /> {t('vuClient')}
                         </span>
                       )}
                     </div>
@@ -1020,9 +1065,9 @@ export function ConsolePage() {
                       <div className="text-end">
                         <div className="text-base font-extrabold">
                           {d.montant ? fmt(d.montant) : '—'}{' '}
-                          <span className="text-[11px] font-semibold text-[#B0B8C2]">{t('credits')}</span>
+                          <span className="text-[11px] font-semibold text-de9-faint">{t('credits')}</span>
                         </div>
-                        <div className="text-[11px] text-de9-gray">⏱ {d.delai || '—'}</div>
+                        <div className="text-[11px] text-de9-gray"><Glyph icon={Timer} /> {d.delai || '—'}</div>
                       </div>
                     )}
                   </div>
@@ -1030,20 +1075,20 @@ export function ConsolePage() {
                   {hasDevis && (
                     <>
                       <div className="mt-2.5 text-[12.5px] leading-[1.5] text-de9-slate">{d.details}</div>
-                      <div className="mt-[11px] flex items-center gap-[9px] rounded-[11px] bg-secondary px-[13px] py-2.5">
-                        <span className="text-lg">📄</span>
+                      <div className="mt-[11px] flex items-center gap-[9px] rounded-sm bg-secondary px-[13px] py-2.5">
+                        <span className="text-lg"><Glyph icon={FileText} /></span>
                         <span className="flex-1 truncate text-xs font-semibold text-de9-slate">{d.docName}</span>
                         <div
                           onClick={() => setDoc({ kind: 'devis', presId: d.presId })}
                           className="cursor-pointer text-[11.5px] font-bold text-[#2F7FD0] dark:text-[#7EB5EC]"
                         >
-                          👁 {t('voir')}
+                          <Glyph icon={Eye} /> {t('voir')}
                         </div>
                         <div
                           onClick={() => toast.success(t('docToastTelechargement'))}
                           className="cursor-pointer text-[11.5px] font-bold text-de9-slate"
                         >
-                          ⤓ {t('telecharger')}
+                          <Glyph icon={Download} /> {t('telecharger')}
                         </div>
                       </div>
                     </>
@@ -1051,13 +1096,13 @@ export function ConsolePage() {
 
                   <div className="mt-3 flex flex-wrap items-center gap-2">
                     <a href={'tel:+213' + d.phone.replace(/^0/, '')} className={CONTACT_LINK}>
-                      📞 {t('tel')}
+                      <Glyph icon={Phone} /> {t('tel')}
                     </a>
                     <a href={'https://wa.me/' + d.wa} target="_blank" rel="noreferrer" className={CONTACT_LINK}>
-                      💬 WhatsApp
+                      <Glyph icon={MessageCircle} /> WhatsApp
                     </a>
                     <a href={'mailto:' + d.email} className={CONTACT_LINK}>
-                      ✉️ Email
+                      <Glyph icon={Mail} /> Email
                     </a>
                     <div className="flex-1" />
                     {d.status === 'attente' && (
@@ -1068,9 +1113,9 @@ export function ConsolePage() {
                             t('consoleToastDevisRecu').replace('{n}', d.raison),
                           )
                         }
-                        className="cursor-pointer rounded-[10px] border-[1.5px] border-dashed border-de9-line bg-card px-[13px] py-2 text-[11.5px] font-bold text-de9-slate"
+                        className="cursor-pointer rounded-sm border border-dashed border-de9-line bg-card px-[13px] py-2 text-[11.5px] font-bold text-de9-slate"
                       >
-                        ⊕ {t('simReception')}
+                        <Glyph icon={CirclePlus} /> {t('simReception')}
                       </div>
                     )}
                     {d.status === 'recu' && (
@@ -1082,7 +1127,7 @@ export function ConsolePage() {
                               t('consoleToastDevisRefuse').replace('{n}', d.raison),
                             )
                           }
-                          className="cursor-pointer rounded-[10px] bg-[#FDECEC] px-3.5 py-[9px] text-[11.5px] font-bold text-de9-red dark:bg-[#E7464E]/15"
+                          className="cursor-pointer rounded-sm bg-[#FDECEC] px-3.5 py-[9px] text-[11.5px] font-bold text-de9-red dark:bg-[#E7464E]/15"
                         >
                           {t('refuser')}
                         </div>
@@ -1093,9 +1138,9 @@ export function ConsolePage() {
                               t('consoleToastDevisValide').replace('{n}', d.raison),
                             )
                           }
-                          className="cursor-pointer rounded-[10px] bg-[#2FA86A] px-4 py-[9px] text-[11.5px] font-bold text-white shadow-[0_6px_14px_rgba(47,168,106,.35)]"
+                          className="cursor-pointer rounded-sm bg-[#2FA86A] px-4 py-[9px] text-[11.5px] font-bold text-white"
                         >
-                          ✓ {t('valider')}
+                          <Glyph icon={Check} /> {t('valider')}
                         </div>
                       </>
                     )}
@@ -1103,9 +1148,9 @@ export function ConsolePage() {
                       <>
                         <div
                           onClick={() => runDevis({ action: 'devalider', quoteIndex: i }, null)}
-                          className="cursor-pointer rounded-[10px] bg-secondary px-3.5 py-[9px] text-[11.5px] font-bold text-de9-slate"
+                          className="cursor-pointer rounded-sm bg-secondary px-3.5 py-[9px] text-[11.5px] font-bold text-de9-slate"
                         >
-                          ↺ {t('devalider')}
+                          <Glyph icon={Undo2} /> {t('devalider')}
                         </div>
                         {proposed && (
                           <div
@@ -1115,7 +1160,7 @@ export function ConsolePage() {
                                 t('consoleToastPrestataireAssigneNom').replace('{n}', d.raison),
                               )
                             }
-                            className="cursor-pointer rounded-[10px] bg-de9-teal px-4 py-[9px] text-[11.5px] font-bold text-white shadow-[0_6px_14px_rgba(101,203,196,.4)]"
+                            className="cursor-pointer rounded-sm bg-de9-teal px-4 py-[9px] text-[11.5px] font-bold text-white"
                           >
                             {t('choisirNom')}
                           </div>
@@ -1132,14 +1177,14 @@ export function ConsolePage() {
           <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-dashed border-de9-line pt-4">
             <div className="min-w-[220px] flex-1 text-xs text-de9-gray">{t('proposeHint')}</div>
             {proposed && (
-              <span className="rounded-xl border-[1.5px] border-[#BFD9F2] bg-[#EAF2FD] px-[18px] py-[11px] text-[12.5px] font-extrabold text-[#2F7FD0] dark:border-[#2F7FD0]/40 dark:bg-[#2F7FD0]/15 dark:text-[#7EB5EC]">
-                ✓ {t('transmisClient')}
+              <span className="rounded-md border border-[#BFD9F2] bg-[#EAF2FD] px-[18px] py-[11px] text-[12.5px] font-extrabold text-[#2F7FD0] dark:border-[#2F7FD0]/40 dark:bg-[#2F7FD0]/15 dark:text-[#7EB5EC]">
+                <Glyph icon={Check} /> {t('transmisClient')}
               </span>
             )}
             {canPropose && (
               <div
                 onClick={() => runDevis({ action: 'propose' }, t('consoleToastDevisTransmis'))}
-                className="cursor-pointer rounded-[13px] bg-[#2F7FD0] px-[22px] py-[13px] text-[13px] font-bold text-white shadow-[0_10px_22px_rgba(47,127,208,.38)]"
+                className="cursor-pointer rounded-md bg-[#2F7FD0] px-[22px] py-[13px] text-[13px] font-bold text-white"
               >
                 {t('proposerClient')}
               </div>
@@ -1153,11 +1198,11 @@ export function ConsolePage() {
         <div className={cn(CARD, 'mt-4')}>
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="text-base font-extrabold">
-              {t('occurrences')} <span className="font-semibold text-[#B6BEC8]">· {cmd.occurrences.length}</span>
+              {t('occurrences')} <span className="font-semibold text-de9-faint">· {cmd.occurrences.length}</span>
             </div>
             <div
               onClick={() => act('addOcc', null)}
-              className="cursor-pointer rounded-[10px] bg-[#EAF2FD] px-3.5 py-[9px] text-[12.5px] font-bold text-[#2F7FD0] dark:bg-[#2F7FD0]/15 dark:text-[#7EB5EC]"
+              className="cursor-pointer rounded-sm bg-[#EAF2FD] px-3.5 py-[9px] text-[12.5px] font-bold text-[#2F7FD0] dark:bg-[#2F7FD0]/15 dark:text-[#7EB5EC]"
             >
               + {t('ajouterOccurrence')}
             </div>
@@ -1226,7 +1271,7 @@ export function ConsolePage() {
                   {/* card */}
                   <div
                     className={cn(
-                      'mb-3.5 flex-1 rounded-[15px] border-[1.5px] px-[17px] py-4',
+                      'mb-3.5 flex-1 rounded-md border px-[17px] py-4',
                       o.status === 'doneDisputed'
                         ? 'border-[#F6D2D4] bg-[#FFF7F7] dark:border-[#E7464E]/40 dark:bg-[#E7464E]/10'
                         : 'border-de9-line bg-card',
@@ -1236,7 +1281,7 @@ export function ConsolePage() {
                       <div className="flex items-center gap-[11px]">
                         <span className="text-[15px] font-extrabold">{withDay(o.date, t)}</span>
                         <span
-                          className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-[5px] text-[11px] font-bold"
+                          className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-[5px] text-[11px] font-bold tone-chip"
                           style={{ background: p.badge.bg, color: p.badge.fg }}
                         >
                           <NumChip num={STATUS_NUM[o.status] ?? ''} />
@@ -1244,9 +1289,9 @@ export function ConsolePage() {
                         </span>
                       </div>
                       <div className="flex items-center gap-3 text-xs text-de9-gray">
-                        <span>👷 {o.ouvrier ?? '—'}</span>
+                        <span><Glyph icon={HardHat} /> {o.ouvrier ?? '—'}</span>
                         <span>
-                          🧾 {fact ? fmt(fact.montant) + ' ' + t('commonCreditsAbbr') : t('consoleFactureAucune')}
+                          <Glyph icon={ReceiptText} /> {fact ? fmt(fact.montant) + ' ' + t('commonCreditsAbbr') : t('consoleFactureAucune')}
                         </span>
                       </div>
                     </div>
@@ -1256,8 +1301,8 @@ export function ConsolePage() {
                       {roleBadges.map((rb, j) => (
                         <div
                           key={j}
-                          className="rounded-[9px] border px-[9px] py-[7px]"
-                          style={{ background: rb.bg, borderColor: rb.border }}
+                          className="tone-surface rounded-sm border px-[9px] py-[7px]"
+                          style={{ background: rb.bg, borderColor: rb.border, ...tone(rb.titleColor) }}
                         >
                           <div
                             className="text-[9.5px] font-extrabold uppercase tracking-[.03em]"
@@ -1266,7 +1311,7 @@ export function ConsolePage() {
                             {rb.title}
                           </div>
                           <div
-                            className="mt-[2px] text-[11.5px] font-semibold leading-[1.25]"
+                            className={cn('mt-[2px] text-[11.5px] font-semibold leading-[1.25]', rb.labelColor === INK && 'tone-ink')}
                             style={{ color: rb.labelColor }}
                           >
                             {rb.label}
@@ -1280,12 +1325,12 @@ export function ConsolePage() {
                       {prim2 && (
                         <div
                           onClick={() => act(prim2.kind, o)}
-                          className="flex cursor-pointer items-center rounded-[11px] px-[17px] py-[11px] text-[12.5px] font-bold text-white"
+                          className="flex cursor-pointer items-center rounded-sm px-[17px] py-[11px] text-[12.5px] font-bold text-white"
                           style={{ background: primColor }}
                         >
                           {prim2.label}
                           {prim2.next && (
-                            <span className="ms-[7px] inline-flex items-center rounded-md bg-white/25 px-[7px] py-[2px] text-[10.5px] font-extrabold leading-[1.4] text-white">
+                            <span className="ms-[7px] inline-flex items-center rounded-sm bg-white/25 px-[7px] py-[2px] text-[10.5px] font-extrabold leading-[1.4] text-white">
                               → {STATUS_NUM[prim2.next] ?? ''}
                             </span>
                           )}
@@ -1295,7 +1340,7 @@ export function ConsolePage() {
                         <div
                           key={j}
                           onClick={() => act(s2.kind, o)}
-                          className={cn('cursor-pointer rounded-[11px] bg-secondary px-3.5 py-2.5 text-xs font-bold', s2.cls)}
+                          className={cn('cursor-pointer rounded-sm bg-secondary px-3.5 py-2.5 text-xs font-bold', s2.cls)}
                         >
                           {s2.label}
                         </div>
@@ -1334,8 +1379,8 @@ export function ConsolePage() {
             {agir.map((g) => (
               <div
                 key={g.key}
-                className="rounded-[14px] border-[1.5px] p-3.5"
-                style={{ borderColor: g.border, background: g.bg }}
+                className="tone-surface rounded-md border p-3.5"
+                style={{ borderColor: g.border, background: g.bg, ...tone(g.color) }}
               >
                 <div
                   className="flex items-center gap-1.5 text-[11.5px] font-extrabold uppercase tracking-[.03em]"
@@ -1349,14 +1394,14 @@ export function ConsolePage() {
                     <div
                       key={j}
                       onClick={() => act(a.kind, stOcc)}
-                      className="cursor-pointer rounded-[10px] border-[1.5px] bg-white px-[13px] py-[11px] text-center text-[12.5px] font-bold text-[#232838]"
+                      className="cursor-pointer rounded-sm border bg-card px-[13px] py-[11px] text-center text-[12.5px] font-bold text-de9-ink"
                       style={{ borderColor: g.border }}
                     >
                       {a.label}
                     </div>
                   ))}
                   {g.actions.length === 0 && (
-                    <div className="p-1.5 text-center text-[11.5px] text-[#B6BEC8]">{t('aucuneAction')}</div>
+                    <div className="p-1.5 text-center text-[11.5px] text-de9-faint">{t('aucuneAction')}</div>
                   )}
                 </div>
               </div>
@@ -1366,12 +1411,12 @@ export function ConsolePage() {
       )}
 
       {/* ===== journal d'audit ===== */}
-      <div className="mt-4 rounded-[20px] border border-de9-line bg-card px-6 py-1.5 shadow-[0_10px_30px_rgba(38,50,69,.06)]">
+      <div className="mt-4 rounded-md border border-de9-line bg-card px-6 py-1.5">
         <div onClick={() => setAuditOpen((v) => !v)} className="flex cursor-pointer items-center justify-between py-4">
           <div className="text-[15px] font-extrabold">
-            {t('journalAudit')} <span className="font-semibold text-[#B6BEC8]">· {cmd.audit.length}</span>
+            {t('journalAudit')} <span className="font-semibold text-de9-faint">· {cmd.audit.length}</span>
           </div>
-          <span className={cn('text-[13px] text-de9-gray transition-transform', auditOpen && 'rotate-180')}>▾</span>
+          <span className={cn('text-[13px] text-de9-gray transition-transform', auditOpen && 'rotate-180')}><Glyph icon={ChevronDown} /></span>
         </div>
         {auditOpen && (
           <div className="flex flex-col gap-2.5 pb-[18px]">
@@ -1380,7 +1425,7 @@ export function ConsolePage() {
                 <div className="mt-1.5 h-2 w-2 flex-none rounded-full" style={{ background: e.dot }} />
                 <div className="flex-1">
                   <div className="text-[13px] leading-[1.45] text-de9-ink">{e.text}</div>
-                  <div className="mt-[1px] text-[11px] text-[#B0B8C2]">{e.date}</div>
+                  <div className="mt-[1px] text-[11px] text-de9-faint">{e.date}</div>
                 </div>
               </div>
             ))}

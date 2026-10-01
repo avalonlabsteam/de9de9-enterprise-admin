@@ -5,10 +5,12 @@
 // file name. Visual ground truth: src/admin/views/Console.tsx modals.
 import { useState } from 'react';
 import type { ChangeEvent } from 'react';
+import { Paperclip, ReceiptText, Upload, X } from 'lucide-react';
 import { useT } from '@/lib/i18n';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import { Glyph } from '@/components/common/Glyph';
 
 interface DepositInvoiceModalProps {
   open: boolean;
@@ -20,7 +22,7 @@ interface DepositInvoiceModalProps {
 
 const LABEL_CLASS = 'mb-1.5 text-xs font-semibold text-de9-slate';
 const INPUT_CLASS =
-  'h-auto w-full rounded-xl border-[1.5px] border-de9-line bg-card px-3.5 py-3 text-[14px] text-de9-ink shadow-none outline-none';
+  'h-auto w-full rounded-xs border border-outline bg-card px-3.5 py-3 text-[14px] text-de9-ink shadow-none outline-none';
 
 export function DepositInvoiceModal({ open, onOpenChange, pending, onConfirm }: DepositInvoiceModalProps) {
   const t = useT();
@@ -47,10 +49,10 @@ export function DepositInvoiceModal({ open, onOpenChange, pending, onConfirm }: 
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         showCloseButton={false}
-        className="block max-h-[90vh] max-w-[calc(100%-2rem)] gap-0 overflow-y-auto rounded-[22px] bg-card p-[26px] shadow-[0_30px_70px_rgba(20,30,45,.4)] ring-0 sm:max-w-[460px]"
+        className="block max-h-[90vh] max-w-[calc(100%-2rem)] gap-0 overflow-y-auto rounded-xl bg-card p-[26px] shadow-e3 ring-0 sm:max-w-[460px]"
       >
-        <div className="flex size-[54px] items-center justify-center rounded-[15px] bg-[#F4EFFB] text-[26px] dark:bg-[#7C57C7]/15">
-          🧾
+        <div className="flex size-[54px] items-center justify-center rounded-md bg-[#F4EFFB] text-[26px] dark:bg-[#7C57C7]/15 text-[#7C57C7] dark:text-[#A98BE8]">
+          <Glyph icon={ReceiptText} />
         </div>
         <DialogTitle className="mt-4 text-[19px] font-extrabold leading-normal text-de9-ink">
           {t('titleDeposit')}
@@ -63,22 +65,22 @@ export function DepositInvoiceModal({ open, onOpenChange, pending, onConfirm }: 
             {files.map((file, i) => (
               <div
                 key={file.name + i}
-                className="flex items-center gap-[7px] rounded-[10px] border-[1.5px] border-de9-line bg-card px-[11px] py-2"
+                className="flex items-center gap-[7px] rounded-sm border border-de9-line bg-card px-[11px] py-2"
               >
-                <span className="text-[15px]">📎</span>
+                <span className="text-[15px]"><Glyph icon={Paperclip} /></span>
                 <span className="max-w-[160px] truncate text-[12px] font-semibold text-de9-slate">{file.name}</span>
                 <button
                   type="button"
                   onClick={() => setFiles((fs) => fs.filter((_, k) => k !== i))}
-                  className="cursor-pointer text-[13px] text-[#C0C8D0]"
+                  className="cursor-pointer text-[13px] text-de9-faint"
                 >
-                  ✕
+                  <Glyph icon={X} />
                 </button>
               </div>
             ))}
             {/* The upload control: a real button that opens the file picker. */}
-            <label className="flex cursor-pointer items-center gap-2 rounded-[11px] bg-[#7C57C7] px-4 py-2.5 text-[12.5px] font-bold text-white shadow-[0_8px_18px_rgba(124,87,199,.35)]">
-              <span className="text-[15px]">⤒</span>
+            <label className="flex cursor-pointer items-center gap-2 rounded-sm bg-[#7C57C7] px-4 py-2.5 text-[12.5px] font-bold text-white">
+              <span className="text-[15px]"><Glyph icon={Upload} /></span>
               {files.length ? t('joindreDoc') : t('choisirFichier')}
               <input
                 type="file"
@@ -118,7 +120,7 @@ export function DepositInvoiceModal({ open, onOpenChange, pending, onConfirm }: 
             type="button"
             variant="ghost"
             onClick={() => onOpenChange(false)}
-            className="h-auto flex-1 rounded-[13px] bg-secondary p-3.5 text-center text-sm font-bold text-de9-slate hover:bg-secondary"
+            className="h-auto flex-1 rounded-full bg-secondary p-3.5 text-center text-sm font-bold text-de9-slate hover:bg-secondary"
           >
             {t('annuler')}
           </Button>
@@ -126,7 +128,7 @@ export function DepositInvoiceModal({ open, onOpenChange, pending, onConfirm }: 
             type="button"
             disabled={pending || files.length === 0}
             onClick={submit}
-            className="h-auto flex-1 rounded-[13px] bg-[#7C57C7] p-3.5 text-center text-sm font-bold text-white shadow-[0_10px_22px_rgba(124,87,199,.38)] hover:bg-[#6C49B5] disabled:opacity-70"
+            className="h-auto flex-1 rounded-full bg-[#7C57C7] p-3.5 text-center text-sm font-bold text-white hover:bg-[#6C49B5] disabled:opacity-70"
           >
             {t('btnDeposit')}
           </Button>

@@ -1,10 +1,12 @@
 import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { Star } from 'lucide-react';
 import { useT } from '@/lib/i18n';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { Glyph } from '@/components/common/Glyph';
 import { usePrestataireFiche } from '../api/prestataires';
 import { useSubmitReview } from '../api/reviews';
 import { reviewInputSchema } from '../schemas/review';
@@ -52,10 +54,10 @@ export function ReviewModal({ presId, presName, open, onOpenChange }: ReviewModa
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         showCloseButton={false}
-        className="block max-h-[90vh] max-w-[calc(100%-2rem)] gap-0 overflow-y-auto rounded-[22px] bg-card p-[26px] shadow-[0_30px_70px_rgba(20,30,45,.4)] ring-0 sm:max-w-[460px]"
+        className="block max-h-[90vh] max-w-[calc(100%-2rem)] gap-0 overflow-y-auto rounded-xl bg-card p-[26px] shadow-e3 ring-0 sm:max-w-[460px]"
       >
         <form onSubmit={onSubmit}>
-          <div className="flex size-[54px] items-center justify-center rounded-[15px] bg-[#F4EFFB] text-[26px] dark:bg-[#7C57C7]/15">⭐</div>
+          <div className="flex size-[54px] items-center justify-center rounded-md bg-[#F4EFFB] text-[26px] dark:bg-[#7C57C7]/15 text-[#7C57C7] dark:text-[#A98BE8]"><Glyph icon={Star} filled /></div>
           <DialogTitle className="mt-4 text-[19px] font-extrabold leading-normal text-de9-ink">
             {t('avisDe9')}
           </DialogTitle>
@@ -73,7 +75,7 @@ export function ReviewModal({ presId, presName, open, onOpenChange }: ReviewModa
                 className="cursor-pointer text-[34px] leading-none"
                 style={{ color: n <= note ? '#F2A93B' : '#D7DEE4' }}
               >
-                {n <= note ? '★' : '☆'}
+                <Glyph icon={Star} filled={n <= note} className="stroke-[1.5]" />
               </button>
             ))}
           </div>
@@ -84,21 +86,21 @@ export function ReviewModal({ presId, presName, open, onOpenChange }: ReviewModa
           <div className="mt-2 text-[12px] font-bold text-de9-slate">{t('serviceConcerne')}</div>
           <Input
             {...register('service')}
-            className="mt-1.5 h-auto w-full rounded-[11px] border-[1.5px] border-de9-line bg-card px-[13px] py-[11px] text-[13.5px] text-de9-ink shadow-none outline-none"
+            className="mt-1.5 h-auto w-full rounded-xs border border-outline bg-card px-[13px] py-[11px] text-[13.5px] text-de9-ink shadow-none outline-none"
           />
 
           <div className="mt-4 text-[12px] font-bold text-de9-slate">{t('commentaireObl')}</div>
           <Textarea
             {...register('comment')}
             placeholder={t('phCommentaire')}
-            className="mt-1.5 min-h-[84px] w-full resize-y rounded-xl border-[1.5px] border-de9-line bg-card px-3.5 py-3 text-[13.5px] text-de9-ink shadow-none outline-none"
+            className="mt-1.5 min-h-[84px] w-full resize-y rounded-xs border border-outline bg-card px-3.5 py-3 text-[13.5px] text-de9-ink shadow-none outline-none"
           />
           <div className="min-h-[18px] text-[11.5px] font-semibold text-de9-red">
             {errors.comment ? t('reviewToastCommentaireObligatoire') : ''}
           </div>
 
           {submitReview.isError && (
-            <div className="rounded-[10px] bg-[#FDEBEC] px-3 py-2 text-[12px] font-semibold text-de9-red dark:bg-[#E7464E]/15">
+            <div className="rounded-sm bg-[#FDEBEC] px-3 py-2 text-[12px] font-semibold text-de9-red dark:bg-[#E7464E]/15">
               {submitReview.error instanceof Error ? submitReview.error.message : 'Erreur'}
             </div>
           )}
@@ -107,14 +109,14 @@ export function ReviewModal({ presId, presName, open, onOpenChange }: ReviewModa
             <button
               type="button"
               onClick={() => onOpenChange(false)}
-              className="flex-1 cursor-pointer rounded-[13px] bg-secondary p-3.5 text-center text-[14px] font-bold text-de9-slate"
+              className="flex-1 cursor-pointer rounded-full bg-secondary p-3.5 text-center text-[14px] font-bold text-de9-slate"
             >
               {t('annuler')}
             </button>
             <button
               type="submit"
               disabled={isSubmitting}
-              className="flex-1 cursor-pointer rounded-[13px] bg-[#7C57C7] p-3.5 text-center text-[14px] font-bold text-white shadow-[0_10px_22px_rgba(124,87,199,.4)] disabled:opacity-60"
+              className="flex-1 cursor-pointer rounded-full bg-[#7C57C7] p-3.5 text-center text-[14px] font-bold text-white disabled:opacity-60"
             >
               {t('enregistrerAvis')}
             </button>

@@ -8,33 +8,56 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { toast } from 'sonner';
+import {
+  CalendarDays,
+  Circle,
+  CircleDot,
+  FileText,
+  Handshake,
+  HardHat,
+  Paperclip,
+  ReceiptText,
+  Scale,
+  TriangleAlert,
+  type LucideIcon,
+} from 'lucide-react';
 import { useT, useL } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Field, FieldError } from '@/components/ui/field';
+import { Glyph } from '@/components/common/Glyph';
 
 const CONTENT_CLASS =
-  'block max-h-[88vh] w-full max-w-[calc(100%-2rem)] gap-0 overflow-y-auto rounded-[22px] bg-card p-7 text-de9-ink shadow-[0_30px_70px_rgba(20,30,45,.35)] ring-0 sm:max-w-[460px]';
+  'block max-h-[88vh] w-full max-w-[calc(100%-2rem)] gap-0 overflow-y-auto rounded-xl bg-card p-7 text-de9-ink shadow-e3 ring-0 sm:max-w-[460px]';
 
 const CANCEL_CLASS =
-  'h-auto flex-1 rounded-[13px] bg-secondary p-3.5 text-center text-sm font-bold text-de9-slate hover:bg-de9-bg hover:text-de9-slate';
+  'h-auto flex-1 rounded-full bg-secondary p-3.5 text-center text-sm font-bold text-de9-slate hover:bg-de9-bg hover:text-de9-slate';
 
 const LABEL_CLASS = 'mb-1.5 text-xs font-semibold text-de9-slate';
 
 const INPUT_CLASS =
-  'h-auto w-full rounded-xl border-[1.5px] border-de9-line bg-card p-3 text-sm text-de9-ink shadow-none md:text-sm';
+  'h-auto w-full rounded-xs border border-outline bg-card p-3 text-sm text-de9-ink shadow-none md:text-sm';
+
+// The tile and its icon share one hue.
+const TILE_TONE = {
+  blue: 'bg-[#EAF2FD] text-[#2F7FD0] dark:bg-[#2F7FD0]/15 dark:text-[#7EB5EC]',
+  orange: 'bg-[#FEF3E2] text-[#D9871F] dark:bg-[#D9871F]/15 dark:text-[#EBA24E]',
+  green: 'bg-[#E7F6EE] text-[#2FA86A] dark:bg-[#2FA86A]/15 dark:text-[#6FCF97]',
+  teal: 'bg-[#E5F7F4] text-de9-teal-dark dark:bg-[#178A82]/20',
+  purple: 'bg-[#F4EFFB] text-[#7C57C7] dark:bg-[#7C57C7]/15 dark:text-[#A98BE8]',
+} as const;
 
 interface IconTileProps {
-  bg: string;
-  icon: string;
+  tone: keyof typeof TILE_TONE;
+  icon: LucideIcon;
 }
 
-function IconTile({ bg, icon }: IconTileProps) {
+function IconTile({ tone, icon }: IconTileProps) {
   return (
-    <div className="flex h-[54px] w-[54px] items-center justify-center rounded-[15px] text-[26px]" style={{ background: bg }}>
-      {icon}
+    <div className={cn('flex h-[54px] w-[54px] items-center justify-center rounded-md text-[24px]', TILE_TONE[tone])}>
+      <Glyph icon={icon} className="stroke-[1.75]" />
     </div>
   );
 }
@@ -56,13 +79,13 @@ export function ApproveModal({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent showCloseButton={false} className={CONTENT_CLASS}>
-        <IconTile bg="#EAF2FD" icon="⚖️" />
+        <IconTile tone="blue" icon={Scale} />
         <DialogTitle className="mt-4 text-[19px] font-extrabold leading-normal text-de9-ink">
           {t('modalTitle')}
         </DialogTitle>
         <div className="mt-[9px] text-[13.5px] leading-[1.55] text-de9-slate">{t('modalBody')}</div>
-        <div className="mt-4 rounded-xl border border-[#F0E2C0] bg-[#FBF4E4] px-[15px] py-[13px] text-[12.5px] leading-[1.5] text-[#92702A] dark:border-[#92702A]/40 dark:bg-[#92702A]/15 dark:text-[#D9B36A]">
-          {t('modalWarn')}
+        <div className="mt-4 rounded-md border border-[#F0E2C0] bg-[#FBF4E4] px-[15px] py-[13px] text-[12.5px] leading-[1.5] text-[#92702A] dark:border-[#92702A]/40 dark:bg-[#92702A]/15 dark:text-[#D9B36A]">
+          <Glyph icon={TriangleAlert} /> {t('modalWarn')}
         </div>
         <div className="mt-[22px] flex gap-[11px]">
           <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} className={CANCEL_CLASS}>
@@ -72,7 +95,7 @@ export function ApproveModal({
             type="button"
             disabled={pending}
             onClick={onConfirm}
-            className="h-auto flex-1 rounded-[13px] bg-[#2F7FD0] p-3.5 text-center text-sm font-bold text-white shadow-[0_10px_22px_rgba(47,127,208,.4)] hover:bg-[#2870B8] disabled:opacity-70"
+            className="h-auto flex-1 rounded-full bg-[#2F7FD0] p-3.5 text-center text-sm font-bold text-white hover:bg-[#2870B8] disabled:opacity-70"
           >
             {t('confirmerAuNom')}
           </Button>
@@ -104,7 +127,7 @@ export function ReprogramModal({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent showCloseButton={false} className={CONTENT_CLASS}>
         <form onSubmit={form.handleSubmit(onSubmit)}>
-          <IconTile bg="#FEF3E2" icon="🗓️" />
+          <IconTile tone="orange" icon={CalendarDays} />
           <DialogTitle className="mt-4 text-[19px] font-extrabold leading-normal text-de9-ink">
             {t('titleReprog')}
           </DialogTitle>
@@ -139,7 +162,7 @@ export function ReprogramModal({
             <Button
               type="submit"
               disabled={form.formState.isSubmitting}
-              className="h-auto flex-1 rounded-[13px] bg-[#D9871F] p-3.5 text-center text-sm font-bold text-white shadow-[0_10px_22px_rgba(217,135,31,.38)] hover:bg-[#C67A19] disabled:opacity-70"
+              className="h-auto flex-1 rounded-full bg-[#D9871F] p-3.5 text-center text-sm font-bold text-white hover:bg-[#C67A19] disabled:opacity-70"
             >
               {t('btnReprog')}
             </Button>
@@ -171,7 +194,7 @@ export function AssignModal({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent showCloseButton={false} className={CONTENT_CLASS}>
-        <IconTile bg="#E7F6EE" icon="👷" />
+        <IconTile tone="green" icon={HardHat} />
         <DialogTitle className="mt-4 text-[19px] font-extrabold leading-normal text-de9-ink">
           {t('titleAssign')}
         </DialogTitle>
@@ -187,12 +210,12 @@ export function AssignModal({
                 aria-checked={active}
                 onClick={() => setWorker(w)}
                 className={cn(
-                  'flex cursor-pointer items-center gap-[11px] rounded-xl border-[1.5px] px-[15px] py-[13px] text-start',
+                  'flex cursor-pointer items-center gap-[11px] rounded-md border px-[15px] py-[13px] text-start',
                   active ? 'border-[#2FA86A] bg-[#E7F6EE] dark:bg-[#2FA86A]/15' : 'border-de9-line bg-card',
                 )}
               >
-                <span className={cn('text-base', active ? 'text-[#2FA86A] dark:text-[#6FCF97]' : 'text-[#B6BEC8]')}>
-                  {active ? '●' : '○'}
+                <span className={cn('text-base', active ? 'text-[#2FA86A] dark:text-[#6FCF97]' : 'text-de9-faint')}>
+                  <Glyph icon={active ? CircleDot : Circle} />
                 </span>
                 <span className="text-sm font-bold text-de9-ink">{w}</span>
               </button>
@@ -207,7 +230,7 @@ export function AssignModal({
             type="button"
             disabled={pending}
             onClick={() => onConfirm(worker)}
-            className="h-auto flex-1 rounded-[13px] bg-[#2FA86A] p-3.5 text-center text-sm font-bold text-white shadow-[0_10px_22px_rgba(47,168,106,.38)] hover:bg-[#29955E] disabled:opacity-70"
+            className="h-auto flex-1 rounded-full bg-[#2FA86A] p-3.5 text-center text-sm font-bold text-white hover:bg-[#29955E] disabled:opacity-70"
           >
             {t('btnAssign')}
           </Button>
@@ -253,7 +276,7 @@ export function ChooseModal({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent showCloseButton={false} className={CONTENT_CLASS}>
-        <IconTile bg="#E5F7F4" icon="🤝" />
+        <IconTile tone="teal" icon={Handshake} />
         <DialogTitle className="mt-4 text-[19px] font-extrabold leading-normal text-de9-ink">
           {t('titleChoose')}
         </DialogTitle>
@@ -269,7 +292,7 @@ export function ChooseModal({
                 aria-checked={active}
                 onClick={() => setIdx(i)}
                 className={cn(
-                  'flex cursor-pointer items-center gap-3 rounded-xl border-[1.5px] px-[15px] py-[13px] text-start',
+                  'flex cursor-pointer items-center gap-3 rounded-md border px-[15px] py-[13px] text-start',
                   active ? 'border-[#2FA86A] bg-[#EDF8F1] dark:bg-[#2FA86A]/15' : 'border-de9-line bg-card',
                 )}
               >
@@ -292,7 +315,7 @@ export function ChooseModal({
             type="button"
             disabled={pending}
             onClick={confirm}
-            className="h-auto flex-1 rounded-[13px] bg-[#65CBC4] p-3.5 text-center text-sm font-bold text-white shadow-[0_10px_22px_rgba(101,203,196,.42)] hover:bg-[#58BBB4] disabled:opacity-70"
+            className="h-auto flex-1 rounded-full bg-[#65CBC4] p-3.5 text-center text-sm font-bold text-white hover:bg-[#58BBB4] disabled:opacity-70"
           >
             {t('btnChoose')}
           </Button>
@@ -329,7 +352,7 @@ export function DepositModal({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent showCloseButton={false} className={CONTENT_CLASS}>
         <form onSubmit={form.handleSubmit(onSubmit)}>
-          <IconTile bg="#F4EFFB" icon="🧾" />
+          <IconTile tone="purple" icon={ReceiptText} />
           <DialogTitle className="mt-4 text-[19px] font-extrabold leading-normal text-de9-ink">
             {t('titleDeposit')}
           </DialogTitle>
@@ -337,8 +360,8 @@ export function DepositModal({
 
           <div className="mt-4">
             <div className={LABEL_CLASS}>{t('fileLabel')}</div>
-            <label className="flex cursor-pointer items-center gap-2.5 rounded-xl border-[1.5px] border-dashed border-de9-line p-3.5">
-              <span className="text-lg">📎</span>
+            <label className="flex cursor-pointer items-center gap-2.5 rounded-md border border-dashed border-de9-line p-3.5">
+              <span className="text-lg"><Glyph icon={Paperclip} /></span>
               <span className="truncate text-[13px] font-semibold text-de9-slate">
                 {fileName || t('choisirFichier')}
               </span>
@@ -383,7 +406,7 @@ export function DepositModal({
             <Button
               type="submit"
               disabled={form.formState.isSubmitting}
-              className="h-auto flex-1 rounded-[13px] bg-[#7C57C7] p-3.5 text-center text-sm font-bold text-white shadow-[0_10px_22px_rgba(124,87,199,.38)] hover:bg-[#6C49B5] disabled:opacity-70"
+              className="h-auto flex-1 rounded-full bg-[#7C57C7] p-3.5 text-center text-sm font-bold text-white hover:bg-[#6C49B5] disabled:opacity-70"
             >
               {t('btnDeposit')}
             </Button>
@@ -423,9 +446,9 @@ export function ViewFactureModal({
           </DialogTitle>
           <span className="text-xs text-de9-gray">{fact.dateLabel}</span>
         </div>
-        <div className="mt-3.5 overflow-hidden rounded-[14px] border-[1.5px] border-de9-line">
+        <div className="mt-3.5 overflow-hidden rounded-md border border-de9-line">
           <div className="border-b border-de9-line bg-secondary p-7 text-center">
-            <div className="text-[42px]">📄</div>
+            <div className="text-[42px] text-de9-faint"><Glyph icon={FileText} className="stroke-[1.25]" /></div>
             <div className="mt-2 text-[13px] font-bold text-de9-slate">{fact.fileName}</div>
             <div className="text-[11px] text-de9-gray">{t('apercu')}</div>
           </div>
@@ -434,14 +457,14 @@ export function ViewFactureModal({
               <span className="text-de9-gray">{t('montantLabel')}</span>
               <b className="text-base">{fact.montantLabel} cr</b>
             </div>
-            <div className="rounded-[10px] bg-secondary px-[13px] py-[11px] text-xs leading-[1.6] text-de9-slate">
+            <div className="rounded-sm bg-secondary px-[13px] py-[11px] text-xs leading-[1.6] text-de9-slate">
               {t('ventilation')} : <b>{fact.montantLabel}</b> {t('client')} →{' '}
               <b className="text-[#2FA86A] dark:text-[#6FCF97]">{fact.proLabel}</b> {t('pro')} (85%) ·{' '}
               <b className="text-de9-red">{fact.margeLabel}</b> de9de9 (15%)
             </div>
             <div className="mt-[13px] flex items-center gap-2">
               <span
-                className="rounded-full px-[11px] py-[5px] text-[11px] font-bold"
+                className="rounded-full px-[11px] py-[5px] text-[11px] font-bold tone-chip"
                 style={{ background: fact.statusBg, color: fact.statusFg }}
               >
                 {fact.statusLabel}
@@ -457,7 +480,7 @@ export function ViewFactureModal({
         <Button
           type="button"
           onClick={() => onOpenChange(false)}
-          className="mt-5 h-auto w-full rounded-[13px] bg-[#232838] p-3.5 text-center text-sm font-bold text-white hover:bg-[#1A1F2C]"
+          className="mt-5 h-auto w-full rounded-full bg-primary p-3.5 text-center text-sm font-bold text-primary-foreground"
         >
           {t('btnClose')}
         </Button>

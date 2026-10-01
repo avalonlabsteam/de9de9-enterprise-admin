@@ -3,8 +3,22 @@
 // server's `blocage.message` — and the replaced versions.
 import { useState } from 'react';
 import type { ChangeEvent, FormEvent } from 'react';
-import { ChevronRight } from 'lucide-react';
+import {
+  Check,
+  ChevronRight,
+  Copy,
+  Download,
+  FileText,
+  Inbox,
+  Info,
+  Lock,
+  Maximize2,
+  Pencil,
+  Upload,
+  X,
+} from 'lucide-react';
 import { toast } from 'sonner';
+import { Glyph } from '@/components/common/Glyph';
 import { cn } from '@/lib/utils';
 import { useT } from '@/lib/i18n';
 import {
@@ -31,7 +45,7 @@ import { SectionLabel, StatusPill } from './shared';
 const ACCEPT = 'application/pdf,image/*,.heic,.heif';
 
 const SMALL_BTN =
-  'inline-flex cursor-pointer items-center gap-1.5 rounded-[10px] border-[1.5px] border-de9-line bg-card px-3 py-[7px] text-[11.5px] font-bold text-de9-slate disabled:cursor-not-allowed disabled:opacity-50';
+  'inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-de9-line bg-card px-3 py-[7px] text-[11.5px] font-bold text-de9-slate disabled:cursor-not-allowed disabled:opacity-50';
 
 interface PieceCardProps {
   piece: KycRevuePiece;
@@ -113,13 +127,13 @@ export function PieceCard({ piece, companyId, enRevue, onVerdict }: PieceCardPro
   return (
     <section
       className={cn(
-        'overflow-hidden rounded-[20px] border border-s-4 border-de9-line bg-card shadow-[0_10px_30px_rgba(38,50,69,.06)]',
+        'overflow-hidden rounded-md border border-s-4 border-de9-line bg-card',
         tone.edge,
       )}
     >
       {/* ---- head ---- */}
       <div className="flex flex-wrap items-center gap-2.5 border-b border-de9-line px-4 py-3.5 sm:px-5">
-        <span className="rounded-lg bg-de9-ink px-2 py-1 text-[11px] font-extrabold tracking-[.04em] text-white dark:text-[#151923]">
+        <span className="rounded-md bg-inverse-surface px-2 py-1 text-[11px] font-extrabold tracking-[.04em] text-inverse-on-surface">
           {short}
         </span>
         <h2 className="min-w-0 flex-1 text-[14px] font-extrabold">{kindLong(piece.kind, piece.kindLabel, t)}</h2>
@@ -129,7 +143,7 @@ export function PieceCard({ piece, companyId, enRevue, onVerdict }: PieceCardPro
       <div className="grid gap-4 p-4 sm:p-5 md:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
         {/* ---- preview ---- */}
         <div className="flex min-w-0 flex-col gap-2">
-          <div className="h-[260px] overflow-hidden rounded-[14px] border border-de9-line bg-secondary sm:h-[300px]">
+          <div className="h-[260px] overflow-hidden rounded-md border border-de9-line bg-secondary sm:h-[300px]">
             {courante ? (
               <PreviewFrame
                 {...loaded}
@@ -139,7 +153,7 @@ export function PieceCard({ piece, companyId, enRevue, onVerdict }: PieceCardPro
               />
             ) : (
               <div className="flex h-full flex-col items-center justify-center gap-1.5 p-4 text-center">
-                <div className="text-[34px]">📭</div>
+                <div className="text-[34px] text-de9-faint"><Glyph icon={Inbox} className="stroke-[1.5]" /></div>
                 <div className="text-[12.5px] font-bold text-de9-slate">{t('kycPieceManquante')}</div>
               </div>
             )}
@@ -147,7 +161,7 @@ export function PieceCard({ piece, companyId, enRevue, onVerdict }: PieceCardPro
           {courante && (
             <div className="flex flex-wrap gap-2">
               <button type="button" onClick={() => setEnlarged(true)} className={SMALL_BTN}>
-                ⤢ {t('kycAgrandir')}
+                <Glyph icon={Maximize2} /> {t('kycAgrandir')}
               </button>
               <button
                 type="button"
@@ -155,7 +169,7 @@ export function PieceCard({ piece, companyId, enRevue, onVerdict }: PieceCardPro
                 disabled={saving === courante.documentId}
                 className={SMALL_BTN}
               >
-                ⤓ {saving === courante.documentId ? t('docTelechargementEnCours') : t('telecharger')}
+                <Glyph icon={Download} /> {saving === courante.documentId ? t('docTelechargementEnCours') : t('telecharger')}
               </button>
             </div>
           )}
@@ -164,7 +178,7 @@ export function PieceCard({ piece, companyId, enRevue, onVerdict }: PieceCardPro
         {/* ---- details ---- */}
         <div className="flex min-w-0 flex-col gap-3">
           {/* number — validating the document validates it */}
-          <div className="rounded-[14px] bg-secondary px-4 py-3">
+          <div className="rounded-md bg-secondary px-4 py-3">
             <div className="flex items-center justify-between gap-2">
               <SectionLabel>{numeroLabel}</SectionLabel>
               {draft === null && field && (
@@ -173,7 +187,7 @@ export function PieceCard({ piece, companyId, enRevue, onVerdict }: PieceCardPro
                   onClick={() => setDraft(piece.numero ?? '')}
                   className="cursor-pointer text-[11.5px] font-bold text-de9-teal-dark"
                 >
-                  ✎ {piece.numero ? t('kycCorriger') : t('kycSaisir')}
+                  <Glyph icon={Pencil} /> {piece.numero ? t('kycCorriger') : t('kycSaisir')}
                 </button>
               )}
             </div>
@@ -189,9 +203,9 @@ export function PieceCard({ piece, companyId, enRevue, onVerdict }: PieceCardPro
                       onClick={copyNumber}
                       title={t('kycCopier')}
                       aria-label={t('kycCopier')}
-                      className="flex-none cursor-pointer rounded-md px-1 text-[13px] text-de9-gray hover:text-de9-slate"
+                      className="flex-none cursor-pointer rounded-full px-1 text-[13px] text-de9-gray hover:text-de9-slate"
                     >
-                      ⧉
+                      <Glyph icon={Copy} />
                     </button>
                   </>
                 ) : (
@@ -206,20 +220,20 @@ export function PieceCard({ piece, companyId, enRevue, onVerdict }: PieceCardPro
                   dir="ltr"
                   autoFocus
                   aria-label={numeroLabel}
-                  className="w-full rounded-[10px] border-[1.5px] border-de9-line bg-card px-3 py-2 font-mono text-[14px] text-de9-ink outline-none focus:border-de9-teal"
+                  className="w-full rounded-xs border border-outline bg-card px-3 py-2 font-mono text-[14px] text-de9-ink outline-none focus:border-de9-teal"
                 />
                 <div className="mt-2 flex flex-wrap items-center gap-2">
                   <button
                     type="submit"
                     disabled={correct.isPending || !draft.trim()}
-                    className="cursor-pointer rounded-[10px] bg-de9-ink px-3 py-[7px] text-[11.5px] font-bold text-white disabled:opacity-50 dark:text-[#151923]"
+                    className="cursor-pointer rounded-full bg-primary px-3 py-[7px] text-[11.5px] font-bold text-primary-foreground disabled:opacity-50"
                   >
                     {correct.isPending ? t('kycEnvoi') : t('kycEnregistrer')}
                   </button>
                   <button
                     type="button"
                     onClick={() => setDraft(null)}
-                    className="cursor-pointer rounded-[10px] bg-card px-3 py-[7px] text-[11.5px] font-bold text-de9-slate"
+                    className="cursor-pointer rounded-full bg-card px-3 py-[7px] text-[11.5px] font-bold text-de9-slate"
                   >
                     {t('annuler')}
                   </button>
@@ -235,7 +249,7 @@ export function PieceCard({ piece, companyId, enRevue, onVerdict }: PieceCardPro
           {/* file */}
           {courante && (
             <div className="flex items-start gap-2.5">
-              <span className="text-[16px]">📄</span>
+              <span className="text-[16px]"><Glyph icon={FileText} /></span>
               <div className="min-w-0 text-[11px] leading-[1.5] text-de9-gray">
                 <div className="truncate text-[12.5px] font-bold text-de9-ink" title={courante.fileName ?? undefined}>
                   {courante.fileName ?? '—'}
@@ -260,7 +274,7 @@ export function PieceCard({ piece, companyId, enRevue, onVerdict }: PieceCardPro
 
           {/* the verdict so far */}
           {piece.statut === 'refuse' && courante?.motif && (
-            <div className="rounded-xl border border-[#F3C9CB] bg-[#FDECEC] px-3.5 py-2.5 dark:border-[#E7464E]/40 dark:bg-[#E7464E]/15">
+            <div className="rounded-md border border-[#F3C9CB] bg-[#FDECEC] px-3.5 py-2.5 dark:border-[#E7464E]/40 dark:bg-[#E7464E]/15">
               <div className="text-[10.5px] font-extrabold uppercase tracking-[.04em] text-de9-red">
                 {enRevue ? t('kycMotifAEnvoyer') : t('kycMotifEnvoye')}
               </div>
@@ -270,8 +284,8 @@ export function PieceCard({ piece, companyId, enRevue, onVerdict }: PieceCardPro
             </div>
           )}
           {courante?.noteInterne && (
-            <div className="rounded-xl bg-secondary px-3.5 py-2.5">
-              <SectionLabel>🔒 {t('kycNoteInterne')}</SectionLabel>
+            <div className="rounded-md bg-secondary px-3.5 py-2.5">
+              <SectionLabel><Glyph icon={Lock} /> {t('kycNoteInterne')}</SectionLabel>
               <div dir="auto" className="mt-1 text-[12px] leading-[1.5] text-de9-slate">
                 {courante.noteInterne}
               </div>
@@ -288,8 +302,8 @@ export function PieceCard({ piece, companyId, enRevue, onVerdict }: PieceCardPro
               explains a missing button, so it shows even next to the other
               one (a missing number blocks « Valider » only). */}
           {piece.blocage && (
-            <div className="mt-auto rounded-xl border border-dashed border-de9-line px-3.5 py-2.5 text-[12px] font-semibold leading-[1.45] text-de9-slate">
-              ⓘ <bdi>{piece.blocage.message || piece.blocage.code}</bdi>
+            <div className="mt-auto rounded-md border border-dashed border-de9-line px-3.5 py-2.5 text-[12px] font-semibold leading-[1.45] text-de9-slate">
+              <Glyph icon={Info} /> <bdi>{piece.blocage.message || piece.blocage.code}</bdi>
             </div>
           )}
           {(piece.peutValider || piece.peutRefuser) && courante && (
@@ -298,9 +312,9 @@ export function PieceCard({ piece, companyId, enRevue, onVerdict }: PieceCardPro
                 <button
                   type="button"
                   onClick={() => onVerdict(piece, 'valider')}
-                  className="min-w-[120px] flex-1 cursor-pointer rounded-xl bg-[#2FA86A] px-4 py-[11px] text-[13px] font-bold text-white shadow-[0_8px_18px_rgba(47,168,106,.28)]"
+                  className="min-w-[120px] flex-1 cursor-pointer rounded-full bg-[#2FA86A] px-4 py-[11px] text-[13px] font-bold text-white"
                 >
-                  ✓ {t('kycValider')}
+                  <Glyph icon={Check} /> {t('kycValider')}
                 </button>
               )}
               {piece.peutRefuser && (
@@ -308,11 +322,11 @@ export function PieceCard({ piece, companyId, enRevue, onVerdict }: PieceCardPro
                   type="button"
                   onClick={() => onVerdict(piece, 'refuser')}
                   className={cn(
-                    'cursor-pointer rounded-xl border-[1.5px] border-[#F3C9CB] bg-card px-4 py-[10px] text-[13px] font-bold text-de9-red dark:border-[#E7464E]/40',
+                    'cursor-pointer rounded-full border border-[#F3C9CB] bg-card px-4 py-[10px] text-[13px] font-bold text-de9-red dark:border-[#E7464E]/40',
                     piece.peutValider ? 'min-w-[120px] flex-1' : '',
                   )}
                 >
-                  ✕ {t('kycRefuser')}
+                  <Glyph icon={X} /> {t('kycRefuser')}
                 </button>
               )}
             </div>
@@ -326,7 +340,7 @@ export function PieceCard({ piece, companyId, enRevue, onVerdict }: PieceCardPro
                 upload.isPending && 'pointer-events-none opacity-60',
               )}
             >
-              ⤒ {upload.isPending ? t('kycEnvoi') : courante ? t('kycRemplacerPour') : t('kycDeposerPour')}
+              <Glyph icon={Upload} /> {upload.isPending ? t('kycEnvoi') : courante ? t('kycRemplacerPour') : t('kycDeposerPour')}
               <input type="file" accept={ACCEPT} onChange={onFile} disabled={upload.isPending} className="hidden" />
             </label>
           )}
@@ -404,9 +418,9 @@ function VersionRow({
 }) {
   const t = useT();
   return (
-    <div className="rounded-xl border-[1.5px] border-de9-line px-3.5 py-2.5">
+    <div className="rounded-md border border-de9-line px-3.5 py-2.5">
       <div className="flex flex-wrap items-center gap-2">
-        <span className="rounded-md bg-secondary px-1.5 py-0.5 text-[10.5px] font-extrabold text-de9-slate">
+        <span className="rounded-sm bg-secondary px-1.5 py-0.5 text-[10.5px] font-extrabold text-de9-slate">
           v{version.version ?? '—'}
         </span>
         <span className="min-w-0 flex-1 truncate text-[12px] font-bold text-de9-ink" title={version.fileName ?? undefined}>
@@ -428,7 +442,7 @@ function VersionRow({
           title={t('telecharger')}
           className="cursor-pointer text-[12px] font-bold text-de9-slate disabled:opacity-50"
         >
-          ⤓
+          <Glyph icon={Download} />
         </button>
       </div>
       <div className="mt-1 text-[11px] leading-[1.5] text-de9-gray">
@@ -449,7 +463,7 @@ function VersionRow({
       )}
       {version.noteInterne && (
         <div className="mt-1 text-[11.5px] leading-[1.45] text-de9-slate">
-          🔒 <bdi>{version.noteInterne}</bdi>
+          <Glyph icon={Lock} /> <bdi>{version.noteInterne}</bdi>
         </div>
       )}
       {version.revueLe && (

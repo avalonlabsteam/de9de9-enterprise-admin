@@ -1,8 +1,10 @@
 import { useState } from 'react';
 import { toast } from 'sonner';
+import { Download, X } from 'lucide-react';
 import { useT } from '@/lib/i18n';
 import { downloadFromApi } from '@/api/documents';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
+import { Glyph } from '@/components/common/Glyph';
 import { PreviewFrame } from '@/features/kyc/components/DocPreview';
 import { useApiPreview } from '../api/comptabilite';
 
@@ -41,7 +43,7 @@ export function PdfPreviewDialog({ preview, onClose }: { preview: PdfPreview; on
       <DialogContent
         showCloseButton={false}
         aria-describedby={undefined}
-        className="flex max-h-[94vh] w-full max-w-[calc(100%-1.5rem)] flex-col gap-0 overflow-hidden rounded-[20px] bg-card p-0 text-de9-ink shadow-[0_30px_70px_rgba(20,30,45,.4)] sm:max-w-[960px]"
+        className="flex max-h-[94vh] w-full max-w-[calc(100%-1.5rem)] flex-col gap-0 overflow-hidden rounded-xl bg-card p-0 text-de9-ink shadow-e3 sm:max-w-[960px]"
       >
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-de9-line px-4 py-3.5 sm:px-[22px]">
           <DialogTitle className="min-w-0 truncate text-[15px] leading-normal font-extrabold text-de9-ink">
@@ -52,17 +54,17 @@ export function PdfPreviewDialog({ preview, onClose }: { preview: PdfPreview; on
               type="button"
               onClick={onDownload}
               disabled={saving || !!shown.error}
-              className="flex cursor-pointer items-center gap-1.5 rounded-[10px] bg-de9-ink px-3.5 py-[9px] text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-50 dark:text-[#151923]"
+              className="flex cursor-pointer items-center gap-1.5 rounded-full bg-primary px-3.5 py-[9px] text-xs font-bold text-primary-foreground disabled:cursor-not-allowed disabled:opacity-50"
             >
-              ⤓ {saving ? t('docTelechargementEnCours') : t('telecharger')}
+              <Glyph icon={Download} /> {saving ? t('docTelechargementEnCours') : t('telecharger')}
             </button>
             <button
               type="button"
               onClick={onClose}
               aria-label={t('fermer')}
-              className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-[10px] bg-secondary text-base text-de9-slate"
+              className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full bg-secondary text-base text-de9-slate"
             >
-              ✕
+              <Glyph icon={X} />
             </button>
           </div>
         </div>

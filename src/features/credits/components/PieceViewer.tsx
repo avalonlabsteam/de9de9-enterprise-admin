@@ -1,7 +1,9 @@
 import { toast } from 'sonner';
+import { Download, FileText, X } from 'lucide-react';
 import { useT } from '@/lib/i18n';
 import { documentIdFrom, useDownloadDocument } from '@/api/documents';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
+import { Glyph } from '@/components/common/Glyph';
 
 export interface PieceView {
   title: string;
@@ -41,7 +43,7 @@ export function PieceViewer({ piece, onClose }: PieceViewerProps) {
     >
       <DialogContent
         showCloseButton={false}
-        className="block max-h-[90vh] w-full max-w-[520px] gap-0 overflow-y-auto rounded-[20px] bg-card p-0 text-de9-ink shadow-[0_30px_70px_rgba(20,30,45,.4)] sm:max-w-[520px]"
+        className="block max-h-[90vh] w-full max-w-[520px] gap-0 overflow-y-auto rounded-xl bg-card p-0 text-de9-ink shadow-e3 sm:max-w-[520px]"
       >
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-de9-line px-[22px] py-[18px]">
           <DialogTitle className="text-base font-extrabold text-de9-ink">
@@ -53,23 +55,23 @@ export function PieceViewer({ piece, onClose }: PieceViewerProps) {
               onClick={onDownload}
               disabled={!docId || download.isPending}
               title={docId ? undefined : t('docIndisponible')}
-              className="flex cursor-pointer items-center gap-1.5 rounded-[10px] bg-[#232838] px-3.5 py-[9px] text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-50"
+              className="flex cursor-pointer items-center gap-1.5 rounded-full bg-primary px-3.5 py-[9px] text-xs font-bold text-primary-foreground disabled:cursor-not-allowed disabled:opacity-50"
             >
-              ⤓ {download.isPending ? t('docTelechargementEnCours') : t('telecharger')}
+              <Glyph icon={Download} /> {download.isPending ? t('docTelechargementEnCours') : t('telecharger')}
             </button>
             <button
               type="button"
               onClick={onClose}
-              className="flex size-9 cursor-pointer items-center justify-center rounded-[10px] bg-secondary text-base text-de9-slate"
+              className="flex size-9 cursor-pointer items-center justify-center rounded-full bg-secondary text-base text-de9-slate"
             >
-              ✕
+              <Glyph icon={X} />
             </button>
           </div>
         </div>
         <div className="p-[22px]">
-          <div className="overflow-hidden rounded-xl border border-de9-line shadow-[0_6px_20px_rgba(38,50,69,.06)]">
+          <div className="overflow-hidden rounded-md border border-de9-line">
             <div className="bg-[repeating-linear-gradient(45deg,#F5F7F9,#F5F7F9_12px,#EEF1F4_12px,#EEF1F4_24px)] px-[22px] py-[52px] text-center dark:bg-[repeating-linear-gradient(45deg,#1A1F2B,#1A1F2B_12px,#222939_12px,#222939_24px)]">
-              <div className="text-[48px]">📄</div>
+              <div className="text-[48px] text-de9-faint"><Glyph icon={FileText} className="stroke-[1.25]" /></div>
               <div className="mt-2.5 text-[13.5px] font-bold text-de9-slate">{piece.fileName}</div>
               <div className="mt-[2px] text-[11px] text-de9-gray">{t('apercu')}</div>
             </div>

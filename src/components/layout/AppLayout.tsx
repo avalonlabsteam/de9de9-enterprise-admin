@@ -1,6 +1,23 @@
 import { useState } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
-import { LogOut, Menu, Moon, Sun, SunMoon } from "lucide-react";
+import {
+  type LucideIcon,
+  Accessibility,
+  ChartColumn,
+  ClipboardList,
+  CreditCard,
+  Eye,
+  Handshake,
+  History,
+  LogOut,
+  Menu,
+  Moon,
+  ReceiptText,
+  ShieldCheck,
+  Sun,
+  SunMoon,
+  Users,
+} from "lucide-react";
 import { toast } from "sonner";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { PresProfileHost } from "@/features/prestataires/components/ProfileHost";
@@ -12,22 +29,24 @@ import { AlertesBell } from "@/features/alertes/components/AlertesBell";
 import { useAlertesHub } from "@/features/alertes/lib/useAlertesHub";
 import { logout } from "@/features/auth/api/auth";
 import { cn } from "@/lib/utils";
+import { Logo } from "@/components/common/Logo";
+import { Glyph } from "@/components/common/Glyph";
 import { useT, type TKey } from "@/lib/i18n";
 import { dirOf, langActions, useLangStore } from "@/stores/langStore";
 import { useUiStore } from "@/stores/uiStore";
 import { useAuthStore } from "@/stores/authStore";
 import { themeActions, useThemeStore, type ThemeMode } from "@/stores/themeStore";
 
-const NAV_ITEMS: ReadonlyArray<{ to: string; labelKey: TKey }> = [
-  { to: "/commandes", labelKey: "navCommandes" },
-  { to: "/prestataires", labelKey: "navPrestataires" },
-  { to: "/kyc", labelKey: "navKyc" },
-  { to: "/soustraitance", labelKey: "navSoustraitance" },
-  { to: "/handicap", labelKey: "navHandicap" },
-  { to: "/factures", labelKey: "navFactures" },
-  { to: "/credits", labelKey: "navCredits" },
-  { to: "/comptabilite", labelKey: "navComptabilite" },
-  { to: "/analytics", labelKey: "navAnalytics" },
+const NAV_ITEMS: ReadonlyArray<{ to: string; labelKey: TKey; icon: LucideIcon }> = [
+  { to: "/commandes", labelKey: "navCommandes", icon: ClipboardList },
+  { to: "/prestataires", labelKey: "navPrestataires", icon: Users },
+  { to: "/kyc", labelKey: "navKyc", icon: ShieldCheck },
+  { to: "/soustraitance", labelKey: "navSoustraitance", icon: Handshake },
+  { to: "/handicap", labelKey: "navHandicap", icon: Accessibility },
+  { to: "/factures", labelKey: "navFactures", icon: ReceiptText },
+  { to: "/credits", labelKey: "navCredits", icon: History },
+  { to: "/comptabilite", labelKey: "navComptabilite", icon: CreditCard },
+  { to: "/analytics", labelKey: "navAnalytics", icon: ChartColumn },
 ];
 
 const THEME_ICONS: Record<ThemeMode, typeof Sun> = {
@@ -35,23 +54,6 @@ const THEME_ICONS: Record<ThemeMode, typeof Sun> = {
   dark: Moon,
   system: SunMoon,
 };
-
-function Logo() {
-  const t = useT();
-  return (
-    <div className="flex items-center gap-[11px]">
-      <div className="leading-[0.82]">
-        <span className="text-[21px] font-extrabold">
-          <span className="text-de9-red">De9</span>{" "}
-          <span className="text-de9-teal">De9</span>
-        </span>
-      </div>
-      <div className="rounded-[7px] bg-de9-ink px-[9px] py-1 text-[10.5px] font-extrabold tracking-[.12em] text-white dark:text-[#151923]">
-        {t("admin")}
-      </div>
-    </div>
-  );
-}
 
 function NavList({ onNavigate }: { onNavigate?: () => void }) {
   const t = useT();
@@ -62,28 +64,31 @@ function NavList({ onNavigate }: { onNavigate?: () => void }) {
   const badges: Partial<Record<string, number>> = { "/kyc": kycKpis?.aExaminer, "/comptabilite": aVerifier };
   const badgeAria: Partial<Record<string, TKey>> = { "/kyc": "kycBadgeAria", "/comptabilite": "comptaBadgeAria" };
   return (
-    <nav className="flex flex-col gap-1">
+    <nav className="flex flex-col">
       {NAV_ITEMS.map((item) => {
         const badge = badges[item.to] ?? 0;
+        const Icon = item.icon;
         return (
           <NavLink
             key={item.to}
             to={item.to}
             onClick={onNavigate}
             className={({ isActive }) =>
+              // Navigation drawer destination: the active one sits on a full-height indicator.
               cn(
-                "flex cursor-pointer items-center justify-between gap-2 whitespace-nowrap rounded-[11px] px-3.5 py-[11px] text-[13.5px] font-bold",
+                "flex h-14 cursor-pointer items-center gap-3 whitespace-nowrap rounded-full ps-4 pe-6 text-sm font-medium",
                 isActive
-                  ? "bg-[#E9F6F5] text-de9-teal-dark dark:bg-[#14322E]"
-                  : "bg-transparent text-de9-gray hover:text-de9-slate",
+                  ? "bg-secondary-container text-on-secondary-container"
+                  : "bg-transparent text-on-surface-variant",
               )
             }
           >
-            {t(item.labelKey)}
+            <Icon className="size-6 flex-none" strokeWidth={1.75} />
+            <span className="min-w-0 flex-1 truncate">{t(item.labelKey)}</span>
             {badge > 0 && (
               <span
                 aria-label={t(badgeAria[item.to] ?? "kycBadgeAria").replace("{n}", String(badge))}
-                className="min-w-[20px] rounded-full bg-de9-red px-1.5 py-[2px] text-center text-[10.5px] leading-[1.4] font-extrabold text-white"
+                className="min-w-4 rounded-full bg-de9-red px-1 text-center text-[11px] leading-4 font-medium text-white"
               >
                 {badge > 99 ? "99+" : badge}
               </span>
@@ -103,13 +108,13 @@ function RoleViewBanner() {
   return (
     <div
       className={cn(
-        "mb-4 flex items-center gap-2.5 rounded-[13px] border-[1.5px] px-4.5 py-3",
+        "mb-4 flex items-center gap-2.5 rounded-sm border px-4.5 py-3",
         isClient
           ? "border-[#BFD9F2] bg-[#EAF2FD] dark:border-[#2F7FD0]/40 dark:bg-[#2F7FD0]/15"
           : "border-[#BEE6CE] bg-[#E7F6EE] dark:border-[#2FA86A]/40 dark:bg-[#2FA86A]/15",
       )}
     >
-      <span className="text-lg">👁</span>
+      <span className="text-lg"><Glyph icon={Eye} /></span>
       <span className="text-[13.5px] font-semibold text-de9-slate">
         {t("vousRegardez")}{" "}
         <b
@@ -125,8 +130,9 @@ function RoleViewBanner() {
   );
 }
 
+// Standard icon button of the top app bar.
 const iconButtonCls =
-  "flex h-[38px] w-11 flex-none cursor-pointer items-center justify-center rounded-[11px] border-[1.5px] border-de9-line text-[13px] font-extrabold text-de9-slate hover:bg-de9-row";
+  "flex size-10 flex-none cursor-pointer items-center justify-center rounded-full text-sm font-medium text-on-surface-variant";
 
 export function AppLayout() {
   const t = useT();
@@ -149,9 +155,9 @@ export function AppLayout() {
 
   return (
     <div className="flex min-h-screen items-stretch">
-      {/* ===== Sidebar (desktop) ===== */}
-      <aside className="sticky top-0 hidden h-screen w-[236px] flex-none flex-col gap-6 self-start border-e border-de9-line bg-card px-4 py-[22px] shadow-[0_4px_20px_rgba(38,50,69,.04)] lg:flex">
-        <div className="px-2">
+      {/* ===== Navigation drawer (desktop) ===== */}
+      <aside className="sticky top-0 hidden h-screen w-[264px] flex-none flex-col gap-4 self-start overflow-y-auto bg-sidebar px-3 py-4 lg:flex">
+        <div className="px-4 py-1">
           <Logo />
         </div>
         <NavList />
@@ -159,26 +165,27 @@ export function AppLayout() {
 
       {/* ===== Main column ===== */}
       <div className="flex min-w-0 flex-1 flex-col">
-        {/* Top bar */}
-        <header className="sticky top-0 z-40 border-b border-de9-line bg-card shadow-[0_4px_20px_rgba(38,50,69,.04)]">
-          <div className="flex h-[66px] items-center gap-2.5 px-4 sm:gap-4 sm:px-[26px]">
+        {/* Top app bar */}
+        <header className="sticky top-0 z-40 bg-background">
+          <div className="flex h-16 items-center gap-1 px-2 sm:px-4">
             {/* Mobile nav trigger + logo */}
             <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
               <SheetTrigger asChild>
                 <button type="button" className={cn(iconButtonCls, "lg:hidden")} aria-label="Menu">
-                  <Menu className="size-[18px]" />
+                  <Menu className="size-6" />
                 </button>
               </SheetTrigger>
-              <SheetContent side={dir === "rtl" ? "right" : "left"} className="w-[260px] gap-0 bg-card p-4 pt-6">
+              <SheetContent side={dir === "rtl" ? "right" : "left"} className="w-[300px] gap-0 px-3 py-4">
                 <SheetTitle className="sr-only">Navigation</SheetTitle>
-                <div className="mb-6 px-2">
+                <div className="mb-4 px-4 py-1">
                   <Logo />
                 </div>
                 <NavList onNavigate={() => setMobileNavOpen(false)} />
               </SheetContent>
             </Sheet>
             <div className="lg:hidden">
-              <Logo />
+              {/* No room for the « ADMIN » tag beside four header buttons on a phone; the menu shows it. */}
+              <Logo size="sm" hideTag />
             </div>
 
             <div className="flex-1" />
@@ -190,7 +197,7 @@ export function AppLayout() {
               aria-label={`Theme: ${mode}`}
               title={`Theme: ${mode}`}
             >
-              <ThemeIcon className="size-[18px]" />
+              <ThemeIcon className="size-6" strokeWidth={1.75} />
             </button>
             <button
               type="button"
@@ -205,7 +212,7 @@ export function AppLayout() {
 
             {userEmail && (
               <span
-                className="hidden max-w-[190px] overflow-hidden text-ellipsis whitespace-nowrap text-[12.5px] font-semibold text-de9-gray md:block"
+                className="ms-2 hidden max-w-[220px] overflow-hidden text-ellipsis whitespace-nowrap text-sm text-on-surface-variant md:block"
                 title={userEmail}
               >
                 {userEmail}
@@ -218,13 +225,13 @@ export function AppLayout() {
               aria-label={t("deconnexion")}
               title={t("deconnexion")}
             >
-              <LogOut className="size-[18px]" />
+              <LogOut className="size-6 rtl:rotate-180" strokeWidth={1.75} />
             </button>
           </div>
         </header>
 
         {/* Body */}
-        <main className="mx-auto w-full max-w-[1320px] px-4 pb-[60px] pt-6 sm:px-[26px]">
+        <main className="mx-auto w-full max-w-[1320px] px-4 pb-[60px] pt-2 sm:px-6">
           <RoleViewBanner />
           <Outlet />
         </main>

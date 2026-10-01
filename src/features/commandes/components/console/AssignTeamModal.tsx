@@ -4,10 +4,12 @@
 // ActionModals' AssignModal stays as it is — the mock console picks one worker
 // by name. Visual ground truth: src/admin/views/Console.tsx modals.
 import { useState } from 'react';
+import { HardHat, Square, SquareCheck } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useT } from '@/lib/i18n';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
+import { Glyph } from '@/components/common/Glyph';
 import type { EquipeMember } from '../../api/commandes';
 
 interface AssignTeamModalProps {
@@ -38,10 +40,10 @@ export function AssignTeamModal({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         showCloseButton={false}
-        className="block max-h-[90vh] max-w-[calc(100%-2rem)] gap-0 overflow-y-auto rounded-[22px] bg-card p-[26px] shadow-[0_30px_70px_rgba(20,30,45,.4)] ring-0 sm:max-w-[460px]"
+        className="block max-h-[90vh] max-w-[calc(100%-2rem)] gap-0 overflow-y-auto rounded-xl bg-card p-[26px] shadow-e3 ring-0 sm:max-w-[460px]"
       >
-        <div className="flex size-[54px] items-center justify-center rounded-[15px] bg-[#E7F6EE] text-[26px] dark:bg-[#2FA86A]/15">
-          👷
+        <div className="flex size-[54px] items-center justify-center rounded-md bg-[#E7F6EE] text-[26px] dark:bg-[#2FA86A]/15 text-[#2FA86A] dark:text-[#6FCF97]">
+          <Glyph icon={HardHat} />
         </div>
         <DialogTitle className="mt-4 text-[19px] font-extrabold leading-normal text-de9-ink">
           {t('titleAssign')}
@@ -59,12 +61,12 @@ export function AssignTeamModal({
                 aria-checked={active}
                 onClick={() => toggle(m.id)}
                 className={cn(
-                  'flex cursor-pointer items-center gap-[11px] rounded-xl border-[1.5px] px-[15px] py-[13px] text-start',
+                  'flex cursor-pointer items-center gap-[11px] rounded-md border px-[15px] py-[13px] text-start',
                   active ? 'border-[#2FA86A] bg-[#E7F6EE] dark:bg-[#2FA86A]/15' : 'border-de9-line bg-card',
                 )}
               >
-                <span className={cn('text-base', active ? 'text-[#2FA86A] dark:text-[#6FCF97]' : 'text-[#B6BEC8]')}>
-                  {active ? '☑' : '☐'}
+                <span className={cn('text-base', active ? 'text-[#2FA86A] dark:text-[#6FCF97]' : 'text-de9-faint')}>
+                  <Glyph icon={active ? SquareCheck : Square} />
                 </span>
                 <span className="min-w-0 flex-1">
                   <span className="block text-sm font-bold text-de9-ink">{m.name}</span>
@@ -80,7 +82,7 @@ export function AssignTeamModal({
             type="button"
             variant="ghost"
             onClick={() => onOpenChange(false)}
-            className="h-auto flex-1 rounded-[13px] bg-secondary p-3.5 text-center text-sm font-bold text-de9-slate hover:bg-secondary"
+            className="h-auto flex-1 rounded-full bg-secondary p-3.5 text-center text-sm font-bold text-de9-slate hover:bg-secondary"
           >
             {t('annuler')}
           </Button>
@@ -88,7 +90,7 @@ export function AssignTeamModal({
             type="button"
             disabled={pending || selected.length === 0}
             onClick={() => onConfirm(members.filter((m) => selected.includes(m.id)))}
-            className="h-auto flex-1 rounded-[13px] bg-[#2FA86A] p-3.5 text-center text-sm font-bold text-white shadow-[0_10px_22px_rgba(47,168,106,.38)] hover:bg-[#29955E] disabled:opacity-70"
+            className="h-auto flex-1 rounded-full bg-[#2FA86A] p-3.5 text-center text-sm font-bold text-white hover:bg-[#29955E] disabled:opacity-70"
           >
             {t('btnAssign')}
             {selected.length > 0 ? ` (${selected.length})` : ''}

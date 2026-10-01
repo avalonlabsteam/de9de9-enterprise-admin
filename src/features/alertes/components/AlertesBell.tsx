@@ -33,11 +33,11 @@ export function AlertesBell() {
         onClick={() => alertesActions.setDrawerOpen(true)}
         aria-label={nonLues > 0 ? t('alertesBellAria').replace('{n}', String(nonLues)) : t('alertesTitre')}
         title={t('alertesTitre')}
-        className="relative flex h-[38px] w-[38px] flex-none cursor-pointer items-center justify-center rounded-[11px] border-[1.5px] border-de9-line text-de9-slate hover:bg-de9-row"
+        className="relative flex size-10 flex-none cursor-pointer items-center justify-center rounded-full text-on-surface-variant"
       >
-        <Bell className="size-[18px]" />
+        <Bell className="size-6" strokeWidth={1.75} />
         {nonLues > 0 && (
-          <span className="absolute -end-[7px] -top-[7px] min-w-[19px] rounded-full border-2 border-card bg-de9-red px-1 text-center text-[10px] leading-[15px] font-extrabold text-white">
+          <span className="absolute end-0.5 top-0.5 min-w-4 rounded-full bg-de9-red px-1 text-center text-[11px] leading-4 font-medium text-white">
             {nonLues > 99 ? '99+' : nonLues}
           </span>
         )}
@@ -114,7 +114,7 @@ function DrawerBody() {
             type="button"
             onClick={onMarkAll}
             disabled={markAll.isPending}
-            className="cursor-pointer rounded-[9px] px-2 py-1.5 text-[12px] font-bold text-de9-teal-dark hover:bg-de9-row disabled:cursor-default disabled:opacity-50"
+            className="cursor-pointer rounded-full px-2 py-1.5 text-[12px] font-bold text-de9-teal-dark hover:bg-de9-row disabled:cursor-default disabled:opacity-50"
           >
             {t('alertesToutMarquer')}
           </button>
@@ -123,7 +123,7 @@ function DrawerBody() {
           type="button"
           onClick={() => alertesActions.setDrawerOpen(false)}
           aria-label={t('fermer')}
-          className="flex size-8 flex-none cursor-pointer items-center justify-center rounded-[9px] text-de9-gray hover:bg-de9-row hover:text-de9-slate"
+          className="flex size-8 flex-none cursor-pointer items-center justify-center rounded-full text-de9-gray hover:bg-de9-row hover:text-de9-slate"
         >
           <X className="size-[18px]" />
         </button>
@@ -131,7 +131,7 @@ function DrawerBody() {
 
       {/* ===== tabs + chips ===== */}
       <div className="border-b border-de9-line px-4 pt-3 pb-2.5">
-        <div className="flex gap-1 rounded-[11px] bg-secondary p-1">
+        <div className="flex gap-1 rounded-sm bg-secondary p-1">
           {[false, true].map((unreadOnly) => (
             <button
               key={String(unreadOnly)}
@@ -139,8 +139,8 @@ function DrawerBody() {
               aria-pressed={nonLues === unreadOnly}
               onClick={() => setNonLues(unreadOnly)}
               className={cn(
-                'flex-1 cursor-pointer rounded-[8px] py-1.5 text-[12.5px] font-bold',
-                nonLues === unreadOnly ? 'bg-card text-de9-ink shadow-sm' : 'text-de9-gray hover:text-de9-slate',
+                'flex-1 cursor-pointer rounded-full py-1.5 text-[12.5px] font-bold',
+                nonLues === unreadOnly ? 'bg-card text-de9-ink shadow-e1' : 'text-de9-gray hover:text-de9-slate',
               )}
             >
               {t(unreadOnly ? 'alertesNonLues' : 'alertesToutes')}
@@ -158,9 +158,9 @@ function DrawerBody() {
                 aria-pressed={active}
                 onClick={() => pickCategorie(c)}
                 className={cn(
-                  'flex flex-none cursor-pointer items-center gap-1.5 rounded-full border-[1.5px] px-2.5 py-[5px] text-[11.5px] font-bold whitespace-nowrap',
+                  'flex flex-none cursor-pointer items-center gap-1.5 rounded-full border px-2.5 py-[5px] text-[11.5px] font-bold whitespace-nowrap',
                   active
-                    ? 'border-[#232838] bg-[#232838] text-white dark:border-de9-ink dark:bg-de9-ink dark:text-[#151923]'
+                    ? 'border-secondary-container bg-secondary-container text-on-secondary-container'
                     : n > 0
                       ? 'border-de9-line bg-card text-de9-slate'
                       : 'border-de9-line bg-card text-de9-gray opacity-60',
@@ -187,7 +187,7 @@ function DrawerBody() {
         {rows.length === 0 && feed.isPending && (
           <div className="flex flex-col gap-2.5 p-4">
             {[0, 1, 2, 3].map((i) => (
-              <div key={i} className="h-[62px] animate-pulse rounded-[12px] bg-secondary" />
+              <div key={i} className="h-[62px] animate-pulse rounded-md bg-secondary" />
             ))}
           </div>
         )}
@@ -198,7 +198,7 @@ function DrawerBody() {
             <button
               type="button"
               onClick={() => void feed.refetch()}
-              className="cursor-pointer rounded-[10px] border-[1.5px] border-de9-line px-3.5 py-1.5 text-[12.5px] font-bold text-de9-slate hover:bg-de9-row"
+              className="cursor-pointer rounded-full border border-de9-line px-3.5 py-1.5 text-[12.5px] font-bold text-de9-slate hover:bg-de9-row"
             >
               {t('kycReessayer')}
             </button>
@@ -215,7 +215,7 @@ function DrawerBody() {
         {hasNextPage && <div ref={sentinel} className="h-px" />}
         {isFetchingNextPage && (
           <div className="p-3">
-            <div className="h-[52px] animate-pulse rounded-[12px] bg-secondary" />
+            <div className="h-[52px] animate-pulse rounded-md bg-secondary" />
           </div>
         )}
       </div>
@@ -239,7 +239,7 @@ function AlerteRow({ alerte: a, label, onOpen }: { alerte: Alerte; label: string
         !a.lu && 'bg-[#F5F9FE] dark:bg-[#2F7FD0]/[.06]',
       )}
     >
-      <div className={cn('flex size-9 flex-none items-center justify-center rounded-[10px]', style.tile)}>
+      <div className={cn('flex size-9 flex-none items-center justify-center rounded-sm', style.tile)}>
         <AlerteIcon icone={a.icone} className="size-[17px]" />
       </div>
       <div className="min-w-0 flex-1">

@@ -8,6 +8,40 @@
     --font-heading: var(--font-sans);
     --font-sans: 'Poppins', ui-sans-serif, system-ui, sans-serif;
     --font-arabic: 'Noto Sans Arabic', 'Poppins', sans-serif;
+
+    /* Material 3 colour roles → bg-*, text-*, border-* utilities */
+    --color-primary: var(--md-primary);
+    --color-on-primary: var(--md-on-primary);
+    --color-primary-container: var(--md-primary-container);
+    --color-on-primary-container: var(--md-on-primary-container);
+    --color-secondary-container: var(--md-secondary-container);
+    --color-on-secondary-container: var(--md-on-secondary-container);
+    --color-tertiary: var(--md-tertiary);
+    --color-on-tertiary: var(--md-on-tertiary);
+    --color-tertiary-container: var(--md-tertiary-container);
+    --color-on-tertiary-container: var(--md-on-tertiary-container);
+    --color-error: var(--md-error);
+    --color-on-error: var(--md-on-error);
+    --color-error-container: var(--md-error-container);
+    --color-on-error-container: var(--md-on-error-container);
+    --color-surface: var(--md-surface);
+    --color-surface-dim: var(--md-surface-dim);
+    --color-surface-bright: var(--md-surface-bright);
+    --color-surface-container-lowest: var(--md-surface-container-lowest);
+    --color-surface-container-low: var(--md-surface-container-low);
+    --color-surface-container: var(--md-surface-container);
+    --color-surface-container-high: var(--md-surface-container-high);
+    --color-surface-container-highest: var(--md-surface-container-highest);
+    --color-on-surface: var(--md-on-surface);
+    --color-on-surface-variant: var(--md-on-surface-variant);
+    --color-outline: var(--md-outline);
+    --color-outline-variant: var(--md-outline-variant);
+    --color-inverse-surface: var(--md-inverse-surface);
+    --color-inverse-on-surface: var(--md-inverse-on-surface);
+    --color-inverse-primary: var(--md-inverse-primary);
+    --color-scrim: var(--md-scrim);
+
+    /* shadcn aliases, resolved to the roles above in :root */
     --color-sidebar-ring: var(--sidebar-ring);
     --color-sidebar-border: var(--sidebar-border);
     --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -16,8 +50,6 @@
     --color-sidebar-primary: var(--sidebar-primary);
     --color-sidebar-foreground: var(--sidebar-foreground);
     --color-sidebar: var(--sidebar);
-    --color-chart-5: var(--chart-5);
-    --color-chart-4: var(--chart-4);
     --color-chart-3: var(--chart-3);
     --color-chart-2: var(--chart-2);
     --color-chart-1: var(--chart-1);
@@ -32,93 +64,164 @@
     --color-secondary-foreground: var(--secondary-foreground);
     --color-secondary: var(--secondary);
     --color-primary-foreground: var(--primary-foreground);
-    --color-primary: var(--primary);
     --color-popover-foreground: var(--popover-foreground);
     --color-popover: var(--popover);
     --color-card-foreground: var(--card-foreground);
     --color-card: var(--card);
     --color-foreground: var(--foreground);
     --color-background: var(--background);
-    --radius-sm: calc(var(--radius) * 0.6);
-    --radius-md: calc(var(--radius) * 0.8);
-    --radius-lg: var(--radius);
-    --radius-xl: calc(var(--radius) * 1.4);
-    --radius-2xl: calc(var(--radius) * 1.8);
-    --radius-3xl: calc(var(--radius) * 2.2);
-    --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+/* ===== Material 3 shape, elevation and type =====
+   Shape scale: extra-small 4 (fields, menus, snackbars) · small 8 (chips) ·
+   medium 12 (cards) · large 16 (drawers, sheets) · extra-large 28 (dialogs) ·
+   `rounded-full` (buttons, badges). */
+@theme {
+    --radius-xs: 4px;
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 16px;
+    --radius-xl: 28px;
+    --radius-2xl: 28px;
+    --radius-3xl: 28px;
+    --radius-4xl: 28px;
+
+    /* elevation levels 1–5 */
+    --shadow-e1: 0 1px 2px 0 rgb(0 0 0 / 0.3), 0 1px 3px 1px rgb(0 0 0 / 0.15);
+    --shadow-e2: 0 1px 2px 0 rgb(0 0 0 / 0.3), 0 2px 6px 2px rgb(0 0 0 / 0.15);
+    --shadow-e3: 0 1px 3px 0 rgb(0 0 0 / 0.3), 0 4px 8px 3px rgb(0 0 0 / 0.15);
+    --shadow-e4: 0 2px 3px 0 rgb(0 0 0 / 0.3), 0 6px 10px 4px rgb(0 0 0 / 0.15);
+    --shadow-e5: 0 4px 4px 0 rgb(0 0 0 / 0.3), 0 8px 12px 6px rgb(0 0 0 / 0.15);
+
+    /* The type scale runs on two weights — regular and medium — with
+       semibold kept for headlines and figures. */
+    --font-weight-semibold: 500;
+    --font-weight-bold: 500;
+    --font-weight-extrabold: 600;
+
+    /* emphasized easing, for anything that moves */
+    --ease-emphasized: cubic-bezier(0.2, 0, 0, 1);
 }
 
 :root {
-    --background: #E7EBEE;
-    --foreground: #232838;
-    --card: #ffffff;
-    --card-foreground: #232838;
-    --popover: #ffffff;
-    --popover-foreground: #232838;
-    --primary: #178A82;
-    --primary-foreground: #ffffff;
-    --secondary: #F1F4F6;
-    --secondary-foreground: #232838;
-    --muted: #F1F4F6;
-    --muted-foreground: #8A94A0;
-    --accent: #F7FBFB;
-    --accent-foreground: #178A82;
+    /* ---- Material 3 light scheme: tonal spot, seeded from the brand teal #178A82 ---- */
+    --md-primary: #006A64;
+    --md-on-primary: #FFFFFF;
+    --md-primary-container: #9DF2E9;
+    --md-on-primary-container: #00504B;
+    --md-secondary: #4A6360;
+    --md-on-secondary: #FFFFFF;
+    --md-secondary-container: #CCE8E4;
+    --md-on-secondary-container: #324B48;
+    --md-tertiary: #47617A;
+    --md-on-tertiary: #FFFFFF;
+    --md-tertiary-container: #CFE5FF;
+    --md-on-tertiary-container: #2F4962;
+    --md-error: #BA1A1A;
+    --md-on-error: #FFFFFF;
+    --md-error-container: #FFDAD6;
+    --md-on-error-container: #93000A;
+    --md-surface: #F4FBF9;
+    --md-surface-dim: #D5DBD9;
+    --md-surface-bright: #F4FBF9;
+    --md-surface-container-lowest: #FFFFFF;
+    --md-surface-container-low: #EFF5F3;
+    --md-surface-container: #E9EFED;
+    --md-surface-container-high: #E3E9E8;
+    --md-surface-container-highest: #DDE4E2;
+    --md-on-surface: #161D1C;
+    --md-on-surface-variant: #3F4947;
+    --md-outline: #6F7977;
+    --md-outline-variant: #BEC9C6;
+    --md-inverse-surface: #2B3231;
+    --md-inverse-on-surface: #ECF2F0;
+    --md-inverse-primary: #81D5CC;
+    --md-scrim: #000000;
+
+    /* ---- shadcn aliases ---- */
+    --background: var(--md-surface);
+    --foreground: var(--md-on-surface);
+    --card: var(--md-surface-container-lowest);
+    --card-foreground: var(--md-on-surface);
+    --popover: var(--md-surface-container);
+    --popover-foreground: var(--md-on-surface);
+    --primary: var(--md-primary);
+    --primary-foreground: var(--md-on-primary);
+    --secondary: var(--md-surface-container);
+    --secondary-foreground: var(--md-on-surface);
+    --muted: var(--md-surface-container-low);
+    --muted-foreground: var(--md-on-surface-variant);
+    --accent: var(--md-surface-container-highest);
+    --accent-foreground: var(--md-on-surface);
     --destructive: #E7464E;
-    --border: #E4E9ED;
-    --input: #E4E9ED;
-    --ring: #65CBC4;
-    --chart-1: #65CBC4;
-    --chart-2: #178A82;
-    --chart-3: #232838;
-    --chart-4: #E7464E;
-    --chart-5: #8A94A0;
-    --radius: 0.8125rem;
-    --sidebar: #ffffff;
-    --sidebar-foreground: #232838;
-    --sidebar-primary: #178A82;
-    --sidebar-primary-foreground: #ffffff;
-    --sidebar-accent: #EFFAF8;
-    --sidebar-accent-foreground: #178A82;
-    --sidebar-border: #E4E9ED;
-    --sidebar-ring: #65CBC4;
+    --border: var(--md-outline-variant);
+    --input: var(--md-outline);
+    --ring: var(--md-primary);
+    /* Chart series, in fixed order. Checked as a set: every pair stays apart
+       for red-green colour-blind readers and each clears 3:1 on the card. */
+    --chart-1: #199E70;
+    --chart-2: #EB6834;
+    --chart-3: #2A78D6;
+    --radius: 0.75rem;
+    --sidebar: var(--md-surface-container-low);
+    --sidebar-foreground: var(--md-on-surface-variant);
+    --sidebar-primary: var(--md-primary);
+    --sidebar-primary-foreground: var(--md-on-primary);
+    --sidebar-accent: var(--md-secondary-container);
+    --sidebar-accent-foreground: var(--md-on-secondary-container);
+    --sidebar-border: var(--md-outline-variant);
+    --sidebar-ring: var(--md-primary);
 }
 
 .dark {
-    --background: #151923;
-    --foreground: #E8EBF2;
-    --card: #1E2330;
-    --card-foreground: #E8EBF2;
-    --popover: #1E2330;
-    --popover-foreground: #E8EBF2;
-    --primary: #2AB3A8;
-    --primary-foreground: #08211E;
-    --secondary: #262C3B;
-    --secondary-foreground: #E8EBF2;
-    --muted: #262C3B;
-    --muted-foreground: #98A1B0;
-    --accent: #22303A;
-    --accent-foreground: #65CBC4;
+    /* ---- Material 3 dark scheme ---- */
+    --md-primary: #81D5CC;
+    --md-on-primary: #003733;
+    --md-primary-container: #00504B;
+    --md-on-primary-container: #9DF2E9;
+    --md-secondary: #B0CCC8;
+    --md-on-secondary: #1C3532;
+    --md-secondary-container: #324B48;
+    --md-on-secondary-container: #CCE8E4;
+    --md-tertiary: #AFC9E7;
+    --md-on-tertiary: #17324A;
+    --md-tertiary-container: #2F4962;
+    --md-on-tertiary-container: #CFE5FF;
+    --md-error: #FFB4AB;
+    --md-on-error: #690005;
+    --md-error-container: #93000A;
+    --md-on-error-container: #FFDAD6;
+    --md-surface: #0E1514;
+    --md-surface-dim: #0E1514;
+    --md-surface-bright: #343A39;
+    --md-surface-container-lowest: #090F0F;
+    --md-surface-container-low: #161D1C;
+    --md-surface-container: #1A2120;
+    --md-surface-container-high: #252B2A;
+    --md-surface-container-highest: #303635;
+    --md-on-surface: #DDE4E2;
+    --md-on-surface-variant: #BEC9C6;
+    --md-outline: #899391;
+    --md-outline-variant: #3F4947;
+    --md-inverse-surface: #DDE4E2;
+    --md-inverse-on-surface: #2B3231;
+    --md-inverse-primary: #006A64;
+    --md-scrim: #000000;
+
+    /* In dark, depth reads as lighter surfaces: content sits on a container
+       tone above the page instead of on the lowest one. */
+    --card: var(--md-surface-container);
+    --popover: var(--md-surface-container-high);
+    --secondary: var(--md-surface-container-highest);
+    --muted: var(--md-surface-container-high);
     --destructive: #F2646B;
-    --border: #2C3345;
-    --input: #2C3345;
-    --ring: #2AB3A8;
-    --chart-1: #65CBC4;
-    --chart-2: #2AB3A8;
-    --chart-3: #E8EBF2;
-    --chart-4: #F2646B;
-    --chart-5: #98A1B0;
-    --sidebar: #1E2330;
-    --sidebar-foreground: #E8EBF2;
-    --sidebar-primary: #2AB3A8;
-    --sidebar-primary-foreground: #08211E;
-    --sidebar-accent: #14322E;
-    --sidebar-accent-foreground: #65CBC4;
-    --sidebar-border: #2C3345;
-    --sidebar-ring: #2AB3A8;
+    --chart-2: #D95926;
+    --chart-3: #3987E5;
 }
 
 /* ===== De9De9 brand tokens (generate bg-de9-*, text-de9-*, border-de9-* utilities).
-   Theme-aware: the utilities read CSS variables that flip with the .dark class. ===== */
+   Each one points at a Material role, so they flip with the .dark class; the
+   brand red and light teal are kept as custom colours outside the scheme. ===== */
 @theme inline {
     --color-de9-red: var(--de9-red);
     --color-de9-teal: var(--de9-teal);
@@ -126,6 +229,7 @@
     --color-de9-ink: var(--de9-ink);
     --color-de9-slate: var(--de9-slate);
     --color-de9-gray: var(--de9-gray);
+    --color-de9-faint: var(--de9-faint);
     --color-de9-line: var(--de9-line);
     --color-de9-bg: var(--de9-bg);
     --color-de9-row: var(--de9-row);
@@ -135,28 +239,23 @@
     color-scheme: light;
     --de9-red: #E7464E;
     --de9-teal: #65CBC4;
-    --de9-teal-dark: #178A82;
-    --de9-ink: #232838;
-    --de9-slate: #5A6472;
-    --de9-gray: #8A94A0;
-    --de9-line: #E4E9ED;
-    --de9-bg: #E7EBEE;
-    --de9-row: #F7FBFB;
-    --de9-scrollbar: #C7CFD7;
+    --de9-teal-dark: var(--md-primary);
+    --de9-ink: var(--md-on-surface);
+    --de9-slate: var(--md-on-surface-variant);
+    --de9-gray: #56605F;
+    --de9-faint: var(--md-outline);
+    --de9-line: var(--md-outline-variant);
+    --de9-bg: var(--md-surface);
+    --de9-row: var(--md-surface-container-low);
+    --de9-scrollbar: var(--md-outline-variant);
 }
 
 .dark {
     color-scheme: dark;
     --de9-red: #F2646B;
     --de9-teal: #65CBC4;
-    --de9-teal-dark: #2AB3A8;
-    --de9-ink: #E8EBF2;
-    --de9-slate: #A6AEBD;
-    --de9-gray: #7D8694;
-    --de9-line: #2C3345;
-    --de9-bg: #151923;
-    --de9-row: #222836;
-    --de9-scrollbar: #3A4356;
+    --de9-gray: #A3ADAB;
+    --de9-row: var(--md-surface-container-high);
 }
 
 @theme {
@@ -206,4 +305,88 @@
     background: var(--de9-scrollbar);
     border-radius: 9px;
     }
+  /* State layer: a wash of the control's own content colour — 8% on hover,
+     10% on focus and press — painted as a background image so it follows the
+     control's shape and sits over whatever fill it already has. */
+  button:not(:disabled):hover,
+  [role="tab"]:hover,
+  a[class*="cursor-pointer"]:hover {
+    background-image: linear-gradient(
+      color-mix(in srgb, currentColor 8%, transparent),
+      color-mix(in srgb, currentColor 8%, transparent)
+    );
+    }
+  button:not(:disabled):focus-visible,
+  button:not(:disabled):active,
+  [role="tab"]:active {
+    background-image: linear-gradient(
+      color-mix(in srgb, currentColor 10%, transparent),
+      color-mix(in srgb, currentColor 10%, transparent)
+    );
+    }
+  button:focus-visible,
+  a:focus-visible,
+  [role="tab"]:focus-visible {
+    outline: 2px solid var(--md-secondary);
+    outline-offset: 2px;
+    }
+}
+/* ===== Text field focus =====
+   An outlined field answers focus with the primary colour, two pixels wide.
+   Unlayered, so it also reaches fields whose classes switch the outline and
+   shadow off; borderless inputs nested in a composite field are left alone. */
+:is(input, textarea, select, [data-slot="select-trigger"])[class*="border"]:not([class*="border-0"]):not([class*="border-none"]):not([type="checkbox"]):not([type="radio"]):not([aria-invalid="true"]):focus-visible {
+    border-color: var(--md-primary);
+    box-shadow: inset 0 0 0 1px var(--md-primary);
+}
+
+/* ===== Inline-coloured tones in dark mode =====
+   Status maps hand chips a pastel fill and a text colour as inline styles
+   (`style={{ background, color }}`), which no `dark:` class can reach. Tagged
+   elements trade the pastel for a tint of their own colour on dark surfaces. */
+.dark .tone-chip {
+    /* the chip's inline text colour, as a wash */
+    background-color: color-mix(in srgb, currentColor 18%, transparent) !important;
+}
+.dark .tone-surface {
+    /* `--tone` is the surface's accent (a role or status colour) */
+    background-color: color-mix(in srgb, var(--tone, #9AA4B2) 13%, transparent) !important;
+    border-color: color-mix(in srgb, var(--tone, #9AA4B2) 38%, transparent) !important;
+}
+.dark .tone-ink {
+    /* text hard-coded to the light theme's ink */
+    color: var(--de9-ink) !important;
+}
+
+/* Figures keep their reading order inside Arabic text: « +50 000 », « 250 K »,
+   « 75 000–150 000 DA » would otherwise have their sign, unit or range swapped. */
+.num {
+    direction: ltr;
+    unicode-bidi: isolate;
+}
+
+/* The light theme's ink used as a fill — primary buttons, active pills, step
+   tags, avatars — would melt into a dark card. In dark mode it flips to the
+   dark theme's ink, text included, like `bg-de9-ink` does. A panel that must
+   stay dark in both themes (the alert toast, the client balance card) spells
+   its fill `bg-[rgb(35_40_56)]` instead. */
+@layer utilities {
+    .dark .bg-\[\#232838\] {
+        background-color: var(--de9-ink);
+        color: #151923;
+    }
+    .dark .border-\[\#232838\] {
+        border-color: var(--de9-ink);
+    }
+}
+
+/* A category painted in the light ink (« Noir »): keep it visible on dark cards. */
+.dark .tone-ink-bg {
+    background-color: #5A6478 !important;
+}
+.dark .tone-ink-chip {
+    /* an active filter chip painted in the light ink */
+    background-color: var(--de9-ink) !important;
+    border-color: var(--de9-ink) !important;
+    color: #151923 !important;
 }

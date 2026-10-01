@@ -6,10 +6,12 @@
 // POST …/next-action when it needs no form (the endpoint takes no body), and
 // validate or refuse each received devis (POST /devis/{devisId}/valider | /refuser),
 // then propose the validated ones to the client (POST /appels-offres/{rfqId}/devis/proposer).
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
+import { Check, Lock, Mail, Pencil, Phone, Play, RefreshCw, Search, Send, Timer, X } from 'lucide-react';
+import { Glyph } from '@/components/common/Glyph';
 import { useT, type TKey } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 import { problemMessage } from '@/api/problem';
@@ -41,12 +43,12 @@ import { DepositInvoiceModal } from './DepositInvoiceModal';
 import { ChoosePrestataireModal, type ChoosableQuote } from './ChoosePrestataireModal';
 
 const CARD =
-  'rounded-[20px] border border-de9-line bg-card px-6 py-[22px] shadow-[0_10px_30px_rgba(38,50,69,.06)]';
+  'rounded-md border border-de9-line bg-card px-6 py-[22px]';
 
 const SECTION_LABEL = 'text-[11px] font-bold uppercase tracking-[.04em] text-de9-gray';
 
 const CONTACT_LINK =
-  'rounded-[11px] border-[1.5px] border-de9-line bg-card px-3.5 py-2.5 text-[12px] font-bold text-de9-slate no-underline';
+  'rounded-full border border-de9-line bg-card px-3.5 py-2.5 text-[12px] font-bold text-de9-slate no-underline';
 
 const KIND_KEY: Record<string, TKey> = {
   rfq: 'apercuKindRfq',
@@ -127,7 +129,7 @@ function planifierRedirect(err: unknown): string | null {
 
 interface FieldProps {
   label: string;
-  value: string;
+  value: ReactNode;
 }
 
 function Field({ label, value }: FieldProps) {
@@ -150,7 +152,7 @@ function PartyCard({ ball, label, state }: PartyCardProps) {
   const code = state?.code ?? '';
   const key = PARTY_KEY[code];
   return (
-    <div className="rounded-xl border border-de9-line px-3 py-2.5">
+    <div className="rounded-md border border-de9-line px-3 py-2.5">
       <div
         className="flex items-center gap-1.5 text-[11px] font-extrabold uppercase tracking-[.04em]"
         style={{ color: BALL_COLOR[ball] }}
@@ -294,14 +296,6 @@ export function WorklistSummary({ detail: d, onRefresh, refreshing = false }: Wo
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center gap-2.5 rounded-[13px] border-[1.5px] border-[#F0DCA8] bg-[#FBF4E4] px-4.5 py-3 dark:border-[#B68A2E]/40 dark:bg-[#B68A2E]/15">
-        <span className="text-lg">⚠</span>
-        <div>
-          <div className="text-[13.5px] font-extrabold text-de9-slate">{t('apercuTitre')}</div>
-          <div className="mt-0.5 text-[12.5px] font-semibold text-de9-slate">{t('apercuTexte')}</div>
-        </div>
-      </div>
-
       <div className={CARD}>
         {/* identity + status */}
         <div className="flex flex-wrap items-start justify-between gap-3">
@@ -313,10 +307,10 @@ export function WorklistSummary({ detail: d, onRefresh, refreshing = false }: Wo
           </div>
           <div className="flex items-center gap-3">
             <span
-              className="inline-flex items-center gap-1.5 rounded-full px-[11px] py-1.5 text-xs font-bold"
+              className="inline-flex items-center gap-1.5 rounded-full px-[11px] py-1.5 text-xs font-bold tone-chip"
               style={{ background: badge.bg, color: badge.fg }}
             >
-              <span className="inline-flex min-w-[18px] flex-none items-center justify-center rounded-md bg-[#232838] px-[5px] py-[2px] text-[9.5px] font-extrabold leading-[1.4] tracking-[.02em] text-white">
+              <span className="inline-flex min-w-[18px] flex-none items-center justify-center rounded-xs bg-inverse-surface px-[5px] py-[2px] text-[9.5px] font-extrabold leading-[1.4] tracking-[.02em] text-inverse-on-surface">
                 {d.currentStatus.code}
               </span>
               {d.currentStatus.label}
@@ -330,10 +324,10 @@ export function WorklistSummary({ detail: d, onRefresh, refreshing = false }: Wo
                 type="button"
                 onClick={onRefresh}
                 disabled={refreshing}
-                className="inline-flex cursor-pointer items-center gap-1.5 rounded-[10px] border-[1.5px] border-de9-line bg-card px-2.5 py-1.5 text-[11.5px] font-bold text-de9-slate disabled:cursor-not-allowed disabled:opacity-50"
+                className="inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-de9-line bg-card px-2.5 py-1.5 text-[11.5px] font-bold text-de9-slate disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <span className={cn('text-[13px]', refreshing && 'animate-spin')} aria-hidden>
-                  ⟳
+                  <Glyph icon={RefreshCw} />
                 </span>
                 {t('apercuRafraichir')}
               </button>
@@ -343,7 +337,7 @@ export function WorklistSummary({ detail: d, onRefresh, refreshing = false }: Wo
 
         {/* next action + SLA + execute */}
         {next && (
-          <div className="mt-5 rounded-[14px] bg-secondary px-4 py-3.5">
+          <div className="mt-5 rounded-md bg-secondary px-4 py-3.5">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div className={SECTION_LABEL}>{t('apercuProchaineAction')}</div>
               {next.to && (
@@ -372,7 +366,7 @@ export function WorklistSummary({ detail: d, onRefresh, refreshing = false }: Wo
                       : 'bg-card text-de9-slate',
                   )}
                 >
-                  ⏱{' '}
+                  <Glyph icon={Timer} />{' '}
                   {overdue
                     ? t('apercuEnRetard').replace('{n}', formatDuration(d.slaOverdueMinutes ?? 0, t))
                     : t('apercuEcheance').replace('{n}', d.slaDueAt ? visitLabel(d.slaDueAt, t) : '—')}
@@ -388,9 +382,9 @@ export function WorklistSummary({ detail: d, onRefresh, refreshing = false }: Wo
                   <button
                     type="button"
                     onClick={() => navigate('/prestataires?ctx=' + encodeURIComponent(d.id))}
-                    className="cursor-pointer rounded-[11px] bg-de9-ink px-4 py-2.5 text-[12.5px] font-bold text-white dark:text-[#151923]"
+                    className="cursor-pointer rounded-full bg-primary px-4 py-2.5 text-[12.5px] font-bold text-primary-foreground"
                   >
-                    🔎 {next.action}
+                    <Glyph icon={Search} /> {next.action}
                   </button>
                   <span className="text-[11.5px] font-semibold text-de9-gray">{t('apercuDemanderDevisHint')}</span>
                 </>
@@ -403,9 +397,15 @@ export function WorklistSummary({ detail: d, onRefresh, refreshing = false }: Wo
                       setVisitForm(visitStep);
                     }}
                     disabled={stepPending || (visitStep === 'assign' && !prestataireCompanyId)}
-                    className="cursor-pointer rounded-[11px] bg-de9-ink px-4 py-2.5 text-[12.5px] font-bold text-white disabled:cursor-not-allowed disabled:opacity-45 dark:text-[#151923]"
+                    className="cursor-pointer rounded-full bg-primary px-4 py-2.5 text-[12.5px] font-bold text-primary-foreground disabled:cursor-not-allowed disabled:opacity-45"
                   >
-                    {stepPending ? t('apercuActionEnCours') : '✎ ' + next.action}
+                    {stepPending ? (
+                      t('apercuActionEnCours')
+                    ) : (
+                      <>
+                        <Glyph icon={Pencil} /> {next.action}
+                      </>
+                    )}
                   </button>
                   {visitStep === 'assign' && !prestataireCompanyId && (
                     <span className="text-[11.5px] font-semibold text-de9-gray">{t('visiteSansPrestataire')}</span>
@@ -425,20 +425,26 @@ export function WorklistSummary({ detail: d, onRefresh, refreshing = false }: Wo
                     type="button"
                     onClick={() => setVisitForm('choose')}
                     disabled={stepPending}
-                    className="cursor-pointer rounded-[11px] bg-de9-ink px-4 py-2.5 text-[12.5px] font-bold text-white disabled:cursor-not-allowed disabled:opacity-45 dark:text-[#151923]"
+                    className="cursor-pointer rounded-full bg-primary px-4 py-2.5 text-[12.5px] font-bold text-primary-foreground disabled:cursor-not-allowed disabled:opacity-45"
                   >
-                    {stepPending ? t('apercuActionEnCours') : '\u25B6 ' + t('apercuExecuter') + ' \u00B7 ' + next.action}
+                    {stepPending ? (
+                      t('apercuActionEnCours')
+                    ) : (
+                      <>
+                        <Glyph icon={Play} filled /> {t('apercuExecuter')} · {next.action}
+                      </>
+                    )}
                   </button>
                   <span className="text-[11.5px] font-semibold text-de9-gray">{t('apercuChoisirInfo')}</span>
                 </>
               ) : s4NothingChoosable ? (
-                <span className="inline-flex items-center gap-2 rounded-[11px] bg-card px-3.5 py-2.5 text-[12px] font-bold text-de9-slate">
-                  <span aria-hidden>\uD83D\uDD12</span>
+                <span className="inline-flex items-center gap-2 rounded-sm bg-card px-3.5 py-2.5 text-[12px] font-bold text-de9-slate">
+                  <Glyph icon={Lock} />
                   {t('apercuChoisirAucun')}
                 </span>
               ) : s3NothingToPropose ? (
-                <span className="inline-flex items-center gap-2 rounded-[11px] bg-card px-3.5 py-2.5 text-[12px] font-bold text-de9-slate">
-                  <span aria-hidden>🔒</span>
+                <span className="inline-flex items-center gap-2 rounded-sm bg-card px-3.5 py-2.5 text-[12px] font-bold text-de9-slate">
+                  <Glyph icon={Lock} />
                   {proposeHint}
                 </span>
               ) : blockingForm ? (
@@ -448,19 +454,19 @@ export function WorklistSummary({ detail: d, onRefresh, refreshing = false }: Wo
                 <>
                   <span
                     title={t('apercuActionFormRequis').replace('{n}', blockingForm)}
-                    className="inline-flex items-center gap-2 rounded-[11px] bg-card px-3.5 py-2.5 text-[12px] font-bold text-de9-slate"
+                    className="inline-flex items-center gap-2 rounded-sm bg-card px-3.5 py-2.5 text-[12px] font-bold text-de9-slate"
                   >
-                    <span aria-hidden>🔒</span>
+                    <Glyph icon={Lock} />
                     {waitingOn}
                   </span>
                   {next.actor === 'client' && d.clientPhone && (
                     <a href={'tel:' + d.clientPhone.replace(/\s/g, '')} className={CONTACT_LINK}>
-                      📞 {t('apercuAppeler')}
+                      <Glyph icon={Phone} /> {t('apercuAppeler')}
                     </a>
                   )}
                   {next.actor === 'client' && d.clientEmail && (
                     <a href={'mailto:' + d.clientEmail} className={CONTACT_LINK}>
-                      ✉️ Email
+                      <Glyph icon={Mail} /> Email
                     </a>
                   )}
                 </>
@@ -470,9 +476,15 @@ export function WorklistSummary({ detail: d, onRefresh, refreshing = false }: Wo
                     type="button"
                     onClick={executeNext}
                     disabled={runNext.isPending}
-                    className="cursor-pointer rounded-[11px] bg-de9-ink px-4 py-2.5 text-[12.5px] font-bold text-white disabled:cursor-not-allowed disabled:opacity-45 dark:text-[#151923]"
+                    className="cursor-pointer rounded-full bg-primary px-4 py-2.5 text-[12.5px] font-bold text-primary-foreground disabled:cursor-not-allowed disabled:opacity-45"
                   >
-                    {runNext.isPending ? t('apercuActionEnCours') : '▶ ' + t('apercuExecuter') + ' · ' + next.action}
+                    {runNext.isPending ? (
+                      t('apercuActionEnCours')
+                    ) : (
+                      <>
+                        <Glyph icon={Play} filled /> {t('apercuExecuter')} · {next.action}
+                      </>
+                    )}
                   </button>
                   {stepHint && <span className="text-[11.5px] font-semibold text-de9-gray">{t(stepHint)}</span>}
                 </>
@@ -503,7 +515,16 @@ export function WorklistSummary({ detail: d, onRefresh, refreshing = false }: Wo
           <Field label={t('apercuEmail')} value={d.clientEmail ?? dash} />
           <Field
             label={t('apercuTraite')}
-            value={d.traite ? '✓' + (d.traiteAt ? ' ' + visitLabel(d.traiteAt, t) : '') : dash}
+            value={
+              d.traite ? (
+                <>
+                  <Glyph icon={Check} />
+                  {d.traiteAt ? ' ' + visitLabel(d.traiteAt, t) : ''}
+                </>
+              ) : (
+                dash
+              )
+            }
           />
         </div>
 
@@ -521,11 +542,16 @@ export function WorklistSummary({ detail: d, onRefresh, refreshing = false }: Wo
                     type="button"
                     onClick={proposeDevis}
                     disabled={toPropose === 0 || propose.isPending}
-                    className="cursor-pointer rounded-[10px] bg-de9-ink px-3 py-1.5 text-[11.5px] font-bold text-white disabled:cursor-not-allowed disabled:opacity-45 dark:text-[#151923]"
+                    className="cursor-pointer rounded-full bg-primary px-3 py-1.5 text-[11.5px] font-bold text-primary-foreground disabled:cursor-not-allowed disabled:opacity-45"
                   >
-                    {propose.isPending
-                      ? t('apercuActionEnCours')
-                      : '➜ ' + t('apercuDevisProposer') + (toPropose > 0 ? ` (${toPropose})` : '')}
+                    {propose.isPending ? (
+                      t('apercuActionEnCours')
+                    ) : (
+                      <>
+                        <Glyph icon={Send} /> {t('apercuDevisProposer')}
+                        {toPropose > 0 ? ` (${toPropose})` : ''}
+                      </>
+                    )}
                   </button>
                 </div>
               )}
@@ -536,7 +562,7 @@ export function WorklistSummary({ detail: d, onRefresh, refreshing = false }: Wo
                 return (
                   <div
                     key={dv.quoteIndex}
-                    className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-xl border border-de9-line px-3.5 py-2.5"
+                    className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-md border border-de9-line px-3.5 py-2.5"
                   >
                     <div className="min-w-0 flex-1">
                       <div className="text-[13px] font-bold text-de9-ink">{dv.raison}</div>
@@ -558,7 +584,7 @@ export function WorklistSummary({ detail: d, onRefresh, refreshing = false }: Wo
                     </span>
                     {dv.chosen && (
                       <span className="rounded-full bg-[#E7F6EE] px-2.5 py-1 text-[10.5px] font-extrabold text-[#2FA86A] dark:bg-[#2FA86A]/15 dark:text-[#6FCF97]">
-                        ✓ {t('apercuDevisChoisi')}
+                        <Glyph icon={Check} /> {t('apercuDevisChoisi')}
                       </span>
                     )}
                     {!dv.chosen && dv.choosable && (
@@ -572,21 +598,29 @@ export function WorklistSummary({ detail: d, onRefresh, refreshing = false }: Wo
                           type="button"
                           onClick={() => decideDevis(dv, 'valider')}
                           disabled={decide.isPending}
-                          className="cursor-pointer rounded-[9px] bg-[#E7F6EE] px-2.5 py-1.5 text-[11px] font-bold text-[#2FA86A] disabled:cursor-not-allowed disabled:opacity-50 dark:bg-[#2FA86A]/15 dark:text-[#6FCF97]"
+                          className="cursor-pointer rounded-full bg-[#E7F6EE] px-2.5 py-1.5 text-[11px] font-bold text-[#2FA86A] disabled:cursor-not-allowed disabled:opacity-50 dark:bg-[#2FA86A]/15 dark:text-[#6FCF97]"
                         >
-                          {deciding?.devisId === dv.devisId && deciding.decision === 'valider'
-                            ? t('apercuActionEnCours')
-                            : '✓ ' + t('apercuDevisValider')}
+                          {deciding?.devisId === dv.devisId && deciding.decision === 'valider' ? (
+                            t('apercuActionEnCours')
+                          ) : (
+                            <>
+                              <Glyph icon={Check} /> {t('apercuDevisValider')}
+                            </>
+                          )}
                         </button>
                         <button
                           type="button"
                           onClick={() => decideDevis(dv, 'refuser')}
                           disabled={decide.isPending}
-                          className="cursor-pointer rounded-[9px] bg-[#FDECEC] px-2.5 py-1.5 text-[11px] font-bold text-[#E7464E] disabled:cursor-not-allowed disabled:opacity-50 dark:bg-[#E7464E]/15 dark:text-[#F2848A]"
+                          className="cursor-pointer rounded-full bg-[#FDECEC] px-2.5 py-1.5 text-[11px] font-bold text-[#E7464E] disabled:cursor-not-allowed disabled:opacity-50 dark:bg-[#E7464E]/15 dark:text-[#F2848A]"
                         >
-                          {deciding?.devisId === dv.devisId && deciding.decision === 'refuser'
-                            ? t('apercuActionEnCours')
-                            : '✕ ' + t('apercuDevisRefuser')}
+                          {deciding?.devisId === dv.devisId && deciding.decision === 'refuser' ? (
+                            t('apercuActionEnCours')
+                          ) : (
+                            <>
+                              <Glyph icon={X} /> {t('apercuDevisRefuser')}
+                            </>
+                          )}
                         </button>
                       </div>
                     )}

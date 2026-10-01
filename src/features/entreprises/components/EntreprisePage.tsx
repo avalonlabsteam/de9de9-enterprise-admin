@@ -5,14 +5,15 @@
 // the tab it asked for, and stays underneath once the fiche is closed.
 import { useEffect, useRef } from 'react';
 import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { Building2, ChevronLeft } from 'lucide-react';
+import { ArrowRight, Building2, ChevronLeft } from 'lucide-react';
+import { Glyph } from '@/components/common/Glyph';
 import { useT } from '@/lib/i18n';
 import { problemMessage } from '@/api/problem';
 import { useCreditClient } from '@/features/credits/api/credits';
 import { fmtDate } from '@/features/kyc/lib/kyc';
 import { useEntreprise } from '../api/entreprises';
 
-const CARD = 'rounded-[20px] border border-de9-line bg-card p-[22px] shadow-[0_10px_30px_rgba(38,50,69,.06)]';
+const CARD = 'rounded-md border border-de9-line bg-card p-[22px]';
 
 type Side = 'client' | 'prestataire';
 
@@ -91,7 +92,7 @@ export function EntreprisePage() {
     <div className="mx-auto max-w-[760px]">
       {backLink}
 
-      {companyQ.isPending && <div className="h-[220px] animate-pulse rounded-[20px] bg-card" />}
+      {companyQ.isPending && <div className="h-[220px] animate-pulse rounded-md bg-card" />}
 
       {companyQ.isError && (
         <div className={CARD}>
@@ -105,7 +106,7 @@ export function EntreprisePage() {
       {company && (
         <div className={CARD}>
           <div className="flex items-center gap-3.5">
-            <div className="flex size-12 flex-none items-center justify-center rounded-[14px] bg-[#E9F6F5] text-de9-teal-dark dark:bg-[#14322E]">
+            <div className="flex size-12 flex-none items-center justify-center rounded-md bg-primary-container text-on-primary-container">
               <Building2 className="size-6" />
             </div>
             <div className="min-w-0">
@@ -137,7 +138,7 @@ export function EntreprisePage() {
             onClick={() => navigate(`/kyc/${encodeURIComponent(companyId)}`)}
             className="mt-2.5 cursor-pointer text-[12.5px] font-bold text-de9-teal-dark hover:underline"
           >
-            {t('entDossierKyc')} →
+            {t('entDossierKyc')} <Glyph icon={ArrowRight} className="rtl:rotate-180" />
           </button>
         </div>
       )}
@@ -148,7 +149,7 @@ export function EntreprisePage() {
 function FicheButtons({ onOpen, canOpenClient }: { onOpen: (side: Side) => void; canOpenClient: boolean }) {
   const t = useT();
   const btn =
-    'cursor-pointer rounded-[11px] border-[1.5px] border-de9-line bg-card px-4 py-2.5 text-[12.5px] font-bold text-de9-slate hover:bg-de9-row disabled:cursor-not-allowed disabled:opacity-50';
+    'cursor-pointer rounded-full border border-de9-line bg-card px-4 py-2.5 text-[12.5px] font-bold text-de9-slate hover:bg-de9-row disabled:cursor-not-allowed disabled:opacity-50';
   return (
     <div className="mt-5 flex flex-wrap gap-2.5">
       <button type="button" onClick={() => onOpen('prestataire')} className={btn}>

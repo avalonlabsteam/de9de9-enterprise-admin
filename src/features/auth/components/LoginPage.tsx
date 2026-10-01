@@ -9,6 +9,7 @@ import { useT, type TKey } from '@/lib/i18n';
 import { langActions, useLangStore } from '@/stores/langStore';
 import { themeActions, useThemeStore, type ThemeMode } from '@/stores/themeStore';
 import { useIsAuthenticated } from '@/stores/authStore';
+import { Logo } from '@/components/common/Logo';
 import { loginInputSchema, type LoginInput } from '../schemas/auth';
 import { useLogin, type AuthFailure, type AuthFailureKind } from '../api/auth';
 
@@ -39,7 +40,7 @@ function failureMessage(failure: AuthFailure): TKey {
 }
 
 const fieldCls =
-  'h-auto w-full rounded-xl border-[1.5px] border-de9-line bg-card px-3.5 py-3 text-[14px] text-de9-ink outline-none transition-colors placeholder:text-de9-gray focus:border-de9-teal';
+  'h-auto w-full rounded-xs border border-outline bg-card px-3.5 py-3 text-[14px] text-de9-ink outline-none transition-colors placeholder:text-de9-gray focus:border-de9-teal';
 
 export function LoginPage() {
   const t = useT();
@@ -76,7 +77,7 @@ export function LoginPage() {
 
   const ThemeIcon = THEME_ICONS[mode];
   const iconButtonCls =
-    'flex h-[38px] w-11 flex-none cursor-pointer items-center justify-center rounded-[11px] border-[1.5px] border-de9-line bg-card text-[13px] font-extrabold text-de9-slate transition-colors hover:bg-de9-row';
+    'flex h-[38px] w-11 flex-none cursor-pointer items-center justify-center rounded-full border border-de9-line bg-card text-[13px] font-extrabold text-de9-slate transition-colors hover:bg-de9-row';
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
@@ -104,17 +105,10 @@ export function LoginPage() {
       <div className="flex flex-1 items-center justify-center px-4 pb-16">
         <div className="w-full max-w-[404px]">
           {/* brand */}
-          <div className="flex flex-col items-center gap-3">
-            <div className="text-[27px] leading-[0.82] font-extrabold">
-              <span className="text-de9-red">De9</span> <span className="text-de9-teal">De9</span>
-            </div>
-            <div className="rounded-[7px] bg-de9-ink px-[9px] py-1 text-[10.5px] font-extrabold tracking-[.12em] text-white dark:text-[#151923]">
-              {t('admin')}
-            </div>
-          </div>
+          <Logo size="lg" />
 
           {/* card */}
-          <div className="mt-7 rounded-[20px] border border-de9-line bg-card px-6 py-7 shadow-[0_10px_30px_rgba(38,50,69,.06)] sm:px-7">
+          <div className="mt-7 rounded-md border border-de9-line bg-card px-6 py-7 sm:px-7">
             <h1 className="text-[21px] font-extrabold text-de9-ink">{t('loginTitle')}</h1>
             <p className="mt-[3px] text-[13.5px] text-de9-gray">{t('loginSub')}</p>
 
@@ -169,7 +163,7 @@ export function LoginPage() {
                     type="button"
                     onClick={() => setShowPassword((v) => !v)}
                     aria-label={showPassword ? t('loginMasquerMdp') : t('loginAfficherMdp')}
-                    className="absolute inset-y-0 end-0 flex w-11 cursor-pointer items-center justify-center rounded-e-xl text-de9-gray hover:text-de9-slate"
+                    className="absolute inset-y-0 end-0 flex w-11 cursor-pointer items-center justify-center rounded-e-xs text-de9-gray hover:text-de9-slate"
                   >
                     {showPassword ? <EyeOff className="size-[17px]" /> : <Eye className="size-[17px]" />}
                   </button>
@@ -185,7 +179,7 @@ export function LoginPage() {
               {failure && (
                 <div
                   role="alert"
-                  className="rounded-xl border border-[#F3C9CB] bg-[#FDECEC] px-3.5 py-2.5 text-[12.5px] font-semibold text-de9-red dark:border-[#E7464E]/40 dark:bg-[#E7464E]/15"
+                  className="rounded-md border border-[#F3C9CB] bg-[#FDECEC] px-3.5 py-2.5 text-[12.5px] font-semibold text-de9-red dark:border-[#E7464E]/40 dark:bg-[#E7464E]/15"
                 >
                   {t(failureMessage(failure))}
                   {failure.traceId && (
@@ -202,7 +196,7 @@ export function LoginPage() {
               <button
                 type="submit"
                 disabled={login.isPending}
-                className="mt-1 flex h-[46px] w-full cursor-pointer items-center justify-center gap-2 rounded-[13px] bg-de9-teal-dark text-[14px] font-bold text-white shadow-[0_8px_18px_rgba(23,138,130,.28)] transition-opacity hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-60"
+                className="mt-1 flex h-[46px] w-full cursor-pointer items-center justify-center gap-2 rounded-full bg-primary text-[14px] font-bold text-primary-foreground transition-opacity hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {login.isPending && <Loader2 className="size-[17px] animate-spin" />}
                 {login.isPending ? t('loginSubmitting') : t('loginSubmit')}

@@ -9,11 +9,13 @@ import { useEffect, useState } from 'react';
 import type { ChangeEvent, FormEvent } from 'react';
 import axios from 'axios';
 import { toast } from 'sonner';
+import { Check, CreditCard, FileText, Paperclip, X } from 'lucide-react';
 import { useT, type TKey } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 import { problemMessage } from '@/api/problem';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import { Glyph } from '@/components/common/Glyph';
 import type { CreditClient, PieceFile, RechargeMethode } from '../schemas/credit';
 import { useCreditClient, useCreditClients, useRechargePieces, useSubmitRecharge } from '../api/credits';
 
@@ -54,8 +56,8 @@ type FieldErrors = Partial<Record<Field, string>>;
 
 const inputCls = (invalid: boolean): string =>
   cn(
-    'w-full rounded-xl border-[1.5px] bg-card p-3 text-sm text-de9-ink outline-none',
-    invalid ? 'border-de9-red' : 'border-de9-line',
+    'w-full rounded-xs border bg-card p-3 text-sm text-de9-ink outline-none',
+    invalid ? 'border-de9-red' : 'border-outline',
   );
 
 /** Which input a ProblemDetails refusal belongs under, if any. */
@@ -102,8 +104,8 @@ function PieceSlot({
     <div>
       <div className="mb-1.5 text-xs font-bold text-de9-ink">{label}</div>
       {file ? (
-        <div className="flex items-center gap-2.5 rounded-xl border-[1.5px] border-[#BFE6D6] bg-[#EAF7F1] px-3.5 py-3 dark:border-[#2FA86A]/40 dark:bg-[#2FA86A]/15">
-          <span className="text-lg">📄</span>
+        <div className="flex items-center gap-2.5 rounded-md border border-[#BFE6D6] bg-[#EAF7F1] px-3.5 py-3 dark:border-[#2FA86A]/40 dark:bg-[#2FA86A]/15">
+          <span className="text-lg"><Glyph icon={FileText} /></span>
           <span className="flex-1 overflow-hidden text-[12.5px] font-semibold text-ellipsis whitespace-nowrap text-de9-teal-dark">
             {file.name}
             <span className="ms-1.5 text-[11px] font-normal text-de9-gray">
@@ -115,17 +117,17 @@ function PieceSlot({
             <input type="file" accept="image/*,application/pdf" onChange={pick} className="hidden" />
           </label>
           <button type="button" onClick={onRemove} className="cursor-pointer text-sm text-de9-gray">
-            ✕
+            <Glyph icon={X} />
           </button>
         </div>
       ) : (
         <label
           className={cn(
-            'flex cursor-pointer items-center gap-2.5 rounded-xl border-[1.5px] border-dashed p-3.5',
+            'flex cursor-pointer items-center gap-2.5 rounded-md border border-dashed p-3.5',
             error ? 'border-de9-red' : 'border-de9-line',
           )}
         >
-          <span className="text-lg">📎</span>
+          <span className="text-lg"><Glyph icon={Paperclip} /></span>
           <div className="flex-1">
             <div className="text-[13px] font-bold text-de9-slate">{t('deposerFichier')}</div>
             <div className="text-[11px] text-de9-gray">
@@ -250,7 +252,7 @@ function RechargeCreateForm({ onClose, onDone }: { onClose: () => void; onDone: 
           className={inputCls(!!errors.clientId)}
         />
         {focused && !client && (
-          <div className="absolute z-10 mt-1 max-h-60 w-full overflow-y-auto rounded-xl border border-de9-line bg-card shadow-[0_14px_30px_rgba(20,30,45,.18)]">
+          <div className="absolute z-10 mt-1 max-h-60 w-full overflow-y-auto rounded-md border border-de9-line bg-card shadow-e2">
             {suggestions.isPending ? (
               <div className="p-3 text-xs text-de9-gray">…</div>
             ) : items.length === 0 ? (
@@ -334,9 +336,9 @@ function RechargeCreateForm({ onClose, onDone }: { onClose: () => void; onDone: 
               type="button"
               onClick={() => setMethode(m.key)}
               className={cn(
-                'cursor-pointer rounded-full border-[1.5px] px-3.5 py-[9px] text-xs font-bold',
+                'cursor-pointer rounded-full border px-3.5 py-[9px] text-xs font-bold',
                 methode === m.key
-                  ? 'border-de9-teal-dark bg-de9-teal-dark text-white'
+                  ? 'border-de9-teal-dark bg-primary text-primary-foreground'
                   : 'border-de9-line bg-card text-de9-slate',
               )}
             >
@@ -378,11 +380,11 @@ function RechargeCreateForm({ onClose, onDone }: { onClose: () => void; onDone: 
       >
         <span
           className={cn(
-            'flex size-5 flex-none items-center justify-center rounded-md border-2 text-xs font-extrabold text-white',
-            visibleClient ? 'border-de9-teal-dark bg-de9-teal-dark' : 'border-de9-line bg-card',
+            'flex size-5 flex-none items-center justify-center rounded-sm border-2 text-xs font-extrabold text-white',
+            visibleClient ? 'border-de9-teal-dark bg-primary' : 'border-de9-line bg-card',
           )}
         >
-          {visibleClient ? '✓' : ''}
+          {visibleClient && <Glyph icon={Check} className="stroke-[3]" />}
         </span>
         <span className="text-[12.5px] font-semibold text-de9-slate">{t('visibleClient')}</span>
       </button>
@@ -392,7 +394,7 @@ function RechargeCreateForm({ onClose, onDone }: { onClose: () => void; onDone: 
           type="button"
           variant="ghost"
           onClick={onClose}
-          className="h-auto flex-1 rounded-[13px] bg-secondary p-3.5 text-center text-sm font-bold text-de9-slate hover:bg-secondary/80"
+          className="h-auto flex-1 rounded-full bg-secondary p-3.5 text-center text-sm font-bold text-de9-slate hover:bg-secondary/80"
         >
           {t('annuler')}
         </Button>
@@ -400,7 +402,7 @@ function RechargeCreateForm({ onClose, onDone }: { onClose: () => void; onDone: 
         <Button
           type="submit"
           disabled={submit.isPending}
-          className="h-auto flex-[1.4] rounded-[13px] bg-de9-teal-dark p-3.5 text-center text-sm font-bold text-white shadow-[0_10px_22px_rgba(23,138,130,.38)] hover:bg-de9-teal-dark/90"
+          className="h-auto flex-[1.4] rounded-full bg-primary p-3.5 text-center text-sm font-bold text-primary-foreground hover:bg-de9-teal-dark/90"
         >
           {submit.isPending ? t('docTelechargementEnCours') : t('enregistrerRecharge')}
         </Button>
@@ -450,11 +452,11 @@ function RechargeDocsForm({
 
   return (
     <div>
-      <div className="mt-4 rounded-xl bg-secondary px-3.5 py-3 text-[12.5px] text-de9-slate">
+      <div className="mt-4 rounded-md bg-secondary px-3.5 py-3 text-[12.5px] text-de9-slate">
         {t('rClient')} : <b className="text-de9-ink">{state.client}</b> · {state.ref}
       </div>
       {!rechargeId && (
-        <div className="mt-3 rounded-xl border border-[#F0E2C0] bg-[#FBF4E4] px-3.5 py-2.5 text-[12px] font-semibold text-[#92702A] dark:border-[#92702A]/40 dark:bg-[#92702A]/15 dark:text-[#D9B36A]">
+        <div className="mt-3 rounded-md border border-[#F0E2C0] bg-[#FBF4E4] px-3.5 py-2.5 text-[12px] font-semibold text-[#92702A] dark:border-[#92702A]/40 dark:bg-[#92702A]/15 dark:text-[#D9B36A]">
           {t('rPiecesIndispo')}
         </div>
       )}
@@ -486,7 +488,7 @@ function RechargeDocsForm({
           type="button"
           variant="ghost"
           onClick={onClose}
-          className="h-auto flex-1 rounded-[13px] bg-secondary p-3.5 text-center text-sm font-bold text-de9-slate hover:bg-secondary/80"
+          className="h-auto flex-1 rounded-full bg-secondary p-3.5 text-center text-sm font-bold text-de9-slate hover:bg-secondary/80"
         >
           {t('annuler')}
         </Button>
@@ -494,7 +496,7 @@ function RechargeDocsForm({
           type="button"
           disabled={!rechargeId || pieces.isPending}
           onClick={onSave}
-          className="h-auto flex-[1.4] rounded-[13px] bg-de9-teal-dark p-3.5 text-center text-sm font-bold text-white shadow-[0_10px_22px_rgba(23,138,130,.38)] hover:bg-de9-teal-dark/90"
+          className="h-auto flex-[1.4] rounded-full bg-primary p-3.5 text-center text-sm font-bold text-primary-foreground hover:bg-de9-teal-dark/90"
         >
           {pieces.isPending ? t('docTelechargementEnCours') : t('enregistrerPieces')}
         </Button>
@@ -517,10 +519,10 @@ export function RechargeModal({ state, onClose, onDone }: RechargeModalProps) {
     >
       <DialogContent
         showCloseButton={false}
-        className="block max-h-[90vh] w-full max-w-[480px] gap-0 overflow-y-auto rounded-[22px] bg-card p-7 text-de9-ink shadow-[0_30px_70px_rgba(20,30,45,.35)] sm:max-w-[480px]"
+        className="block max-h-[90vh] w-full max-w-[480px] gap-0 overflow-y-auto rounded-xl bg-card p-7 text-de9-ink shadow-e3 sm:max-w-[480px]"
       >
-        <div className="flex size-[54px] items-center justify-center rounded-[15px] bg-[#E5F7F4] text-[26px] dark:bg-[#178A82]/20">
-          💳
+        <div className="flex size-[54px] items-center justify-center rounded-md bg-[#E5F7F4] text-[26px] dark:bg-[#178A82]/20 text-de9-teal-dark">
+          <Glyph icon={CreditCard} />
         </div>
         <DialogTitle className="mt-4 text-[19px] font-extrabold text-de9-ink">
           {isCreate ? t('rechargeTitle') : t('ajoutPiecesTitle')}

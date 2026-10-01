@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
+import { UserCog } from 'lucide-react';
 import { useT } from '@/lib/i18n';
 import { Button } from '@/components/ui/button';
 import {
@@ -17,6 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Glyph } from '@/components/common/Glyph';
 import { salarieInputSchema, type SalarieInput } from '../schemas/sub';
 import { useCreateSalarie, usePrestataireNames, useSubDemandes } from '../api/sub';
 
@@ -57,11 +59,11 @@ export function SalarieModal({ pro, defaultEntreprise, onClose }: SalarieModalPr
     <Dialog open onOpenChange={(open) => { if (!open) onClose(); }}>
       <DialogContent
         showCloseButton={false}
-        className="max-h-[85vh] max-w-[calc(100%-2rem)] gap-0 overflow-y-auto rounded-[22px] bg-card p-7 text-de9-ink shadow-[0_30px_70px_rgba(20,30,45,.4)] sm:max-w-[440px]"
+        className="max-h-[85vh] max-w-[calc(100%-2rem)] gap-0 overflow-y-auto rounded-xl bg-card p-7 text-de9-ink shadow-e3 sm:max-w-[440px]"
       >
         <form onSubmit={form.handleSubmit(onSubmit)} noValidate>
-          <div className="flex size-[54px] items-center justify-center rounded-[15px] bg-[#E5F7F4] text-[26px] dark:bg-[#178A82]/20">
-            🧑‍🔧
+          <div className="flex size-[54px] items-center justify-center rounded-md bg-[#E5F7F4] text-[26px] dark:bg-[#178A82]/20 text-de9-teal-dark">
+            <Glyph icon={UserCog} />
           </div>
           <DialogTitle className="mt-4 text-[19px] font-extrabold text-de9-ink">
             {t('stModalTitre')}
@@ -69,7 +71,7 @@ export function SalarieModal({ pro, defaultEntreprise, onClose }: SalarieModalPr
           <DialogDescription className="mt-[9px] text-[13px] leading-[1.55] font-normal text-de9-slate">
             {t('stModalInfo')}
           </DialogDescription>
-          <div className="mt-4 rounded-xl bg-secondary px-3.5 py-3 text-[13px]">
+          <div className="mt-4 rounded-md bg-secondary px-3.5 py-3 text-[13px]">
             {t('stColNom')} : <b>{pro.name}</b>
           </div>
           <div className="mt-3.5">
@@ -83,7 +85,7 @@ export function SalarieModal({ pro, defaultEntreprise, onClose }: SalarieModalPr
                 <Select value={field.value} onValueChange={field.onChange}>
                   <SelectTrigger
                     aria-invalid={!!form.formState.errors.entreprise}
-                    className="h-auto w-full rounded-xl border-[1.5px] border-de9-line bg-card p-3 text-sm text-de9-ink data-placeholder:text-de9-gray"
+                    className="h-auto w-full rounded-xs border border-outline bg-card p-3 text-sm text-de9-ink data-placeholder:text-de9-gray"
                   >
                     <SelectValue placeholder={`— ${t('stChoisirEntreprise')} —`} />
                   </SelectTrigger>
@@ -106,14 +108,14 @@ export function SalarieModal({ pro, defaultEntreprise, onClose }: SalarieModalPr
               type="button"
               variant="ghost"
               onClick={onClose}
-              className="h-auto flex-1 rounded-[13px] bg-secondary p-3.5 text-center text-sm font-bold text-de9-slate hover:bg-secondary/80"
+              className="h-auto flex-1 rounded-full bg-secondary p-3.5 text-center text-sm font-bold text-de9-slate hover:bg-secondary/80"
             >
               {t('annuler')}
             </Button>
             <Button
               type="submit"
               disabled={form.formState.isSubmitting}
-              className="h-auto flex-[1.4] rounded-[13px] bg-de9-teal-dark p-3.5 text-center text-sm font-bold text-white shadow-[0_10px_22px_rgba(23,138,130,.38)] hover:bg-de9-teal-dark/90"
+              className="h-auto flex-[1.4] rounded-full bg-primary p-3.5 text-center text-sm font-bold text-primary-foreground hover:bg-de9-teal-dark/90"
             >
               {t('stConfirmerSalarie')}
             </Button>

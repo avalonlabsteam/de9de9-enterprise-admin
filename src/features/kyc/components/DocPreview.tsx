@@ -2,9 +2,11 @@
 // placeholder saying why not) and the large « Agrandir » / « Voir » dialog.
 // Fetching and object-URL lifetime live in ../api/preview.
 import { useState } from 'react';
+import { Download, FileText, Hourglass, X } from 'lucide-react';
 import { useT } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
+import { Glyph } from '@/components/common/Glyph';
 import { useDocPreview, useSaveDocument, type DocPreviewResult } from '../api/preview';
 
 type Renderable = 'image' | 'pdf' | 'other';
@@ -56,7 +58,9 @@ export function PreviewFrame({ preview, loading, failed, fileName, contentType, 
   }
   return (
     <div className={cn('flex h-full w-full flex-col items-center justify-center gap-1.5 p-4 text-center', className)}>
-      <div className="text-[34px]">{loading ? '⏳' : '📄'}</div>
+      <div className="text-[34px] text-de9-faint">
+        <Glyph icon={loading ? Hourglass : FileText} className="stroke-[1.5]" />
+      </div>
       <div className="max-w-full truncate text-[12px] font-bold text-de9-slate">{fileName}</div>
       <div className="text-[11px] text-de9-gray">
         {loading ? t('fcApercuChargement') : failed || broken || kind === 'other' ? t('kycApercuTelecharger') : ''}
@@ -88,7 +92,7 @@ export function PreviewDialog({ open, onOpenChange, title, documentId, fileName,
       <DialogContent
         showCloseButton={false}
         aria-describedby={undefined}
-        className="flex max-h-[94vh] w-full max-w-[calc(100%-1.5rem)] flex-col gap-0 overflow-hidden rounded-[20px] bg-card p-0 text-de9-ink shadow-[0_30px_70px_rgba(20,30,45,.4)] sm:max-w-[960px]"
+        className="flex max-h-[94vh] w-full max-w-[calc(100%-1.5rem)] flex-col gap-0 overflow-hidden rounded-xl bg-card p-0 text-de9-ink shadow-e3 sm:max-w-[960px]"
       >
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-de9-line px-4 py-3.5 sm:px-[22px]">
           <div className="min-w-0">
@@ -100,17 +104,17 @@ export function PreviewDialog({ open, onOpenChange, title, documentId, fileName,
               type="button"
               onClick={() => save(documentId, fileName)}
               disabled={saving === documentId}
-              className="flex cursor-pointer items-center gap-1.5 rounded-[10px] bg-de9-ink px-3.5 py-[9px] text-xs font-bold text-white disabled:opacity-50 dark:text-[#151923]"
+              className="flex cursor-pointer items-center gap-1.5 rounded-full bg-primary px-3.5 py-[9px] text-xs font-bold text-primary-foreground disabled:opacity-50"
             >
-              ⤓ {saving === documentId ? t('docTelechargementEnCours') : t('telecharger')}
+              <Glyph icon={Download} /> {saving === documentId ? t('docTelechargementEnCours') : t('telecharger')}
             </button>
             <button
               type="button"
               onClick={() => onOpenChange(false)}
               aria-label={t('fermer')}
-              className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-[10px] bg-secondary text-base text-de9-slate"
+              className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full bg-secondary text-base text-de9-slate"
             >
-              ✕
+              <Glyph icon={X} />
             </button>
           </div>
         </div>
