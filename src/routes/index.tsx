@@ -10,6 +10,7 @@ import { soustraitanceRoutes } from '@/features/soustraitance/routes';
 import { handicapRoutes } from '@/features/handicap/routes';
 import { facturesRoutes } from '@/features/factures/routes';
 import { creditsRoutes } from '@/features/credits/routes';
+import { comptabiliteRoutes } from '@/features/comptabilite/routes';
 import { analyticsRoutes } from '@/features/analytics/routes';
 import { entreprisesRoutes } from '@/features/entreprises/routes';
 import { contractuelsRoutes } from '@/features/contractuels/routes';
@@ -37,6 +38,7 @@ export const router = createBrowserRouter([
               ...handicapRoutes,
               ...facturesRoutes,
               ...creditsRoutes,
+              ...comptabiliteRoutes,
               ...analyticsRoutes,
               // Screens only an alert opens (guide 11a §6) — no nav entry.
               ...entreprisesRoutes,

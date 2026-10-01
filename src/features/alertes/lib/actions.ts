@@ -43,8 +43,9 @@ const QUEUE_KEYS: Record<string, (f: FileSignal) => QueryKey[]> = {
     ...(f.companyId ? [['kyc', 'revue', f.companyId], ['kyc', 'audit', f.companyId]] : []),
   ],
   factures: (f) => [['factures', 'console'], ['factures', 'kpis'], ...(f.cibleId ? [['factures', 'detail', f.cibleId]] : [])],
-  // Ledger, counters, an open movement and the client fiches' credits.
-  credits: () => [['credits']],
+  // Ledger, counters, an open movement, the client fiches' credits, and the
+  // online payments (« Paiement en ligne à vérifier », guide 18 §12).
+  credits: () => [['credits'], ['comptabilite']],
   soustraitance: () => [['sub', 'demandes']],
   contractuels: () => [['contractuels']],
   handicap: () => [['handicap']],

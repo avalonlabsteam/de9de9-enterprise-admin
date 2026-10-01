@@ -7,6 +7,7 @@ import { PresProfileHost } from "@/features/prestataires/components/ProfileHost"
 import { ClientFicheHost } from "@/features/clients/components/ClientFicheHost";
 import { WorkerViewHost } from "@/features/commandes/components/console/WorkerViewHost";
 import { useKycKpis } from "@/features/kyc/api/kyc";
+import { useComptaAVerifierBadge } from "@/features/comptabilite/api/comptabilite";
 import { AlertesBell } from "@/features/alertes/components/AlertesBell";
 import { useAlertesHub } from "@/features/alertes/lib/useAlertesHub";
 import { logout } from "@/features/auth/api/auth";
@@ -25,6 +26,7 @@ const NAV_ITEMS: ReadonlyArray<{ to: string; labelKey: TKey }> = [
   { to: "/handicap", labelKey: "navHandicap" },
   { to: "/factures", labelKey: "navFactures" },
   { to: "/credits", labelKey: "navCredits" },
+  { to: "/comptabilite", labelKey: "navComptabilite" },
   { to: "/analytics", labelKey: "navAnalytics" },
 ];
 
@@ -55,7 +57,10 @@ function NavList({ onNavigate }: { onNavigate?: () => void }) {
   const t = useT();
   // KYC dossiers submitted and waiting on de9de9 — the red badge.
   const { data: kycKpis } = useKycKpis();
-  const badges: Partial<Record<string, number>> = { "/kyc": kycKpis?.aExaminer };
+  // Online payments « à vérifier » created this month.
+  const aVerifier = useComptaAVerifierBadge();
+  const badges: Partial<Record<string, number>> = { "/kyc": kycKpis?.aExaminer, "/comptabilite": aVerifier };
+  const badgeAria: Partial<Record<string, TKey>> = { "/kyc": "kycBadgeAria", "/comptabilite": "comptaBadgeAria" };
   return (
     <nav className="flex flex-col gap-1">
       {NAV_ITEMS.map((item) => {
@@ -77,7 +82,7 @@ function NavList({ onNavigate }: { onNavigate?: () => void }) {
             {t(item.labelKey)}
             {badge > 0 && (
               <span
-                aria-label={t("kycBadgeAria").replace("{n}", String(badge))}
+                aria-label={t(badgeAria[item.to] ?? "kycBadgeAria").replace("{n}", String(badge))}
                 className="min-w-[20px] rounded-full bg-de9-red px-1.5 py-[2px] text-center text-[10.5px] leading-[1.4] font-extrabold text-white"
               >
                 {badge > 99 ? "99+" : badge}

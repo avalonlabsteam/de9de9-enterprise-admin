@@ -19,6 +19,8 @@ export { paginationMetaSchema, type PaginationMeta } from '@/api/pagination';
  */
 const BALL_ALIAS: Record<string, Ball> = {
   de9de9: 'de9',
+  // `nextAction.actor` names de9de9's own moves « admin » (S5 « Planifier la première occurrence »).
+  admin: 'de9',
   prestataire: 'pro',
   none: 'done',
 };
