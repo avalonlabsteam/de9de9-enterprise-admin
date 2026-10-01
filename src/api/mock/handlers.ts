@@ -714,11 +714,28 @@ register('POST', '/sub/salaries', (req) => {
   return ok({ ok: true });
 });
 
-// ===================== handicap waitlist =====================
+// ===================== handicap : demandes, candidats, placements =====================
 // Integrated with the real API — served by the network. The mock below is the
-// offline fallback: it maps the legacy db seed shape onto the API's meta/data
-// page envelope.
+// offline fallback of the demandes list only: it maps the legacy db seed shape
+// onto the API's meta/data page envelope. Everything else is real-only.
 passthrough('GET', '/handicap');
+passthrough('POST', '/handicap');
+passthrough('PUT', '/handicap/:id');
+passthrough('DELETE', '/handicap/:id');
+passthrough('POST', '/handicap/:id/contacter');
+passthrough('POST', '/handicap/:id/reouvrir');
+// Candidats — the literal segments outrank ':id', so they are not read as a demande's id.
+passthrough('GET', '/handicap/candidats');
+passthrough('GET', '/handicap/candidats/compteurs');
+passthrough('GET', '/handicap/candidats/:candidatId');
+passthrough('POST', '/handicap/candidats');
+passthrough('PUT', '/handicap/candidats/:candidatId');
+passthrough('DELETE', '/handicap/candidats/:candidatId');
+// Placements.
+passthrough('GET', '/handicap/:id/placements');
+passthrough('POST', '/handicap/:id/placements');
+passthrough('POST', '/handicap/placements/:placementId/terminer');
+passthrough('DELETE', '/handicap/placements/:placementId');
 
 register('GET', '/handicap', (req) => {
   const q = req.query;
