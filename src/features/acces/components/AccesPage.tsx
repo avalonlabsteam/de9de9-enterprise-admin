@@ -10,13 +10,12 @@
 // a filter change and a search, and is dropped on leaving the page.
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { RefreshCw, TriangleAlert } from 'lucide-react';
+import { RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import { t as translate, useT } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 import { problemMessage } from '@/api/problem';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Glyph } from '@/components/common/Glyph';
 import {
   refreshAcces,
   useAccesCompteurs,
@@ -24,6 +23,7 @@ import {
   useRetryLegacySync,
   type AccesFilters,
 } from '../api/acces';
+import { reloadPont } from '../api/pont';
 import {
   ACCES_GRID,
   ACTIONS,
@@ -56,6 +56,7 @@ import { AccesConfirmDialog } from './AccesConfirmDialog';
 import { AccesResultDialog } from './AccesResultDialog';
 import { AccesRow, Tick } from './AccesRow';
 import { AccesSelectionBar } from './AccesSelectionBar';
+import { PontCard } from './PontCard';
 
 const SEARCH_DEBOUNCE_MS = 300;
 const PAGER_BTN =
@@ -195,6 +196,7 @@ export function AccesPage() {
   const refresh = (): void => {
     void listQ.refetch();
     void compteursQ.refetch();
+    reloadPont();
   };
 
   // ---- selection ----
@@ -277,18 +279,8 @@ export function AccesPage() {
         </button>
       </div>
 
-      {/* ===== the bridge's master switch is off: grants are saved, nothing is sent ===== */}
-      {compteurs?.pontActif === false && (
-        <div
-          role="status"
-          className="mt-4 flex items-start gap-2.5 rounded-md border border-[#F0E2C0] bg-[#FBF4E4] px-4 py-3 text-[12.5px] leading-relaxed font-semibold text-[#92702A] dark:border-[#B68A2E]/40 dark:bg-[#B68A2E]/15 dark:text-[#D9B36A]"
-        >
-          <span className="mt-px text-[15px]">
-            <Glyph icon={TriangleAlert} />
-          </span>
-          <span>{t('accesPontDesactive')}</span>
-        </div>
-      )}
+      {/* ===== the bridge to the de9de9 app: its state, and the switch itself (guide 24) ===== */}
+      <PontCard />
 
       {/* ===== counters — GET /admin/acces-entreprises/compteurs; each one is a filter ===== */}
       <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4 2xl:grid-cols-8">

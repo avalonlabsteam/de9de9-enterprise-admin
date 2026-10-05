@@ -30,7 +30,6 @@ import { prestatairesRechercheHandler } from './prestatairesRecherche';
 import { prestataireFicheHandler } from './prestataireFiche';
 import {
   db,
-  subAudit,
   analyticsSeed,
   cmdById,
   addAudit,
@@ -53,7 +52,6 @@ import type { Review } from '@/features/prestataires/schemas/review';
 import { kycDocInputSchema } from '@/features/prestataires/schemas/prestataire';
 import { rechargeInputSchema } from '@/features/credits/schemas/credit';
 import type { CreditEntry, CreditLedgerItem } from '@/features/credits/schemas/credit';
-import { salarieInputSchema } from '@/features/soustraitance/schemas/sub';
 import type { HandicapItem } from '@/features/handicap/schemas/handicap';
 import type { FactureConsoleItem } from '@/features/factures/schemas/facture';
 
@@ -699,20 +697,19 @@ register('GET', '/factures/console', (req) => {
   });
 });
 
-// ===================== sous-traitance =====================
-register('GET', '/sub/demandes', () => ok(db.subDemandes));
-
-register('GET', '/sub/pros', () => ok(db.subPros));
-
-// POST /sub/salaries — confirmSalarie (prepend to the sub audit trail)
-register('POST', '/sub/salaries', (req) => {
-  const parsed = salarieInputSchema.safeParse(req.body);
-  if (!parsed.success) return badRequest(parsed.error);
-  const input = parsed.data;
-
-  subAudit.unshift({ pro: input.proName, entreprise: input.entreprise, who: 'Karim', date: nowStamp() });
-  return ok({ ok: true });
-});
+// ===================== sous-traitance — « Recruter des pros de9de9 » (guide 23) =====================
+// Real API only: the demandes live in the Entreprise database, the pros and
+// the lists are read live from the de9de9 app's database (503
+// legacy_unavailable while it is not connected). Literal segments (compteurs,
+// filtres) outrank ':id'.
+passthrough('GET', '/admin/contractuels/demandes');
+passthrough('GET', '/admin/contractuels/demandes/compteurs');
+passthrough('POST', '/admin/contractuels/demandes/:demandeId/take');
+passthrough('POST', '/admin/contractuels/demandes/:demandeId/close');
+passthrough('POST', '/admin/contractuels/demandes/:demandeId/placements');
+passthrough('POST', '/admin/contractuels/placements/:placementId/release');
+passthrough('GET', '/admin/contractuels/pros');
+passthrough('GET', '/admin/contractuels/pros/filtres');
 
 // ===================== handicap : demandes, candidats, placements =====================
 // Integrated with the real API — served by the network. The mock below is the
@@ -826,6 +823,23 @@ passthrough('GET', '/admin/companies/:id/legacy-sync');
 passthrough('POST', '/admin/companies/:id/legacy-sync/retry');
 passthrough('POST', '/admin/companies/:id/b2c/suspend');
 passthrough('POST', '/admin/companies/:id/b2c/resume');
+// The bridge's switch, a card of « Accès » (guide 24) — real API only.
+passthrough('GET', '/admin/pont-de9de9');
+passthrough('POST', '/admin/pont-de9de9/ouvrir');
+passthrough('POST', '/admin/pont-de9de9/fermer');
+passthrough('POST', '/admin/pont-de9de9/tester');
+
+// ===================== Annonces — la revue des annonces (admin) =====================
+// Real API only, no mock twin. Literal segments (reprendre-fiches, b2c) outrank ':annonceId'.
+passthrough('GET', '/admin/annonces');
+passthrough('GET', '/admin/annonces/:annonceId');
+passthrough('POST', '/admin/annonces/:annonceId/approuver');
+passthrough('POST', '/admin/annonces/:annonceId/refuser');
+passthrough('POST', '/admin/annonces/:annonceId/suspendre');
+passthrough('POST', '/admin/annonces/:annonceId/retablir');
+passthrough('POST', '/admin/annonces/:annonceId/marquer-revue');
+passthrough('POST', '/admin/annonces/reprendre-fiches');
+passthrough('POST', '/admin/annonces/b2c/referentiel/actualiser');
 
 // ===================== Alertes (admin bell) =====================
 // Real-only, no mock twin: platform rows, their shared read state and the
@@ -838,7 +852,6 @@ passthrough('POST', '/admin/alertes/lues');
 // ===================== Contractuels (admin) =====================
 // Real-only: the screen an alert « Demande de contractuels » opens.
 passthrough('GET', '/admin/contractuels/demandes/:demandeId');
-passthrough('GET', '/admin/contractuels/demandes/:demandeId/candidates');
 
 // ===================== KYC (client fiche, mock) =====================
 register('GET', '/kyc/:key', (req) => ok(kycOf(req.pathParams['key'] ?? '')));

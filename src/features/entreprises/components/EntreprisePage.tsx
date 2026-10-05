@@ -161,13 +161,23 @@ export function EntreprisePage() {
           )}
 
           <FicheButtons onOpen={openFiche} canOpenClient={!!clientName} />
-          <button
-            type="button"
-            onClick={() => navigate(`/kyc/${encodeURIComponent(companyId)}`)}
-            className="mt-2.5 cursor-pointer text-[12.5px] font-bold text-de9-teal-dark hover:underline"
-          >
-            {t('entDossierKyc')} <Glyph icon={ArrowRight} className="rtl:rotate-180" />
-          </button>
+          <div className="mt-2.5 flex flex-wrap gap-x-5 gap-y-1">
+            <button
+              type="button"
+              onClick={() => navigate(`/kyc/${encodeURIComponent(companyId)}`)}
+              className="cursor-pointer text-[12.5px] font-bold text-de9-teal-dark hover:underline"
+            >
+              {t('entDossierKyc')} <Glyph icon={ArrowRight} className="rtl:rotate-180" />
+            </button>
+            {/* Where the two annonce alerts used to land: the company's annonces are one click away. */}
+            <button
+              type="button"
+              onClick={() => navigate(`/annonces?onglet=toutes&companyId=${encodeURIComponent(companyId)}`)}
+              className="cursor-pointer text-[12.5px] font-bold text-de9-teal-dark hover:underline"
+            >
+              {t('entAnnonces')} <Glyph icon={ArrowRight} className="rtl:rotate-180" />
+            </button>
+          </div>
         </div>
       )}
     </div>

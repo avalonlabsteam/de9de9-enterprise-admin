@@ -223,6 +223,20 @@ export function tonPill(ton: string | null | undefined): string {
 
 const KYC_TON: Record<string, string> = { pending: 'attente', verified: 'succes', rejected: 'alerte' };
 
+/** « Tester la connexion »: green for `ok` only; what the owner must fix amber; no answer red; unknown grey. */
+const TEST_TON: Record<string, string> = {
+  ok: 'succes',
+  non_configure: 'attente',
+  cle_absente_de9de9: 'attente',
+  cle_refusee: 'attente',
+  injoignable: 'alerte',
+  reponse_inattendue: 'alerte',
+};
+
+export function testPill(resultat: string): string {
+  return tonPill(TEST_TON[resultat]);
+}
+
 export function kycPill(statut: string | null | undefined): string {
   return tonPill(KYC_TON[statut ?? '']);
 }

@@ -14,7 +14,6 @@ import type {
 import type { Review } from '@/features/prestataires/schemas/review';
 import type { CreditEntry } from '@/features/credits/schemas/credit';
 import type { Facture, FactureStatus } from '@/features/factures/schemas/facture';
-import type { SubDemande, SubPro, SubAuditEntry } from '@/features/soustraitance/schemas/sub';
 import type { HandicapWorker } from '@/features/handicap/schemas/handicap';
 import type { AnalyticsData } from '@/features/analytics/schemas/analytics';
 
@@ -244,33 +243,6 @@ const seedCredits = (): CreditEntry[] => [
   C('20/06/2026', 'rech', 'Groupe Hôtelier Atlas', '—', 'REC-8815', 120000, '120 000', 'm.brahimi@atlashotels.dz', '0551223344', '', { name: 'virement-atlas.jpg' }, null),
 ];
 
-// ===================== sous-traitance (logic.ts subDemandes() / subPros()) =====================
-const seedSubDemandes = (): SubDemande[] => [
-  { id: 'ST-101', entreprise: 'ElectroPlus', cat: 'Électricité', sub: 'Électricité industrielle & bâtiment', date: '28/06/2026' },
-  { id: 'ST-102', entreprise: 'ClimaPro', cat: 'Climatisation (CVC)', sub: 'Installation & entretien clim', date: '27/06/2026' },
-  { id: 'ST-103', entreprise: 'CleanCo', cat: 'Nettoyage & propreté', sub: 'Nettoyage bureaux', date: '25/06/2026' },
-  { id: 'ST-104', entreprise: 'PlombEx', cat: 'Plomberie', sub: 'Plomberie & sanitaire', date: '23/06/2026' },
-  { id: 'ST-105', entreprise: 'VertJardin', cat: 'Jardinage & espaces verts', sub: 'Entretien espaces verts', date: '20/06/2026' },
-];
-
-const SP = (
-  id: string, name: string, wilaya: string, commune: string, cat: string, services: string,
-  realises: number, recues: number, envoyees: number, abandon: number, dispo: string, phone: string,
-): SubPro => ({ id, name, wilaya, commune, cat, services, realises, recues, envoyees, abandon, dispo, phone, wa: '213' + phone.replace(/^0/, '') });
-
-const seedSubPros = (): SubPro[] => [
-  SP('st1', 'Rachid Meziane', 'Alger', 'Hydra', 'Électricité', 'Électricité bâtiment · Tableaux', 128, 40, 34, 4, 'now', '0551110001'),
-  SP('st2', 'Sofiane Ould', 'Alger', 'Bab Ezzouar', 'Climatisation (CVC)', 'Froid · Climatisation · Chauffage', 96, 33, 30, 6, 'now', '0551110002'),
-  SP('st3', 'Nadia Belhadj', 'Blida', 'Boufarik', 'Nettoyage & propreté', 'Nettoyage bureaux · Vitres', 210, 52, 48, 3, 'now', '0551110003'),
-  SP('st4', 'Karim Toumi', 'Oran', 'Bir El Djir', 'Plomberie', 'Plomberie · Sanitaire', 74, 28, 19, 12, '05/07', '0551110004'),
-  SP('st5', 'Yacine Ferhat', 'Alger', 'Kouba', 'Maintenance industrielle', 'Maintenance · Soudure', 63, 22, 20, 8, 'now', '0551110005'),
-  SP('st6', 'Amine Saïdi', 'Constantine', 'El Khroub', 'Électricité', 'Électricité industrielle', 41, 18, 11, 22, '08/07', '0551110006'),
-  SP('st7', 'Lila Hamdi', 'Alger', 'Birkhadem', 'Jardinage & espaces verts', 'Tonte · Taille · Désherbage', 155, 44, 41, 2, 'now', '0551110007'),
-  SP('st8', 'Omar Cherbi', 'Sétif', 'El Eulma', 'Climatisation (CVC)', 'Installation clim · Entretien', 88, 30, 25, 9, 'now', '0551110008'),
-  SP('st9', 'Farid Benali', 'Oran', 'Es Sénia', 'Nettoyage & propreté', 'Nettoyage industriel', 119, 36, 33, 5, '06/07', '0551110009'),
-  SP('st10', 'Hakim Berrada', 'Alger', 'Dar El Beïda', 'Sécurité', 'Sécurité incendie · Gardiennage', 52, 20, 14, 15, 'now', '0551110010'),
-];
-
 // ===================== handicap waitlist (logic.ts hcWaitlist() + state.hcContacted) =====================
 const W = (
   id: string, entreprise: string, contact: string, phone: string, poste: string,
@@ -384,8 +356,6 @@ export const db: {
   reviews: Review[];
   credits: CreditEntry[];
   factures: Facture[];
-  subDemandes: SubDemande[];
-  subPros: SubPro[];
   handicap: HandicapWorker[];
   kyc: Record<string, KycState>;
   workers: string[];
@@ -395,15 +365,10 @@ export const db: {
   reviews: seedReviews(),
   credits: seedCredits(),
   factures: facturesFromCommandes(commandes),
-  subDemandes: seedSubDemandes(),
-  subPros: seedSubPros(),
   handicap: seedHandicap(),
   kyc: seedKyc(),
   workers: ['Karim B.', 'Sofiane M.', 'Yacine T.', 'Nadia R.'],
 };
-
-// Sub-traitance salarié audit trail (logic.ts state.subAudit, prepend on confirmSalarie).
-export const subAudit: SubAuditEntry[] = [];
 
 // ===================== stateful helpers (ported from logic.ts) =====================
 export function cmdById(id: string): Commande | undefined {

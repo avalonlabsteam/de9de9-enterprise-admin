@@ -9,6 +9,11 @@ interface ImportMetaEnv {
   readonly VITE_AUTH_API_URL?: string;
   /** Alerts hub. Defaults to same-origin `/hubs/notifications` (proxied like /api). */
   readonly VITE_HUB_URL?: string;
+  /**
+   * Host of the de9de9 app's media: a pro's `photoUrl` that is a path is read
+   * from there. Unset, such a photo falls back to the initials.
+   */
+  readonly VITE_DE9DE9_MEDIA_URL?: string;
 }
 
 interface ImportMeta {
