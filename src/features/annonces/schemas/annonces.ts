@@ -23,7 +23,12 @@ export type Tag = z.infer<typeof tagSchema>;
 
 const typeChipSchema = z.object({ code: z.string(), label: z.string() });
 
-/** B2C only: « En attente de publication » while the de9de9 app receives no annonce. */
+/**
+ * Where a published B2C annonce stands on the de9de9 app — null everywhere
+ * else (B2B, drafts, paused…). `code`: en_attente · echec · en_ligne; the
+ * label and the tone say which wait it is (« Publication en cours », « Hors
+ * ligne »…). `raison`: why a publication failed, in French.
+ */
 export const publicationSchema = tagSchema.extend({ raison: z.string().nullish() });
 
 // ---------- the queue ----------
@@ -63,7 +68,7 @@ export const annoncesQueueSchema = z.object({
   onglet: z.string(),
   /** Always the six, in order; the counts ignore every filter. */
   onglets: z.array(ongletSchema),
-  /** Filled on « B2C — publication » only. */
+  /** « B2C — publication » only, and only while annonces wait or failed there. */
   bandeaux: z.array(z.object({ code: z.string(), ton: z.string().nullish(), texte: z.string() })),
   annonces: z.array(annonceLigneSchema),
   page: z.number(),
@@ -287,7 +292,7 @@ export const annonceDetailSchema = z.object({
   annonce: annonceSchema,
   entreprise: annonceEntrepriseSchema,
   revue: annonceRevueSchema,
-  /** B2C only: « En attente de publication » and its note. */
+  /** B2C only: what holds the annonce back — `code` copies the badge (en_attente · echec). Null once online. */
   synchronisation: z.object({ code: z.string(), label: z.string(), note: z.string().nullish() }).nullish(),
   actions: z.array(annonceActionSchema),
   /** Newest first, 100 rows at most. */

@@ -29,7 +29,12 @@ const enc = encodeURIComponent;
 
 export type KycTab = 'aExaminer' | 'nonSoumis' | 'verifies' | 'aCorriger' | 'tous';
 
-/** Tab → filters (guide §3 « The queue »). « À examiner » includes the rounds in progress. */
+/**
+ * Tab → filters (guide §3 « The queue »). There is no submit step: a filed
+ * piece waits for de9de9 at once, so `soumis=true` is « at least one piece is
+ * waiting » and `soumis=false` « nothing is waiting » — nothing filed, or
+ * nothing new since the last verdict.
+ */
 export const KYC_TAB_QUERY: Record<KycTab, { statut?: string; soumis?: boolean }> = {
   aExaminer: { statut: 'pending', soumis: true },
   nonSoumis: { statut: 'pending', soumis: false },
@@ -47,7 +52,7 @@ export interface KycQueueParams {
 }
 
 /**
- * GET /kyc — the review queue, oldest submission first. Polled like the
+ * GET /kyc — the review queue, the longest wait first. Polled like the
  * counters: another admin's verdicts move rows between tabs.
  */
 export function useKycQueue(params: KycQueueParams) {
@@ -70,9 +75,9 @@ export function useKycQueue(params: KycQueueParams) {
 }
 
 /**
- * GET /kyc/kpis — the cards and the sidebar badge. There is no live channel
- * in the app yet (the API pushes `AdminSignal` over SignalR), so the badge
- * polls; TanStack pauses the interval while the tab is hidden.
+ * GET /kyc/kpis — the cards and the sidebar badge. The alerts hub refreshes
+ * them on every verdict (its `kyc` queue signal, alertes/lib/actions.ts); the
+ * poll covers a dropped connection.
  */
 export function useKycKpis() {
   return useQuery({
@@ -113,10 +118,34 @@ export function useKycAudit(companyId: string) {
   });
 }
 
+const sameName = (a: string, b: string): boolean => a.trim().toLowerCase() === b.trim().toLowerCase();
+
+/**
+ * The company a client fiche is about: those fiches open by name, the dossier
+ * is keyed by company id. The queue's own search (`q` covers the company name)
+ * with one exact match — two companies under the same name resolve to nothing
+ * rather than to the wrong dossier.
+ */
+export function useKycCompanyIdByName(name: string, enabled = true) {
+  return useQuery({
+    queryKey: ['kyc', 'byName', name.trim().toLowerCase()] as const,
+    enabled: enabled && !!name.trim(),
+    queryFn: async (): Promise<string | null> => {
+      const res = await apiClient.get('/kyc', { params: { q: name.trim(), page: 1, pageSize: 20 } });
+      const hits = kycQueueSchema.parse(res.data).data.filter((d) => sameName(d.nom, name));
+      return hits.length === 1 ? (hits[0]?.companyId ?? null) : null;
+    },
+    // A company keeps its id.
+    staleTime: 10 * 60_000,
+  });
+}
+
 /**
  * Refresh what a KYC write moves: the queue, the counters, the history, and —
- * unless the caller already stored the fresh one — the review screen. The
- * verified badge (`kycVerifie`) lives in the prestataire payloads too.
+ * unless the caller already stored the fresh one — the review screen. A
+ * verdict can also turn the dossier « Vérifié » or « À corriger », which the
+ * fiches (the ✓ badge), the company page and « Accès » (the de9de9 app account
+ * is approved or suspended with it) all print.
  */
 function refreshAfterKycWrite(companyId: string, revueIsFresh = false): void {
   void queryClient.invalidateQueries({ queryKey: ['kyc', 'list'] });
@@ -124,6 +153,8 @@ function refreshAfterKycWrite(companyId: string, revueIsFresh = false): void {
   void queryClient.invalidateQueries({ queryKey: kycKeys.audit(companyId) });
   if (!revueIsFresh) void queryClient.invalidateQueries({ queryKey: kycKeys.revue(companyId) });
   void queryClient.invalidateQueries({ queryKey: ['prestataires'] });
+  void queryClient.invalidateQueries({ queryKey: ['entreprises'] });
+  void queryClient.invalidateQueries({ queryKey: ['acces'] });
 }
 
 /** Reload the review screen after a 404/409/422 — what it shows is stale. */
@@ -144,6 +175,12 @@ export interface KycVerdictInput {
    * colleague's verdict into a 409 instead of silently overriding it.
    */
   statutVu: string;
+  /**
+   * « Valider » only — the piece's number as the screen showed it ('' when it
+   * showed none). Validating locks the number with the document: a number
+   * changed meanwhile answers 409 instead of locking one nobody reviewed.
+   */
+  numeroVu?: string;
   /** Required on « Refuser » — written for the company. */
   motif?: string;
   /** Internal, never shown to the company. */
@@ -161,11 +198,12 @@ export function useKycVerdict() {
       documentId,
       verdict,
       statutVu,
+      numeroVu,
       motif,
       note,
     }: KycVerdictInput): Promise<KycVerdictAnswer> => {
       const body = {
-        ...(verdict === 'refuser' ? { motif } : {}),
+        ...(verdict === 'refuser' ? { motif } : { numeroVu: numeroVu ?? '' }),
         ...(note ? { note } : {}),
         statutVu,
       };
@@ -193,8 +231,9 @@ export interface KycUploadInput {
 /**
  * POST /companies/{companyId}/kyc/documents — multipart, each `files` part
  * paired by position with one `kinds` field. The new file becomes the current
- * version (the old one stays in the history); during a round it joins the
- * round. A validated document is never replaced (409, refuse it first).
+ * version (the old one stays in the history) and can be decided at once: the
+ * upload itself puts the dossier in review. A validated document is never
+ * replaced (409, refuse it first).
  */
 export function useKycUploadForCompany() {
   return useMutation({
@@ -208,16 +247,6 @@ export function useKycUploadForCompany() {
       });
     },
     onSuccess: (_, { companyId }) => refreshAfterKycWrite(companyId),
-  });
-}
-
-/** POST /companies/{companyId}/kyc/soumettre — no body, same rules as the company's own submit. */
-export function useKycSubmitForCompany() {
-  return useMutation({
-    mutationFn: async (companyId: string): Promise<void> => {
-      await apiClient.post(`/companies/${enc(companyId)}/kyc/soumettre`);
-    },
-    onSuccess: (_, companyId) => refreshAfterKycWrite(companyId),
   });
 }
 

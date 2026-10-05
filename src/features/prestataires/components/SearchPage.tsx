@@ -9,15 +9,16 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
-import { Check, Mail, MapPin, MessageCircle, Phone, Search, Star, Timer, X } from 'lucide-react';
+import { ArrowRight, Check, Mail, MapPin, MessageCircle, Phone, Search, Star, Timer, X } from 'lucide-react';
 import { useL, useT } from '@/lib/i18n';
 import { cn, isInk } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Glyph } from '@/components/common/Glyph';
 import { useCommunes, useWilayas } from '@/features/geo/api/geo';
+import { taxoOf } from '@/features/annonces/lib/annonces';
 import { useContextCommande, useRecherchePrestataires, type CtxCommande } from '../api/prestataires';
-import type { PrestataireSearchItem, RechercheParams } from '../schemas/recherche';
+import type { AnnonceCarte, PrestataireSearchItem, RechercheParams } from '../schemas/recherche';
 import {
   FAM_COLOR,
   FAM_KEYS,
@@ -33,6 +34,7 @@ import { SelectionBar } from './SelectionBar';
 import { BriefModal } from './BriefModal';
 import { ReviewModal } from './ReviewModal';
 import { CategoryIcon } from './CategoryIcon';
+import { AnnonceRows } from './AnnonceRows';
 
 /* ===================== filters ===================== */
 
@@ -68,6 +70,8 @@ const DEFAULT_FILTERS: Filters = {
 
 const PAGE_SIZE = 12;
 const SEARCH_DEBOUNCE_MS = 300;
+/** A card draws this many annonces; the rest are in the profile's « Annonces » tab. */
+const ANNONCES_PAR_CARTE = 3;
 
 /* ===================== display helpers ===================== */
 
@@ -228,6 +232,28 @@ function SearchPageContent({ ctxCmd }: { ctxCmd: CtxCommande | null }) {
     if (hasCtx) selectionActions.clear();
   }, [hasCtx]);
 
+  // « Demander un devis » asked on an annonce — a row of a card, or of the
+  // profile's « Annonces » tab: its category becomes the page's filter, hence
+  // the brief's default. With a commande context the category stays the
+  // commande's.
+  useEffect(() => {
+    if (hasCtx) return;
+    return useSelectionStore.subscribe((s, prev) => {
+      if (!s.categorieDemandee || s.categorieDemandee === prev.categorieDemandee) return;
+      const cat = taxoOf(s.categorieDemandee.code);
+      if (!cat || String(cat.id) === filters.cat) return;
+      const fam = cat.c.toUpperCase() as FamKey;
+      setFilters((f) => ({
+        ...f,
+        cat: String(cat.id),
+        sub: 'all',
+        // A family filter that leaves this category out would empty the list.
+        families: f.families.length && !f.families.includes(fam) ? [] : f.families,
+      }));
+      setPage(1);
+    });
+  }, [hasCtx, filters.cat]);
+
   const params = useMemo<RechercheParams>(() => {
     const p: RechercheParams = { tri: sort, page, pageSize: PAGE_SIZE };
     if (filters.q.trim()) p.q = filters.q.trim();
@@ -285,11 +311,13 @@ function SearchPageContent({ ctxCmd }: { ctxCmd: CtxCommande | null }) {
       return n;
     });
 
-  /** The profile overlay and the review modal are keyed by COMPANY id. */
-  const openProfile = (id: string) =>
+  /** The profile overlay and the review modal are keyed by COMPANY id. `onglet`: the tab it opens on. */
+  const openProfile = (id: string, onglet?: string) =>
     setSearchParams((prev) => {
       const n = new URLSearchParams(prev);
       n.set('pres', id);
+      if (onglet) n.set('onglet', onglet);
+      else n.delete('onglet');
       return n;
     });
 
@@ -298,6 +326,12 @@ function SearchPageContent({ ctxCmd }: { ctxCmd: CtxCommande | null }) {
     const key = p.companyId ?? p.id;
     if (!selected.includes(key)) selectionActions.toggle(key, p.nom);
     toast.success(t('presToastAjouteCandidats'));
+  };
+
+  // The selection stays per company; the annonce says which category to ask for.
+  const addCandidateFor = (p: PrestataireSearchItem, a: AnnonceCarte) => {
+    addCandidate(p);
+    if (a.categorie?.code) selectionActions.askCategory(a.categorie.code);
   };
 
   const reviewName =
@@ -466,6 +500,7 @@ function SearchPageContent({ ctxCmd }: { ctxCmd: CtxCommande | null }) {
               const b2bClosed = fermes.includes(selKey.toLowerCase());
               const whatsAppHref = p.whatsAppUrl ?? (p.whatsAppPhone ? 'https://wa.me/' + p.whatsAppPhone : null);
               const hasRefs = p.referencesDe9de9 > 0 || p.referencesClient > 0;
+              const annonces = p.annonces ?? [];
               return (
                 <div
                   key={p.id}
@@ -599,6 +634,30 @@ function SearchPageContent({ ctxCmd }: { ctxCmd: CtxCommande | null }) {
                     </div>
                     <span className="num text-[12.5px] font-extrabold text-de9-ink">{tarifLabel(p)}</span>
                   </div>
+
+                  {/* The published B2B annonces that answer the filters — the reason the company is listed. */}
+                  {annonces.length > 0 && (
+                    <div className="mt-3 border-t border-de9-line pt-3">
+                      <div className="mb-2 text-[11px] font-extrabold tracking-[.04em] text-de9-gray uppercase">
+                        {t('presAnnoncesN').replace('{n}', String(annonces.length))}
+                      </div>
+                      <AnnonceRows
+                        annonces={annonces.slice(0, ANNONCES_PAR_CARTE)}
+                        onDevis={(a) => addCandidateFor(p, a)}
+                        devisDisabled={b2bClosed}
+                      />
+                      {annonces.length > ANNONCES_PAR_CARTE && (
+                        <button
+                          type="button"
+                          onClick={() => openProfile(selKey, 'annonces')}
+                          className="mt-2.5 cursor-pointer text-[12px] font-bold text-de9-teal-dark underline-offset-2 hover:underline"
+                        >
+                          {t('presVoirNAnnonces').replace('{n}', String(annonces.length))}{' '}
+                          <Glyph icon={ArrowRight} className="rtl:rotate-180" />
+                        </button>
+                      )}
+                    </div>
+                  )}
 
                   <div className="mt-[13px] flex flex-wrap gap-2">
                     {p.contactPhone && (

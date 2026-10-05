@@ -63,7 +63,7 @@ const THEME_ICONS: Record<ThemeMode, typeof Sun> = {
 
 function NavList({ onNavigate }: { onNavigate?: () => void }) {
   const t = useT();
-  // KYC dossiers submitted and waiting on de9de9 — the red badge.
+  // KYC dossiers with pieces waiting on de9de9 — the red badge.
   const { data: kycKpis } = useKycKpis();
   // Annonces waiting for an admin: « À valider » + « Modifiées ».
   const annonces = useAnnoncesBadge();

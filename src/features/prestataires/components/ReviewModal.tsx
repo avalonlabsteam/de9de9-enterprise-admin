@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Star } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { useT } from '@/lib/i18n';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -17,10 +18,12 @@ export interface ReviewModalProps {
   presName: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /** A z-index class for the modal and its scrim — opened from the fiche, it must sit above it. */
+  layerClassName?: string;
 }
 
 /** Avis de9de9 — évaluer un prestataire (logic.ts openReviewPres/submitReview, ReviewAndNotes.tsx design). */
-export function ReviewModal({ presId, presName, open, onOpenChange }: ReviewModalProps) {
+export function ReviewModal({ presId, presName, open, onOpenChange, layerClassName }: ReviewModalProps) {
   const t = useT();
   const { data: pres } = usePrestataireFiche(open ? presId : '');
   const submitReview = useSubmitReview();
@@ -54,7 +57,11 @@ export function ReviewModal({ presId, presName, open, onOpenChange }: ReviewModa
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         showCloseButton={false}
-        className="block max-h-[90vh] max-w-[calc(100%-2rem)] gap-0 overflow-y-auto rounded-xl bg-card p-[26px] shadow-e3 ring-0 sm:max-w-[460px]"
+        overlayClassName={layerClassName}
+        className={cn(
+          'block max-h-[90vh] max-w-[calc(100%-2rem)] gap-0 overflow-y-auto rounded-xl bg-card p-[26px] shadow-e3 ring-0 sm:max-w-[460px]',
+          layerClassName,
+        )}
       >
         <form onSubmit={onSubmit}>
           <div className="flex size-[54px] items-center justify-center rounded-md bg-[#F4EFFB] text-[26px] dark:bg-[#7C57C7]/15 text-[#7C57C7] dark:text-[#A98BE8]"><Glyph icon={Star} filled /></div>

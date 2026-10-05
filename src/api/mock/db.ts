@@ -408,12 +408,6 @@ export function kycOf(key: string): KycState {
   return k;
 }
 
-/** Prepend a KYC journal entry (logic.ts logKyc — actor 'Karim'). */
-export function logKyc(key: string, action: string): void {
-  const k = kycOf(key);
-  k.audit = [{ who: 'Karim', action, date: nowStamp() }, ...k.audit];
-}
-
 // ===================== analytics seed (logic.ts buildAnalytics) =====================
 const analyticsBars: [number, number, number][] = [
   [60, 30, 22], [72, 38, 30], [55, 40, 28], [85, 52, 40], [70, 48, 36], [95, 60, 45],

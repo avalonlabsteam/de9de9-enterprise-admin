@@ -7,6 +7,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Dialog as DialogPrimitive } from 'radix-ui';
 import { toast } from 'sonner';
 import {
+  ArrowRight,
   Eye,
   FileText,
   Mail,
@@ -22,20 +23,18 @@ import { Dialog, DialogOverlay, DialogPortal, DialogTitle } from '@/components/u
 import { Glyph } from '@/components/common/Glyph';
 import { useL, useT } from '@/lib/i18n';
 import { uiActions } from '@/stores/uiStore';
-import { useClientKyc, useCommandes, useCredits, useFactures } from '../api/clients';
-import type { FicheKycAuditEntry, FicheKycStatus } from '../api/clients';
+import { useKycCompanyIdByName, useKycRevue } from '@/features/kyc/api/kyc';
+import { KycDossierPanel } from '@/features/kyc/components/KycDossierPanel';
+import { useCommandes, useCredits, useFactures } from '../api/clients';
 import {
-  KYC_LABEL_FR,
   clientInit,
   cmdLine,
   docsFromRecharges,
   factureLine,
   kycMeta,
   moveLine,
-  nowStamp,
   rechargeLine,
 } from '../lib/fiche';
-import { KycTab } from './KycTab';
 import { PieceViewer } from './PieceViewer';
 import type { PieceView } from './PieceViewer';
 
@@ -130,18 +129,9 @@ function ClientFiche({
   const [tab, setTab] = useState<ClientTab>(initialTab);
   const [piece, setPiece] = useState<PieceView | null>(null);
 
-  // KYC status / motif / replaced doc names have no API endpoint — they stay
-  // client-side exactly like the prototype's local state (logic.ts setKycStatus,
-  // setKycMotif, replaceKycDoc), layered over the fetched KYC state.
-  const [kycStatusLocal, setKycStatusLocal] = useState<FicheKycStatus | null>(null);
-  const [kycMotifLocal, setKycMotifLocal] = useState<string | null>(null);
-  const [kycLocalAudit, setKycLocalAudit] = useState<FicheKycAuditEntry[]>([]);
-  const [kycDocNames, setKycDocNames] = useState<Record<string, string>>({});
-
   const commandesQ = useCommandes();
   const creditsQ = useCredits();
   const facturesQ = useFactures();
-  const kycQ = useClientKyc(name);
 
   const cmds = useMemo(
     () => (commandesQ.data ?? []).filter((c) => c.client === name),
@@ -166,35 +156,27 @@ function ClientFiche({
   const moves = myCredits.map((r) => moveLine(r, t));
   const docsList = docsFromRecharges(recharges);
 
-  const kycStatus = kycStatusLocal ?? kycQ.data?.status ?? 'pending';
-  const kycMotif = kycMotifLocal ?? kycQ.data?.motif ?? '';
-  const kycDocs = (kycQ.data?.docs ?? []).map((d) =>
-    kycDocNames[d.id] ? { ...d, name: kycDocNames[d.id] ?? d.name } : d,
-  );
-  const kycAudit = [...kycLocalAudit, ...(kycQ.data?.audit ?? [])];
-  const headerKyc = kycMeta(kycStatus, t);
+  // ---------- kyc: the company's real dossier, decided piece by piece ----------
+  // The fiche opens by name and the dossier is keyed by company id: the ledger
+  // rows give it for most clients, the KYC queue's own search for the others.
+  const lookupQ = useKycCompanyIdByName(name, !companyId && !creditsQ.isPending);
+  const kycCompanyId = companyId ?? lookupQ.data ?? null;
+  const kycResolving = creditsQ.isPending || lookupQ.isLoading;
+  const kycRevueQ = useKycRevue(kycCompanyId ?? '');
+  const kycStatut = kycRevueQ.data?.statut;
+  // No chip rather than a guessed one while the dossier is unknown.
+  const headerKyc =
+    kycStatut === 'verified' || kycStatut === 'pending' || kycStatut === 'rejected' ? kycMeta(kycStatut, t) : null;
 
-  const setKycStatus = (st: FicheKycStatus) => {
-    const lbl = KYC_LABEL_FR[st];
-    setKycStatusLocal(st);
-    setKycLocalAudit((prev) => [
-      {
-        who: 'Karim',
-        action: 'Statut → ' + lbl + (kycMotif ? ' (' + kycMotif + ')' : ''),
-        date: nowStamp(),
-      },
-      ...prev,
-    ]);
-    toast.success(t('commonKycToastStatut').replace('{n}', lbl));
+  const openKycReview = () => {
+    if (!kycCompanyId) return;
+    onClose();
+    navigate('/kyc/' + encodeURIComponent(kycCompanyId));
   };
 
-  const replaceKycDoc = (docId: string, fileName: string) => {
-    setKycDocNames((prev) => ({ ...prev, [docId]: fileName }));
-    setKycLocalAudit((prev) => [
-      { who: 'Karim', action: 'Remplacement document · ' + fileName, date: nowStamp() },
-      ...prev,
-    ]);
-    toast.success(t('docToastRemplace'));
+  const searchKycQueue = () => {
+    onClose();
+    navigate('/kyc?q=' + encodeURIComponent(name));
   };
 
   const viewAsClient = () => {
@@ -253,12 +235,15 @@ function ClientFiche({
                   <DialogTitle className="font-sans text-[19px] leading-normal font-extrabold text-de9-ink">
                     {name}
                   </DialogTitle>
-                  <span
-                    className="rounded-full px-2 py-[3px] text-[10px] font-extrabold tone-chip"
-                    style={{ background: headerKyc.bg, color: headerKyc.fg }}
-                  >
-                    <Glyph icon={headerKyc.icon} /> KYC
-                  </span>
+                  {headerKyc && (
+                    <span
+                      title={headerKyc.label}
+                      className="rounded-full px-2 py-[3px] text-[10px] font-extrabold tone-chip"
+                      style={{ background: headerKyc.bg, color: headerKyc.fg }}
+                    >
+                      <Glyph icon={headerKyc.icon} /> KYC
+                    </span>
+                  )}
                 </div>
                 <div className="mt-[3px] text-[12.5px] text-de9-gray">
                   {first?.service ?? '—'} · <Glyph icon={MapPin} /> {first?.wilaya ?? '—'}
@@ -363,24 +348,23 @@ function ClientFiche({
                 </div>
               ))}
 
-            {/* KYC */}
+            {/* KYC — the real dossier, one verdict per piece */}
             {tab === 'kyc' &&
-              (kycQ.isPending ? (
+              (kycCompanyId ? (
+                <KycDossierPanel companyId={kycCompanyId} onOpenReview={openKycReview} />
+              ) : kycResolving ? (
                 <PanelSkeleton />
-              ) : kycQ.isError ? (
-                <ErrorBlock />
               ) : (
-                <KycTab
-                  name={name}
-                  status={kycStatus}
-                  motif={kycMotif}
-                  docs={kycDocs}
-                  audit={kycAudit}
-                  onStatusChange={setKycStatus}
-                  onMotifChange={setKycMotifLocal}
-                  onReplaceDoc={replaceKycDoc}
-                  onOpenPiece={openPiece}
-                />
+                <div className="rounded-md bg-secondary px-3.5 py-3 text-[12.5px] text-de9-slate">
+                  {t('kycFicheIntrouvable')}
+                  <button
+                    type="button"
+                    onClick={searchKycQueue}
+                    className="mt-1.5 block cursor-pointer text-[12.5px] font-bold text-de9-teal-dark hover:underline"
+                  >
+                    {t('kycChercherFile')} <Glyph icon={ArrowRight} className="rtl:rotate-180" />
+                  </button>
+                </div>
               ))}
 
             {/* COMMANDES */}

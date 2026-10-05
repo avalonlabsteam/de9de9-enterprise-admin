@@ -1,14 +1,11 @@
 import { z } from 'zod';
-import { useMutation, useQuery } from '@tanstack/react-query';
-import { toast } from 'sonner';
+import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '@/api/apiClient';
-import { queryClient } from '@/lib/queryClient';
-import { t } from '@/lib/i18n';
 
 // ============================================================================
 // Local schemas — the clients feature is self-contained (no cross-feature
 // imports). Schemas are LOOSE (unknown keys are kept) so the shared TanStack
-// cache entries (['commandes'], ['credits'], ['factures'], ['kyc', key]) stay
+// cache entries (['commandes'], ['credits'], ['factures']) stay
 // complete for the other features that read the same keys.
 // ============================================================================
 
@@ -94,39 +91,10 @@ export const ficheFactureSchema = z.looseObject({
 export type FicheFacture = z.infer<typeof ficheFactureSchema>;
 
 // ---------- KYC ----------
+// The dossier itself is the KYC feature's (features/kyc); the fiche only names
+// its three states for the header chip.
 export const ficheKycStatusSchema = z.enum(['verified', 'pending', 'rejected']);
 export type FicheKycStatus = z.infer<typeof ficheKycStatusSchema>;
-
-export const ficheKycDocSchema = z.looseObject({
-  id: z.string(),
-  label: z.string(),
-  name: z.string(),
-});
-export type FicheKycDoc = z.infer<typeof ficheKycDocSchema>;
-
-export const ficheKycAuditSchema = z.looseObject({
-  who: z.string(),
-  action: z.string(),
-  date: z.string(),
-});
-export type FicheKycAuditEntry = z.infer<typeof ficheKycAuditSchema>;
-
-export const ficheKycStateSchema = z.looseObject({
-  status: ficheKycStatusSchema,
-  motif: z.string(),
-  docs: z.array(ficheKycDocSchema),
-  audit: z.array(ficheKycAuditSchema),
-});
-export type FicheKycState = z.infer<typeof ficheKycStateSchema>;
-
-export const ficheKycDocInputSchema = z.object({
-  label: z.string().min(1),
-  fileName: z.string().min(1),
-});
-export type FicheKycDocInput = z.infer<typeof ficheKycDocInputSchema>;
-
-/** KYC key of a client fiche — logic.ts buildClientFiche ('client:' + name). */
-export const clientKycKey = (name: string): string => 'client:' + name;
 
 // ============================================================================
 // Query hooks (standard query keys shared with the other features)
@@ -160,55 +128,6 @@ export function useFactures() {
     queryFn: async (): Promise<FicheFacture[]> => {
       const res = await apiClient.get('/factures');
       return ficheFactureSchema.array().parse(res.data);
-    },
-  });
-}
-
-/** GET /kyc/client::name — logic.ts kycOf('client:' + name). */
-export function useClientKyc(name: string) {
-  const key = clientKycKey(name);
-  return useQuery({
-    queryKey: ['kyc', key],
-    enabled: !!name,
-    queryFn: async (): Promise<FicheKycState> => {
-      const res = await apiClient.get(`/kyc/${encodeURIComponent(key)}`);
-      return ficheKycStateSchema.parse(res.data);
-    },
-  });
-}
-
-// ============================================================================
-// Mutations
-// ============================================================================
-
-/** POST /kyc/:key/docs — logic.ts addKycDoc (+ journal entry, toast 'Document ajouté'). */
-export function useAddClientKycDoc(name: string) {
-  const key = clientKycKey(name);
-  return useMutation({
-    mutationFn: async (input: FicheKycDocInput): Promise<FicheKycState> => {
-      const res = await apiClient.post(`/kyc/${encodeURIComponent(key)}/docs`, input);
-      return ficheKycStateSchema.parse(res.data);
-    },
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['kyc', key] });
-      toast.success(t('docToastAjoute'));
-    },
-  });
-}
-
-/** DELETE /kyc/:key/docs/:docId — logic.ts removeKycDoc (+ journal entry, toast 'Document supprimé'). */
-export function useRemoveClientKycDoc(name: string) {
-  const key = clientKycKey(name);
-  return useMutation({
-    mutationFn: async (docId: string): Promise<FicheKycState> => {
-      const res = await apiClient.delete(
-        `/kyc/${encodeURIComponent(key)}/docs/${encodeURIComponent(docId)}`,
-      );
-      return ficheKycStateSchema.parse(res.data);
-    },
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['kyc', key] });
-      toast.success(t('docToastSupprime'));
     },
   });
 }

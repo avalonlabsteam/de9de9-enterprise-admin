@@ -78,10 +78,21 @@ interface PreviewDialogProps {
   contentType: string | null | undefined;
   /** Reuse a preview already on screen instead of downloading the file again. */
   loaded?: DocPreviewResult;
+  /** A z-index class for the dialog and its scrim, when it opens above a fiche. */
+  layerClassName?: string;
 }
 
 /** Large view — « Agrandir » on the current version, « Voir » on an older one. */
-export function PreviewDialog({ open, onOpenChange, title, documentId, fileName, contentType, loaded }: PreviewDialogProps) {
+export function PreviewDialog({
+  open,
+  onOpenChange,
+  title,
+  documentId,
+  fileName,
+  contentType,
+  loaded,
+  layerClassName,
+}: PreviewDialogProps) {
   const t = useT();
   const own = useDocPreview(open && !loaded ? documentId : null);
   const shown = loaded ?? own;
@@ -92,7 +103,11 @@ export function PreviewDialog({ open, onOpenChange, title, documentId, fileName,
       <DialogContent
         showCloseButton={false}
         aria-describedby={undefined}
-        className="flex max-h-[94vh] w-full max-w-[calc(100%-1.5rem)] flex-col gap-0 overflow-hidden rounded-xl bg-card p-0 text-de9-ink shadow-e3 sm:max-w-[960px]"
+        overlayClassName={layerClassName}
+        className={cn(
+          'flex max-h-[94vh] w-full max-w-[calc(100%-1.5rem)] flex-col gap-0 overflow-hidden rounded-xl bg-card p-0 text-de9-ink shadow-e3 sm:max-w-[960px]',
+          layerClassName,
+        )}
       >
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-de9-line px-4 py-3.5 sm:px-[22px]">
           <div className="min-w-0">

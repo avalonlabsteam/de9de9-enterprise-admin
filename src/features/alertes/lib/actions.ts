@@ -37,10 +37,13 @@ export function openAlerte(a: Alerte, navigate: NavigateFunction): void {
 const QUEUE_KEYS: Record<string, (f: FileSignal) => QueryKey[]> = {
   // Worklist rows, counters, and the open commande (its detail sits under the same prefix).
   worklist: () => [['commandes']],
+  // Every verdict: the queue, the counters, an open review — and the company's
+  // page and fiches, whose ✓ badge follows the dossier turning « Vérifié ».
   kyc: (f) => [
     ['kyc', 'list'],
     ['kyc', 'kpis'],
     ...(f.companyId ? [['kyc', 'revue', f.companyId], ['kyc', 'audit', f.companyId]] : []),
+    ...companyKeys(f.companyId),
   ],
   factures: (f) => [['factures', 'console'], ['factures', 'kpis'], ...(f.cibleId ? [['factures', 'detail', f.cibleId]] : [])],
   // Ledger, counters, an open movement, the client fiches' credits, and the
@@ -67,10 +70,13 @@ export function invalidateQueue(f: FileSignal): void {
 
 /**
  * Alerts that change a page without a queue signal (`file`): the annonces —
- * their queue, the menu badge and an open annonce refresh on any `annonce.*`.
+ * their queue, the menu badge and an open annonce refresh on any `annonce.*`,
+ * and so do the prestataire cards and fiches, which list the published B2B ones.
  */
 export function invalidateForAlerte(a: Alerte): void {
-  if (a.code?.startsWith('annonce.')) void queryClient.invalidateQueries({ queryKey: ['annonces'] });
+  if (!a.code?.startsWith('annonce.')) return;
+  void queryClient.invalidateQueries({ queryKey: ['annonces'] });
+  void queryClient.invalidateQueries({ queryKey: ['prestataires'] });
 }
 
 /** The alert is about the screen on display: refresh what it shows instead of toasting. */

@@ -45,6 +45,31 @@ export const tarifPalierSchema = z.object({
 export type TarifPalier = z.infer<typeof tarifPalierSchema>;
 
 /**
+ * One of the company's eligible annonces — B2B, « Publiée », KYC verified — as
+ * the search card and the profile draw it. The labels are ready to print; a
+ * B2C annonce never comes here.
+ */
+export const annonceCarteSchema = z.object({
+  /** GET /admin/annonces/{id} */
+  id: z.string(),
+  titre: z.string(),
+  /** Null when the category left the catalogue. */
+  categorie: codeLabelSchema.nullish(),
+  sousCategories: z.array(codeLabelSchema).default([]),
+  /** « 4 000 – 9 000 DA / jour », « Sur devis », « À partir de 4 000 DA / jour » */
+  tarifLabel: z.string().nullish(),
+  /** « Alger, Blida +3 »; null when the annonce names no zone. */
+  zonesLabel: z.string().nullish(),
+  /** Absolute and public: a plain <img src>. */
+  couvertureUrl: z.string().nullish(),
+  delaiDemarrageJours: z.number().nullish(),
+  /** « Démarrage sous 3 jours » */
+  delaiLabel: z.string().nullish(),
+  publieeLe: z.string().nullish(),
+});
+export type AnnonceCarte = z.infer<typeof annonceCarteSchema>;
+
+/**
  * One search result card. Scalars that are semantically optional (no logo, no
  * tariff published, no contact channel, …) are widened with `nullish` — same
  * convention as the worklist schema.
@@ -95,6 +120,13 @@ export const prestataireSearchItemSchema = z.object({
   couvertureSource: z.string().nullish(),
   /** The sentence to print over a card driven by annonces; null when filled by hand. */
   couvertureNote: z.string().nullish(),
+  /**
+   * Newest first. Search: the annonces that pass every coverage filter that is
+   * set (all of them without one) — `[]` for a company found through its card
+   * alone. Fiche: all of them. Absent on an older deployment and on the
+   * answers of the write routes.
+   */
+  annonces: z.array(annonceCarteSchema).nullish(),
 });
 export type PrestataireSearchItem = z.infer<typeof prestataireSearchItemSchema>;
 

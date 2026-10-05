@@ -9,7 +9,6 @@ import { paginationMetaSchema } from '@/api/pagination';
 //   review     GET  /companies/{companyId}/kyc/revue
 //   verdicts   POST /companies/{companyId}/kyc/documents/{documentId}/valider | /refuser
 //   upload     POST /companies/{companyId}/kyc/documents        (multipart files + kinds)
-//   submit     POST /companies/{companyId}/kyc/soumettre
 //   numbers    GET + PUT /companies/{companyId}                   (rc, nif, nis)
 //   history    GET  /audit/Company/{companyId}
 //
@@ -43,7 +42,7 @@ export type KycProgression = z.infer<typeof kycProgressionSchema>;
 
 // ---------------------------------------------------------------------------
 // GET /kyc — one queue row is the dossier in the admin view (real states,
-// internal notes, no masking). Oldest submission first.
+// internal notes, no masking). The longest wait first.
 // ---------------------------------------------------------------------------
 
 export const kycDossierDocumentSchema = z.object({
@@ -68,7 +67,7 @@ export const kycDossierSchema = z.object({
   nom: z.string(),
   statut: z.string(),
   statutLabel: z.string().nullish(),
-  /** Submitted and the review round is open. */
+  /** Pending with at least one piece waiting for de9de9 — true from the first upload. */
   enRevue: z.boolean().nullish(),
   /** A document was already decided in this round — « Revue en cours ». */
   revueCommencee: z.boolean().nullish(),
@@ -82,6 +81,7 @@ export const kycDossierSchema = z.object({
   rc: z.string().nullish(),
   nif: z.string().nullish(),
   nis: z.string().nullish(),
+  /** Pieces have been waiting for de9de9 since this date (there is no submit step). */
   soumisLe: z.string().nullish(),
   documents: z.array(kycDossierDocumentSchema).nullish(),
   // Not in the guide's row example — shown when the API sends them.
@@ -101,8 +101,9 @@ export type KycQueue = z.infer<typeof kycQueueSchema>;
 // ---------------------------------------------------------------------------
 
 export const kycKpisSchema = z.object({
-  /** Submitted, waiting — the sidebar badge. */
+  /** Dossiers with pieces waiting — the sidebar badge. */
   aExaminer: z.number(),
+  /** Nothing waiting: nothing filed, or nothing new since the last verdict. */
   nonSoumis: z.number(),
   verifies: z.number(),
   /** Card « À corriger » — waiting for the company. */
@@ -193,8 +194,6 @@ export const kycRevueSchema = z.object({
   /** The old dossier-level note (read-only). */
   noteDossier: z.string().nullish(),
   progression: kycProgressionSchema.nullish(),
-  /** Not in the guide's example — used when the API sends it. */
-  peutSoumettre: z.boolean().nullish(),
   pieces: z.array(kycRevuePieceSchema),
 });
 export type KycRevue = z.infer<typeof kycRevueSchema>;

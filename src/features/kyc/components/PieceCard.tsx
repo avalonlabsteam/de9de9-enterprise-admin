@@ -36,6 +36,7 @@ import {
   kindLong,
   kindShort,
   kycErrorMessage,
+  pieceVerdicts,
 } from '../lib/kyc';
 import { useDocPreview, useSaveDocument } from '../api/preview';
 import { PreviewDialog, PreviewFrame } from './DocPreview';
@@ -120,6 +121,8 @@ export function PieceCard({ piece, companyId, enRevue, onVerdict }: PieceCardPro
   };
 
   const decided = piece.statut === 'valide' || piece.statut === 'refuse';
+  // Which verdicts show, and which are live — lib/kyc.ts pieceVerdicts.
+  const verdicts = pieceVerdicts(piece);
   // de9de9 may file for the company at any time, except over a validated
   // document (409 kyc_document_approved_locked — refuse it first).
   const canUpload = piece.statut !== 'valide';
@@ -298,32 +301,34 @@ export function PieceCard({ piece, companyId, enRevue, onVerdict }: PieceCardPro
             </div>
           )}
 
-          {/* actions — from the server's flags, never re-derived. `blocage`
-              explains a missing button, so it shows even next to the other
-              one (a missing number blocks « Valider » only). */}
+          {/* actions — the server's flags. `blocage` is the server's reason, printed as it is. */}
           {piece.blocage && (
             <div className="mt-auto rounded-md border border-dashed border-de9-line px-3.5 py-2.5 text-[12px] font-semibold leading-[1.45] text-de9-slate">
-              <Glyph icon={Info} /> <bdi>{piece.blocage.message || piece.blocage.code}</bdi>
+              <Glyph icon={Info} /> <bdi>{verdicts.reason}</bdi>
             </div>
           )}
-          {(piece.peutValider || piece.peutRefuser) && courante && (
+          {(verdicts.valider.show || verdicts.refuser.show) && courante && (
             <div className={cn('flex flex-wrap gap-2 pt-1', !piece.blocage && 'mt-auto')}>
-              {piece.peutValider && (
+              {verdicts.valider.show && (
                 <button
                   type="button"
+                  disabled={!verdicts.valider.enabled}
+                  title={verdicts.valider.enabled ? undefined : verdicts.reason}
                   onClick={() => onVerdict(piece, 'valider')}
-                  className="min-w-[120px] flex-1 cursor-pointer rounded-full bg-[#2FA86A] px-4 py-[11px] text-[13px] font-bold text-white"
+                  className="min-w-[120px] flex-1 cursor-pointer rounded-full bg-[#2FA86A] px-4 py-[11px] text-[13px] font-bold text-white disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   <Glyph icon={Check} /> {t('kycValider')}
                 </button>
               )}
-              {piece.peutRefuser && (
+              {verdicts.refuser.show && (
                 <button
                   type="button"
+                  disabled={!verdicts.refuser.enabled}
+                  title={verdicts.refuser.enabled ? undefined : verdicts.reason}
                   onClick={() => onVerdict(piece, 'refuser')}
                   className={cn(
-                    'cursor-pointer rounded-full border border-[#F3C9CB] bg-card px-4 py-[10px] text-[13px] font-bold text-de9-red dark:border-[#E7464E]/40',
-                    piece.peutValider ? 'min-w-[120px] flex-1' : '',
+                    'cursor-pointer rounded-full border border-[#F3C9CB] bg-card px-4 py-[10px] text-[13px] font-bold text-de9-red disabled:cursor-not-allowed disabled:opacity-40 dark:border-[#E7464E]/40',
+                    verdicts.valider.show ? 'min-w-[120px] flex-1' : '',
                   )}
                 >
                   <Glyph icon={X} /> {t('kycRefuser')}

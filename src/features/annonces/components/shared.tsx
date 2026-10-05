@@ -39,29 +39,41 @@ export function TagPill({ tag }: { tag: Tag }) {
   return <Pill className={tonChip(tag.ton)}>{tag.label}</Pill>;
 }
 
-/** Status + the B2C publication state + « Modifiée » + « Reprise de fiche ». */
+/**
+ * Status + the B2C publication state + « Modifiée » + « Reprise de fiche ».
+ * `raison`: why the publication on the de9de9 app failed, printed under them.
+ */
 export function StatutPills({
   statut,
   publication,
+  raison,
   modifiee,
   reprise,
 }: {
   statut: Tag;
   publication?: Tag | null;
+  raison?: string | null;
   modifiee: boolean;
   reprise: boolean;
 }) {
   const t = useT();
   return (
-    <div className="flex flex-wrap items-center gap-1.5">
-      <TagPill tag={statut} />
-      {publication && <TagPill tag={publication} />}
-      {modifiee && (
-        <Pill className="border border-[#E6C77E] bg-card text-[#B68A2E] dark:border-[#B68A2E]/60 dark:text-[#D9B36A]">
-          <Glyph icon={PenLine} /> {t('annModifiee')}
-        </Pill>
+    <div className="min-w-0">
+      <div className="flex flex-wrap items-center gap-1.5">
+        <TagPill tag={statut} />
+        {publication && <TagPill tag={publication} />}
+        {modifiee && (
+          <Pill className="border border-[#E6C77E] bg-card text-[#B68A2E] dark:border-[#B68A2E]/60 dark:text-[#D9B36A]">
+            <Glyph icon={PenLine} /> {t('annModifiee')}
+          </Pill>
+        )}
+        {reprise && <Pill className="border border-de9-line bg-card text-de9-gray">{t('annRepriseFiche')}</Pill>}
+      </div>
+      {raison && (
+        <div dir="auto" className="mt-1 text-[11.5px] leading-snug text-de9-red ltr:text-left rtl:text-right">
+          {raison}
+        </div>
       )}
-      {reprise && <Pill className="border border-de9-line bg-card text-de9-gray">{t('annRepriseFiche')}</Pill>}
     </div>
   );
 }

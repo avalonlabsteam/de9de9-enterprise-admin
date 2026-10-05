@@ -260,16 +260,21 @@ const PIECE_LABEL: Record<string, TKey> = {
   KycNis: 'presPieceNis',
 };
 
+export interface KycViewDoc extends KycDoc {
+  /** The piece's own verdict (manquant · a_verifier · valide · refuse), when the payload carries it. */
+  statut?: string | null;
+}
+
 export interface KycView {
   status: KycStatus;
   motif: string;
-  docs: KycDoc[];
+  docs: KycViewDoc[];
   audit: KycAuditEntry[];
 }
 
 /**
- * The payload has no journal, so the audit trail holds at most the server's own
- * review event; the overlay layers its local entries on top.
+ * Read-only: the dossier is decided piece by piece on the KYC review screen.
+ * The payload has no journal, so the trail holds at most the last review.
  */
 export function kycView(kyc: DossierKyc | null | undefined, t: Translate): KycView {
   if (!kyc) return { status: 'pending', motif: '', docs: [], audit: [] };
@@ -290,6 +295,7 @@ export function kycView(kyc: DossierKyc | null | undefined, t: Translate): KycVi
         id: p.documentId ?? p.kind,
         label: key ? t(key) : p.kind,
         name: p.fileName ?? t('presPieceNonFournie'),
+        statut: p.statut,
       };
     }),
     audit,
