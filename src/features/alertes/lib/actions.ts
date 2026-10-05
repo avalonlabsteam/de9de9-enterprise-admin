@@ -46,7 +46,8 @@ const QUEUE_KEYS: Record<string, (f: FileSignal) => QueryKey[]> = {
   // Ledger, counters, an open movement, the client fiches' credits, and the
   // online payments (« Paiement en ligne à vérifier », guide 18 §12).
   credits: () => [['credits'], ['comptabilite']],
-  soustraitance: () => [['sub', 'demandes']],
+  // « Sous-traitance » and the demande screen read the same contractuel demandes.
+  soustraitance: () => [['contractuels']],
   contractuels: () => [['contractuels']],
   handicap: () => [['handicap']],
   // A company's page and fiches, and « Accès » (list, counters, badge, sync
@@ -62,6 +63,14 @@ function companyKeys(companyId: string | null | undefined): QueryKey[] {
 
 export function invalidateQueue(f: FileSignal): void {
   for (const queryKey of QUEUE_KEYS[f.file]?.(f) ?? []) void queryClient.invalidateQueries({ queryKey });
+}
+
+/**
+ * Alerts that change a page without a queue signal (`file`): the annonces —
+ * their queue, the menu badge and an open annonce refresh on any `annonce.*`.
+ */
+export function invalidateForAlerte(a: Alerte): void {
+  if (a.code?.startsWith('annonce.')) void queryClient.invalidateQueries({ queryKey: ['annonces'] });
 }
 
 /** The alert is about the screen on display: refresh what it shows instead of toasting. */

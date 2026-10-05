@@ -91,6 +91,10 @@ export const prestataireSearchItemSchema = z.object({
   whatsAppPhone: z.string().nullish(),
   whatsAppUrl: z.string().nullish(),
   createdAt: z.string(),
+  /** manuelle · annonces — `annonces`: the coverage is the sum of the published B2B annonces. */
+  couvertureSource: z.string().nullish(),
+  /** The sentence to print over a card driven by annonces; null when filled by hand. */
+  couvertureNote: z.string().nullish(),
 });
 export type PrestataireSearchItem = z.infer<typeof prestataireSearchItemSchema>;
 

@@ -121,11 +121,26 @@ export function relativeTime(iso: string, lang: Lang, justNow: string, now = Dat
   });
 }
 
+/**
+ * « Annonce publiée à vérifier / à valider » and « Annonce publiée modifiée »
+ * carry the company only: they open the annonces queue filtered on it. A
+ * submission tries « À valider » and falls back to « Modifiées » when that is
+ * empty — at launch the annonce was published at once (`sinon`).
+ */
+function annonceTarget(a: Alerte): string | null {
+  const companyId = a.cible.params?.['companyId'];
+  if (typeof companyId !== 'string' || !companyId) return null;
+  const id = encodeURIComponent(companyId);
+  if (a.code === 'annonce.modifiee') return `/annonces?onglet=modifiees&companyId=${id}`;
+  if (a.code === 'annonce.soumise') return `/annonces?onglet=a_valider&companyId=${id}&sinon=modifiees`;
+  return null;
+}
+
 /** Where a tap goes, or null when the row only informs (`aucun`) or belongs to another app. */
 export function targetOf(a: Alerte): string | null {
   if (a.cible.ecran === 'aucun' || !a.cible.chemin) return null;
   if (a.cible.app && a.cible.app !== 'admin') return null;
-  return a.cible.chemin;
+  return annonceTarget(a) ?? a.cible.chemin;
 }
 
 /** The console already shows the alert's screen: same path, query aside (guide 11 §7.1). */

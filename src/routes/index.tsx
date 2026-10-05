@@ -5,6 +5,7 @@ import { RequireAuth } from '@/features/auth/components/RequireAuth';
 import { authRoutes } from '@/features/auth/routes';
 import { commandesRoutes } from '@/features/commandes/routes';
 import { prestatairesRoutes } from '@/features/prestataires/routes';
+import { annoncesRoutes } from '@/features/annonces/routes';
 import { kycRoutes } from '@/features/kyc/routes';
 import { accesRoutes } from '@/features/acces/routes';
 import { soustraitanceRoutes } from '@/features/soustraitance/routes';
@@ -34,6 +35,7 @@ export const router = createBrowserRouter([
               { index: true, element: <Navigate to="/commandes" replace /> },
               ...commandesRoutes,
               ...prestatairesRoutes,
+              ...annoncesRoutes,
               ...kycRoutes,
               ...accesRoutes,
               ...soustraitanceRoutes,

@@ -1,22 +1,25 @@
-// /contractuels/:demandeId — a prestataire asks de9de9 for contractuels (guide
-// 11a §6, adm.contractuels): the request and its candidates. Opened from the
-// alerts « Demande de contractuels » / « … annulée »; no list screen yet.
+// /contractuels/:demandeId — one demande of « Recruter des pros de9de9 »
+// (guide 23): what the prestataire asked for, the pros placed on it
+// (« Libérer »), and the way to place more — the directory « Pros
+// disponibles » opened on this demande. Opened from the alerts « Demande de
+// contractuels » / « … annulée » and from the list of « Sous-traitance ».
+import { useState, type ReactNode } from 'react';
 import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import axios from 'axios';
-import { ChevronLeft, Users } from 'lucide-react';
+import { toast } from 'sonner';
+import { ArrowRight, ChevronLeft, Users } from 'lucide-react';
 import { useT, type TKey } from '@/lib/i18n';
+import { cn } from '@/lib/utils';
 import { problemMessage } from '@/api/problem';
+import { Glyph } from '@/components/common/Glyph';
 import { fmtDate } from '@/features/kyc/lib/kyc';
-import { useContractuelCandidats, useContractuelDemande } from '../api/contractuels';
+import { refreshCtr, useCtrDemande, useTakeDemande } from '../api/contractuels';
+import { ctrProblem, isOuverte, restantOf, statutPill } from '../lib/contractuels';
+import { CloturerDialog } from './CloturerDialog';
+import { PlacementsList } from './PlacementsList';
 
 const CARD = 'rounded-md border border-de9-line bg-card p-[22px]';
 const LABEL = 'text-[11px] font-bold tracking-[.04em] text-de9-gray uppercase';
-
-/** ISO dates print as « Lundi 28/09/2026 »; anything else as sent. */
-function dateText(value: string | null, t: (key: TKey) => string): string | null {
-  if (!value) return null;
-  return Number.isNaN(Date.parse(value)) ? value : fmtDate(value, t);
-}
+const BTN = 'cursor-pointer rounded-full px-4 py-2.5 text-[12.5px] font-bold disabled:cursor-not-allowed disabled:opacity-60';
 
 export function ContractuelDemandePage() {
   const { demandeId = '' } = useParams<'demandeId'>();
@@ -24,9 +27,9 @@ export function ContractuelDemandePage() {
   const navigate = useNavigate();
   const location = useLocation();
   const [, setSearchParams] = useSearchParams();
-  const demandeQ = useContractuelDemande(demandeId);
-  const candidatsQ = useContractuelCandidats(demandeId);
-  const d = demandeQ.data;
+  const detailQ = useCtrDemande(demandeId);
+  const take = useTakeDemande();
+  const [cloturer, setCloturer] = useState(false);
 
   const openPres = (companyId: string): void => {
     setSearchParams((prev) => {
@@ -40,7 +43,7 @@ export function ContractuelDemandePage() {
   const backLink = (
     <button
       type="button"
-      onClick={() => (location.key !== 'default' ? navigate(-1) : navigate('/commandes'))}
+      onClick={() => (location.key !== 'default' ? navigate(-1) : navigate('/soustraitance'))}
       className="mb-4 inline-flex cursor-pointer items-center gap-1.5 text-[13px] font-bold text-de9-slate"
     >
       <ChevronLeft className="size-4 rtl:rotate-180" />
@@ -48,7 +51,7 @@ export function ContractuelDemandePage() {
     </button>
   );
 
-  if (demandeQ.isPending) {
+  if (detailQ.isPending) {
     return (
       <div className="mx-auto max-w-[860px]">
         {backLink}
@@ -57,31 +60,50 @@ export function ContractuelDemandePage() {
     );
   }
 
-  if (!d) {
-    const notFound = axios.isAxiosError(demandeQ.error) && demandeQ.error.response?.status === 404;
+  if (!detailQ.data) {
+    const notFound = ctrProblem(detailQ.error).status === 404;
     return (
       <div className="mx-auto max-w-[860px]">
         {backLink}
         <div className={CARD}>
           <div className="text-[13px] font-semibold text-de9-red">
-            {notFound ? t('ctrIntrouvable') : `${t('ctrErreur')} — ${problemMessage(demandeQ.error)}`}
+            {notFound ? t('ctrIntrouvable') : `${t('ctrErreur')} — ${problemMessage(detailQ.error)}`}
           </div>
         </div>
       </div>
     );
   }
 
+  const { demande: d, placements } = detailQ.data;
+  const pill = statutPill(d, t);
   const lieu = [d.commune, d.wilaya].filter(Boolean).join(', ') || null;
-  const periode = [dateText(d.debut, t), dateText(d.fin, t)].filter(Boolean).join(' → ') || null;
-  const categorie = [d.categorie, d.sousCategorie].filter(Boolean).join(' · ') || null;
-  const fields: ReadonlyArray<[TKey, string | null]> = [
-    ['ctrCategorie', categorie],
-    ['ctrLieu', lieu],
-    ['ctrNombre', d.nombre],
-    ['ctrPeriode', periode],
-    ['ctrCreeLe', dateText(d.creeLe, t)],
+  const categorie = [d.categoryLabel, d.subcategoryLabel].filter(Boolean).join(' · ') || null;
+  const fields: ReadonlyArray<[TKey, ReactNode]> = [
+    ['ctrCategorie', categorie && <bdi>{categorie}</bdi>],
+    ['ctrLieu', lieu && <bdi>{lieu}</bdi>],
+    [
+      'ctrNombre',
+      <>
+        <span className="num">
+          {d.fulfilledCount} / {d.requestedCount}
+        </span>
+        {' — '}
+        {t('stRestant').replace('{n}', String(restantOf(d)))}
+      </>,
+    ],
+    ['ctrCreeLe', d.createdAt ? fmtDate(d.createdAt, t) : null],
   ];
-  const candidats = candidatsQ.data ?? [];
+
+  const prendre = (): void => {
+    take.mutate(d.id, {
+      onSuccess: () => toast.success(t('stPriseToast')),
+      onError: (err) => {
+        toast.error(problemMessage(err));
+        const { status } = ctrProblem(err);
+        if (status === 404 || status === 409) refreshCtr();
+      },
+    });
+  };
 
   return (
     <div className="mx-auto max-w-[860px]">
@@ -92,76 +114,75 @@ export function ContractuelDemandePage() {
           <div className="min-w-0">
             <div className="text-[20px] font-extrabold">{t('ctrTitre')}</div>
             <div className="mt-1 text-[13px] text-de9-gray">
-              {d.prestataire &&
-                (d.prestataireId ? (
-                  <button
-                    type="button"
-                    onClick={() => openPres(d.prestataireId ?? '')}
-                    className="cursor-pointer font-bold text-de9-teal-dark hover:underline"
-                  >
-                    {d.prestataire}
-                  </button>
-                ) : (
-                  <span className="font-bold text-de9-slate">{d.prestataire}</span>
-                ))}
-              {d.reference && <span> · {d.reference}</span>}
+              {d.prestataireCompanyId ? (
+                <button
+                  type="button"
+                  onClick={() => openPres(d.prestataireCompanyId ?? '')}
+                  className="cursor-pointer font-bold text-de9-teal-dark hover:underline"
+                >
+                  <bdi>{d.companyName ?? '—'}</bdi>
+                </button>
+              ) : (
+                <bdi className="font-bold text-de9-slate">{d.companyName ?? '—'}</bdi>
+              )}
             </div>
           </div>
-          {d.statut && (
-            <span className="rounded-full bg-secondary px-3 py-1.5 text-[11.5px] font-extrabold text-de9-slate">{d.statut}</span>
+          <span className={cn('rounded-full px-3 py-1.5 text-[11.5px] font-extrabold', pill.chip)}>{pill.label}</span>
+        </div>
+
+        <div className="mt-5 grid grid-cols-1 gap-x-6 gap-y-3 sm:grid-cols-2">
+          {fields.map(([key, value]) =>
+            value ? (
+              <div key={key} className="min-w-0">
+                <div className={LABEL}>{t(key)}</div>
+                <div className="mt-0.5 text-[13.5px] font-semibold text-de9-ink">{value}</div>
+              </div>
+            ) : null,
           )}
         </div>
 
-        {fields.some(([, v]) => v) && (
-          <div className="mt-5 grid grid-cols-1 gap-x-6 gap-y-3 sm:grid-cols-2">
-            {fields.map(([key, value]) =>
-              value ? (
-                <div key={key} className="min-w-0">
-                  <div className={LABEL}>{t(key)}</div>
-                  <div className="mt-0.5 text-[13.5px] font-semibold text-de9-ink">{value}</div>
-                </div>
-              ) : null,
-            )}
+        {d.note && (
+          <div className="mt-5">
+            <div className={LABEL}>{t('ctrMessage')}</div>
+            <div dir="auto" className="mt-1 text-[13px] leading-relaxed whitespace-pre-line text-de9-slate ltr:text-left rtl:text-right">
+              {d.note}
+            </div>
           </div>
         )}
 
-        {d.message && (
-          <div className="mt-5">
-            <div className={LABEL}>{t('ctrMessage')}</div>
-            <div className="mt-1 text-[13px] leading-relaxed whitespace-pre-line text-de9-slate">{d.message}</div>
-          </div>
-        )}
+        <div className="mt-5 flex flex-wrap gap-2.5">
+          {d.status === 'submitted' && (
+            <button type="button" onClick={prendre} disabled={take.isPending} className={cn(BTN, 'bg-secondary-container text-on-secondary-container')}>
+              {t('stPrendre')}
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => navigate(`/soustraitance?onglet=pros&demande=${encodeURIComponent(d.id)}`)}
+            className={cn(BTN, 'bg-primary text-primary-foreground')}
+          >
+            {t('stVoirPros')} <Glyph icon={ArrowRight} className="rtl:rotate-180" />
+          </button>
+          {isOuverte(d) && (
+            <button type="button" onClick={() => setCloturer(true)} className={cn(BTN, 'border border-de9-red bg-card text-de9-red')}>
+              {t('stCloturer')}…
+            </button>
+          )}
+        </div>
       </div>
 
       <div className={`${CARD} mt-4`}>
-        <div className="mb-3 flex items-center gap-2 text-base font-extrabold">
+        <div className="mb-2 flex items-center gap-2 text-base font-extrabold">
           <Users className="size-[18px] text-de9-gray" />
-          {t('ctrCandidats')}
-          {candidatsQ.isSuccess && <span className="text-de9-gray">({candidats.length})</span>}
+          {t('ctrPlacements')}
+          <span className="text-de9-gray">
+            (<span className="num">{placements.length}</span>)
+          </span>
         </div>
-        {candidatsQ.isPending && <div className="h-[90px] animate-pulse rounded-md bg-secondary" />}
-        {candidatsQ.isError && (
-          <div className="text-[12.5px] font-semibold text-de9-red">{problemMessage(candidatsQ.error)}</div>
-        )}
-        {candidatsQ.isSuccess && candidats.length === 0 && (
-          <div className="py-6 text-center text-[13px] text-de9-gray">{t('ctrAucunCandidat')}</div>
-        )}
-        {candidats.map((c) => (
-          <div key={c.key} className="flex flex-wrap items-center gap-x-4 gap-y-1 border-b border-de9-line py-3 last:border-b-0">
-            <div className="min-w-[160px] flex-1 text-[13px] font-bold">{c.nom ?? '—'}</div>
-            {c.metier && <div className="text-[12.5px] text-de9-slate">{c.metier}</div>}
-            {c.wilaya && <div className="text-[12px] text-de9-gray">{c.wilaya}</div>}
-            {c.telephone && (
-              <a href={`tel:${c.telephone}`} className="text-[12px] font-semibold text-de9-teal-dark" dir="ltr">
-                {c.telephone}
-              </a>
-            )}
-            {c.statut && (
-              <span className="rounded-full bg-secondary px-2.5 py-1 text-[11px] font-bold text-de9-slate">{c.statut}</span>
-            )}
-          </div>
-        ))}
+        <PlacementsList placements={placements} />
       </div>
+
+      {cloturer && <CloturerDialog demande={d} onClose={() => setCloturer(false)} />}
     </div>
   );
 }

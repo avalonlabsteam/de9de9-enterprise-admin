@@ -11,6 +11,7 @@ import {
   History,
   KeyRound,
   LogOut,
+  Megaphone,
   Menu,
   Moon,
   ReceiptText,
@@ -26,6 +27,7 @@ import { ClientFicheHost } from "@/features/clients/components/ClientFicheHost";
 import { WorkerViewHost } from "@/features/commandes/components/console/WorkerViewHost";
 import { useKycKpis } from "@/features/kyc/api/kyc";
 import { useAccesEchecsBadge } from "@/features/acces/api/acces";
+import { useAnnoncesBadge } from "@/features/annonces/api/annonces";
 import { useComptaAVerifierBadge } from "@/features/comptabilite/api/comptabilite";
 import { AlertesBell } from "@/features/alertes/components/AlertesBell";
 import { useAlertesHub } from "@/features/alertes/lib/useAlertesHub";
@@ -42,6 +44,7 @@ import { themeActions, useThemeStore, type ThemeMode } from "@/stores/themeStore
 const NAV_ITEMS: ReadonlyArray<{ to: string; labelKey: TKey; icon: LucideIcon }> = [
   { to: "/commandes", labelKey: "navCommandes", icon: ClipboardList },
   { to: "/prestataires", labelKey: "navPrestataires", icon: Users },
+  { to: "/annonces", labelKey: "navAnnonces", icon: Megaphone },
   { to: "/kyc", labelKey: "navKyc", icon: ShieldCheck },
   { to: "/acces", labelKey: "navAcces", icon: KeyRound },
   { to: "/soustraitance", labelKey: "navSoustraitance", icon: Handshake },
@@ -62,16 +65,20 @@ function NavList({ onNavigate }: { onNavigate?: () => void }) {
   const t = useT();
   // KYC dossiers submitted and waiting on de9de9 — the red badge.
   const { data: kycKpis } = useKycKpis();
+  // Annonces waiting for an admin: « À valider » + « Modifiées ».
+  const annonces = useAnnoncesBadge();
   // Companies whose sync with the de9de9 app is in « Échec ».
   const syncEchecs = useAccesEchecsBadge();
   // Online payments « à vérifier » created this month.
   const aVerifier = useComptaAVerifierBadge();
   const badges: Partial<Record<string, number>> = {
+    "/annonces": annonces,
     "/kyc": kycKpis?.aExaminer,
     "/acces": syncEchecs,
     "/comptabilite": aVerifier,
   };
   const badgeAria: Partial<Record<string, TKey>> = {
+    "/annonces": "annoncesBadgeAria",
     "/kyc": "kycBadgeAria",
     "/acces": "accesBadgeAria",
     "/comptabilite": "comptaBadgeAria",

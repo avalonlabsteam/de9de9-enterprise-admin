@@ -8,7 +8,7 @@ import type { ReactNode } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Dialog as DialogPrimitive } from 'radix-ui';
 import { toast } from 'sonner';
-import { Check, Circle, Eye, Mail, MapPin, MessageCircle, Phone, ReceiptText, Star } from 'lucide-react';
+import { ArrowRight, Check, Circle, Eye, Mail, MapPin, MessageCircle, Phone, ReceiptText, Star } from 'lucide-react';
 import { cn, isInk, isLiveId } from '@/lib/utils';
 import { Dialog, DialogOverlay, DialogPortal, DialogTitle } from '@/components/ui/dialog';
 import { Glyph } from '@/components/common/Glyph';
@@ -405,6 +405,24 @@ function PresProfile({
                         </div>
                       )}
                     </div>
+                    {/* The card's coverage follows the company's published B2B annonces: change those, not the card. */}
+                    {payload?.fiche.couvertureSource === 'annonces' && (
+                      <div className="rounded-md bg-[#EAF2FD] px-3.5 py-2.5 text-[12.5px] text-[#2F7FD0] dark:bg-[#2F7FD0]/15 dark:text-[#7EB5EC]">
+                        <div dir="auto" className="font-semibold ltr:text-left rtl:text-right">
+                          {payload.fiche.couvertureNote ?? t('annCouvertureAnnonces')}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            onClose();
+                            navigate(`/annonces?onglet=toutes&companyId=${encodeURIComponent(companyId)}`);
+                          }}
+                          className="mt-1 cursor-pointer font-bold underline-offset-2 hover:underline"
+                        >
+                          {t('annVoirAnnoncesEntreprise')} <Glyph icon={ArrowRight} className="rtl:rotate-180" />
+                        </button>
+                      </div>
+                    )}
                     <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
                       <div className="rounded-md bg-secondary p-3 text-center">
                         <div className="text-[16px] font-extrabold">{vm.effectif}</div>

@@ -6,7 +6,7 @@ import { isSessionValid, useAuthStore } from '@/stores/authStore';
 import { fetchAlertesPage, fetchCompteurs, reloadAlertesFeed, ALERTES_PAGE_SIZE } from '../api/alertes';
 import { alerteCompteursSchema, alerteSchema, fileSignalSchema } from '../schemas/alertes';
 import { alertesActions, useAlertesStore } from '../stores/alertesStore';
-import { invalidateQueue } from './actions';
+import { invalidateForAlerte, invalidateQueue } from './actions';
 import { notifyAlerte, notifyCaughtUp } from './toasts';
 
 // One hub connection for the whole console (guide 11 §4, 11a §3), mounted in
@@ -89,6 +89,7 @@ export function useAlertesHub(): void {
       const parsed = alerteSchema.safeParse(raw);
       if (!parsed.success) return;
       if (alertesActions.add(parsed.data)) {
+        invalidateForAlerte(parsed.data);
         notifyAlerte(parsed.data, { ...route.current, drawerOpen: useAlertesStore.getState().drawerOpen });
       }
     });
