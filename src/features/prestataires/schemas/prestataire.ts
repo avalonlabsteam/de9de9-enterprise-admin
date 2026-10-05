@@ -63,9 +63,3 @@ export const kycStateSchema = z.object({
 });
 export type KycState = z.infer<typeof kycStateSchema>;
 
-// Body of POST /kyc/:key/docs
-export const kycDocInputSchema = z.object({
-  label: z.string().min(1),
-  fileName: z.string().min(1),
-});
-export type KycDocInput = z.infer<typeof kycDocInputSchema>;

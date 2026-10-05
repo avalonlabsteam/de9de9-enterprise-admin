@@ -1,8 +1,7 @@
 // Mock API route table — business mutations ported verbatim from the prototype
 // (src/admin/logic.ts: act/agir dispatch, confirmApprove, confirmReprogram,
 // confirmAssign, confirmDeposit, confirmChoose, addNote, toggleHandled,
-// submitReview, confirmRecharge, proposeDevis, chooseDevis, devisAct,
-// confirmSalarie, kycOf/addKycDoc/removeKycDoc/logKyc).
+// submitReview, confirmRecharge, proposeDevis, chooseDevis, devisAct).
 // Audit texts are stored in French (handlers are not language-aware).
 import type { ZodError } from 'zod';
 import { isLiveId } from '@/lib/utils';
@@ -34,8 +33,6 @@ import {
   cmdById,
   addAudit,
   currentOcc,
-  kycOf,
-  logKyc,
   nowStamp,
   fromISO,
   toISO,
@@ -49,7 +46,6 @@ import {
 import type { Commande, Occurrence } from '@/features/commandes/schemas/commande';
 import { reviewInputSchema } from '@/features/prestataires/schemas/review';
 import type { Review } from '@/features/prestataires/schemas/review';
-import { kycDocInputSchema } from '@/features/prestataires/schemas/prestataire';
 import { rechargeInputSchema } from '@/features/credits/schemas/credit';
 import type { CreditEntry, CreditLedgerItem } from '@/features/credits/schemas/credit';
 import type { HandicapItem } from '@/features/handicap/schemas/handicap';
@@ -795,15 +791,13 @@ passthrough('GET', '/admin/dashboard');
 
 // ===================== KYC review (admin, per-document) =====================
 // Integrated with the real API, served by the network — no mock twin. The
-// literal /kyc/kpis outranks the client fiche's mock '/kyc/:key' below, so it
-// is not captured as a key.
+// fiches' KYC tabs read the same dossier (the old mock '/kyc/:key' is gone).
 passthrough('GET', '/kyc');
 passthrough('GET', '/kyc/kpis');
 passthrough('GET', '/companies/:companyId/kyc/revue');
 passthrough('POST', '/companies/:companyId/kyc/documents');
 passthrough('POST', '/companies/:companyId/kyc/documents/:documentId/valider');
 passthrough('POST', '/companies/:companyId/kyc/documents/:documentId/refuser');
-passthrough('POST', '/companies/:companyId/kyc/soumettre');
 // Correcting a number: read the company, PUT the full body back.
 passthrough('GET', '/companies/:companyId');
 passthrough('PUT', '/companies/:companyId');
@@ -852,36 +846,6 @@ passthrough('POST', '/admin/alertes/lues');
 // ===================== Contractuels (admin) =====================
 // Real-only: the screen an alert « Demande de contractuels » opens.
 passthrough('GET', '/admin/contractuels/demandes/:demandeId');
-
-// ===================== KYC (client fiche, mock) =====================
-register('GET', '/kyc/:key', (req) => ok(kycOf(req.pathParams['key'] ?? '')));
-
-// POST /kyc/:key/docs — addKycDoc (+ journal entry)
-register('POST', '/kyc/:key/docs', (req) => {
-  const key = req.pathParams['key'] ?? '';
-  const parsed = kycDocInputSchema.safeParse(req.body);
-  if (!parsed.success) return badRequest(parsed.error);
-  const input = parsed.data;
-
-  const state = kycOf(key);
-  state.docs = [...state.docs, { id: 'doc' + Date.now(), label: input.label, name: input.fileName }];
-  logKyc(key, 'Ajout document · ' + input.fileName);
-  return ok(state);
-});
-
-// DELETE /kyc/:key/docs/:docId — removeKycDoc (+ journal entry)
-register('DELETE', '/kyc/:key/docs/:docId', (req) => {
-  const key = req.pathParams['key'] ?? '';
-  const docId = req.pathParams['docId'] ?? '';
-  const state = kycOf(key);
-
-  const doc = state.docs.find((x) => x.id === docId);
-  if (!doc) return notFound(`Document introuvable : ${docId}`);
-
-  state.docs = state.docs.filter((x) => x.id !== docId);
-  logKyc(key, 'Suppression document · ' + doc.label);
-  return ok(state);
-});
 
 // ===================== misc =====================
 // ===================== geo dictionaries =====================

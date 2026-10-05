@@ -1,6 +1,8 @@
 // « Valider » / « Refuser » one piece. Sends the piece's `statut` as the
-// screen showed it (`statutVu`), so a colleague's verdict comes back as a 409
-// instead of being silently overridden. The server's `message` is the toast.
+// screen showed it (`statutVu`) — and, on « Valider », its number
+// (`numeroVu`) — so a colleague's verdict or a number changed meanwhile comes
+// back as a 409 instead of being silently overridden or locked unread. The
+// server's `message` is the toast.
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { Check, Lock, TriangleAlert, X } from 'lucide-react';
@@ -25,9 +27,11 @@ interface VerdictDialogProps {
   /** Round open: the motif waits for the round to close. */
   enRevue: boolean;
   onClose: () => void;
+  /** A z-index class for the dialog and its scrim, when it opens above a fiche. */
+  layerClassName?: string;
 }
 
-export function VerdictDialog({ companyId, target, dossierStatut, enRevue, onClose }: VerdictDialogProps) {
+export function VerdictDialog({ companyId, target, dossierStatut, enRevue, onClose, layerClassName }: VerdictDialogProps) {
   return (
     <Dialog
       open={target !== null}
@@ -37,7 +41,11 @@ export function VerdictDialog({ companyId, target, dossierStatut, enRevue, onClo
     >
       <DialogContent
         showCloseButton={false}
-        className="block max-h-[90vh] max-w-[calc(100%-2rem)] gap-0 overflow-y-auto rounded-xl bg-card p-6 sm:max-w-[480px] sm:p-7"
+        overlayClassName={layerClassName}
+        className={cn(
+          'block max-h-[90vh] max-w-[calc(100%-2rem)] gap-0 overflow-y-auto rounded-xl bg-card p-6 sm:max-w-[480px] sm:p-7',
+          layerClassName,
+        )}
       >
         {target && (
           // Keyed so the fields start empty for every piece / verdict.
@@ -131,6 +139,8 @@ function VerdictForm({
         documentId,
         verdict,
         statutVu: piece.statut,
+        // The number this dialog prints above — what the admin is about to lock.
+        numeroVu: refusing ? undefined : (piece.numero ?? ''),
         motif: refusing ? motifValue : undefined,
         note: note.trim() || undefined,
       },
@@ -150,8 +160,8 @@ function VerdictForm({
             return;
           }
           toast.error(message);
-          // A colleague decided, a newer version arrived, the number is missing…
-          // what this dialog shows is stale: reload rather than retry.
+          // A colleague decided, a newer version arrived, the number changed or
+          // is missing… what this dialog shows is stale: reload rather than retry.
           if (isStaleProblem(problem)) {
             reloadKycRevue(companyId);
             onClose();

@@ -1,6 +1,6 @@
 // Pure derivation helpers for the client fiche — ported from src/admin/logic.ts
 // (buildClientFiche, cmdLineVM, cmdState/occProj/setupProj badges, factStatusMeta,
-// buildKycVM meta, withDay, kycOf defaults).
+// buildKycVM meta, withDay).
 import { Check, Hourglass, X, type LucideIcon } from 'lucide-react';
 import type { TKey } from '@/lib/i18n';
 import type {
@@ -44,16 +44,6 @@ export function withDay(s: string, t: Translate): string {
   const key = DAY_KEYS[dt.getDay()];
   if (!key) return s;
   return s.replace(m[1], t(key) + ' ' + m[1]);
-}
-
-/** 'dd/mm/yyyy · hh:mm' stamp for local KYC journal entries (logic.ts logKyc). */
-export function nowStamp(): string {
-  const d = new Date();
-  const p = (n: number) => String(n).padStart(2, '0');
-  return (
-    p(d.getDate()) + '/' + p(d.getMonth() + 1) + '/' + d.getFullYear() +
-    ' · ' + p(d.getHours()) + ':' + p(d.getMinutes())
-  );
 }
 
 /** Client initials (logic.ts buildClientFiche init). */
@@ -271,10 +261,3 @@ export function kycMeta(status: FicheKycStatus, t: Translate): KycMeta {
   const [key, bg, fg, icon] = KYC_META[status];
   return { label: t(key), bg, fg, icon };
 }
-
-/** French status labels used verbatim in the KYC journal + toast (logic.ts setKycStatus). */
-export const KYC_LABEL_FR: Record<FicheKycStatus, string> = {
-  verified: 'Vérifié',
-  pending: 'En attente',
-  rejected: 'Rejeté',
-};

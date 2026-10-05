@@ -138,6 +138,11 @@ export const kycPieceSchema = z.object({
   fileName: z.string().nullish(),
   url: z.string().nullish(),
   uploadedAt: z.string().nullish(),
+  /** manquant · a_verifier · valide · refuse — each piece has its own verdict. */
+  statut: z.string().nullish(),
+  /** Written for the company, on a refused piece. */
+  motif: z.string().nullish(),
+  revueLe: z.string().nullish(),
 });
 export type KycPiece = z.infer<typeof kycPieceSchema>;
 

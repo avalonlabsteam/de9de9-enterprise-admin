@@ -15,11 +15,12 @@ import { Glyph } from '@/components/common/Glyph';
 import { useL, useT } from '@/lib/i18n';
 import { uiActions } from '@/stores/uiStore';
 import { SyncPanel } from '@/features/acces/components/SyncPanel';
+import { KycDossierPanel } from '@/features/kyc/components/KycDossierPanel';
 import { usePrestataireFiche } from '../api/prestataires';
-import type { KycAuditEntry, KycDoc, KycStatus } from '../schemas/prestataire';
+import type { AnnonceCarte } from '../schemas/recherche';
 import { selectionActions, useSelectionStore } from '../stores/selectionStore';
+import { AnnonceRows } from './AnnonceRows';
 import { ReviewModal } from './ReviewModal';
-import { KYC_LABEL_FR, nowStamp } from './profile/lib';
 import {
   avisView,
   contratView,
@@ -39,6 +40,7 @@ import type { PieceView } from './profile/PieceViewer';
 
 type ProfileTab =
   | 'infos'
+  | 'annonces'
   | 'kyc'
   | 'contrat'
   | 'missions'
@@ -52,10 +54,12 @@ type ProfileTab =
 /**
  * An alert's `?onglet=` (guide 11a §6, adm.entreprise) → the tab the profile
  * opens on. Legal documents live in the KYC panel; `sync` is the company's
- * link to the de9de9 app (« Accès » and its alerts open it); `b2c` has no tab
- * here, and another page's `onglet` (devis, demandes…) maps to nothing.
+ * link to the de9de9 app (« Accès » and its alerts open it); `annonces` is a
+ * search card's « Voir les N annonces »; `b2c` has no tab here, and another
+ * page's `onglet` (devis, demandes…) maps to nothing.
  */
 const TAB_BY_ONGLET: Partial<Record<string, ProfileTab>> = {
+  annonces: 'annonces',
   avis: 'avis',
   contrat: 'contrat',
   documents: 'kyc',
@@ -145,16 +149,6 @@ function PresProfile({
   const [piece, setPiece] = useState<PieceView | null>(null);
   const [reviewOpen, setReviewOpen] = useState(false);
 
-  // KYC is read-only server-side: status, motif, and every piece edit stay
-  // client-side exactly like the prototype (logic.ts setKycStatus / setKycMotif
-  // / addKycDoc / replaceKycDoc / removeKycDoc), layered over dossier.kyc.
-  const [kycStatusLocal, setKycStatusLocal] = useState<KycStatus | null>(null);
-  const [kycMotifLocal, setKycMotifLocal] = useState<string | null>(null);
-  const [kycLocalAudit, setKycLocalAudit] = useState<KycAuditEntry[]>([]);
-  const [kycDocNames, setKycDocNames] = useState<Record<string, string>>({});
-  const [kycAddedDocs, setKycAddedDocs] = useState<KycDoc[]>([]);
-  const [kycRemovedDocs, setKycRemovedDocs] = useState<string[]>([]);
-
   const ficheQ = usePrestataireFiche(presParam);
   const payload = ficheQ.data ?? null;
   const selected = useSelectionStore((s) => s.selected);
@@ -180,44 +174,16 @@ function PresProfile({
 
   const companyId = vm?.companyId ?? presParam;
   const presName = vm?.name ?? '';
-  // The sync state exists on the real API only: a mock profile has no such tab.
-  const hasSync = isLiveId(companyId);
-  const tab: ProfileTab = tabChosen === 'sync' && !hasSync ? 'infos' : tabChosen;
+  // The sync state and the KYC dossier exist on the real API only: a mock
+  // profile has no « Sync » tab, and its KYC tab only reads the payload.
+  const live = isLiveId(companyId);
+  const tab: ProfileTab = tabChosen === 'sync' && !live ? 'infos' : tabChosen;
 
-  // ---------- kyc (server state + local overlay) ----------
-  const kycStatus = kycStatusLocal ?? kycServer?.status ?? 'pending';
-  const kycMotif = kycMotifLocal ?? kycServer?.motif ?? '';
-  const kycDocs = [...(kycServer?.docs ?? []), ...kycAddedDocs]
-    .filter((d) => !kycRemovedDocs.includes(d.id))
-    .map((d) => (kycDocNames[d.id] ? { ...d, name: kycDocNames[d.id] ?? d.name } : d));
-  const kycAudit = [...kycLocalAudit, ...(kycServer?.audit ?? [])];
-
-  const logKyc = (action: string) =>
-    setKycLocalAudit((prev) => [{ who: 'Karim', action, date: nowStamp() }, ...prev]);
-
-  const setKycStatus = (status: KycStatus) => {
-    const lbl = KYC_LABEL_FR[status];
-    setKycStatusLocal(status);
-    logKyc('Statut → ' + lbl + (kycMotif ? ' (' + kycMotif + ')' : ''));
-    toast.success(t('commonKycToastStatut').replace('{n}', lbl));
-  };
-
-  const addKycDoc = (label: string, fileName: string) => {
-    setKycAddedDocs((prev) => [...prev, { id: 'local:' + fileName, label, name: fileName }]);
-    logKyc('Ajout document · ' + fileName);
-    toast.success(t('docToastAjoute'));
-  };
-
-  const replaceKycDoc = (docId: string, fileName: string) => {
-    setKycDocNames((prev) => ({ ...prev, [docId]: fileName }));
-    logKyc('Remplacement document · ' + fileName);
-    toast.success(t('docToastRemplace'));
-  };
-
-  const removeKycDoc = (docId: string) => {
-    setKycRemovedDocs((prev) => [...prev, docId]);
-    logKyc('Suppression document');
-    toast.success(t('docToastSupprime'));
+  // The dossier is decided piece by piece on its own screen: versions, filing
+  // for the company, correcting a number and the history live there.
+  const openKycReview = () => {
+    onClose();
+    navigate('/kyc/' + encodeURIComponent(companyId));
   };
 
   const openPiece = (title: string, fileName: string, documentId?: string | null) =>
@@ -237,6 +203,21 @@ function PresProfile({
     toast.success(t('presToastAjouteCandidats'));
   };
 
+  // An annonce's own « Demander un devis »: the same selection, and its
+  // category for the search page to filter on.
+  const addCandidateFor = (a: AnnonceCarte) => {
+    addCandidate();
+    if (a.categorie?.code) selectionActions.askCategory(a.categorie.code);
+  };
+
+  // The company's published B2B annonces; every one of them (B2C, drafts) is in the queue.
+  const annonces = payload?.fiche.annonces ?? [];
+  const couvertureAnnonces = payload?.fiche.couvertureSource === 'annonces';
+  const openAnnoncesQueue = () => {
+    onClose();
+    navigate(`/annonces?onglet=toutes&companyId=${encodeURIComponent(companyId)}`);
+  };
+
   // logic.ts openCmdFromFiche
   const openCmd = (id: string) => {
     onClose();
@@ -247,9 +228,10 @@ function PresProfile({
 
   const tabs: { key: ProfileTab; label: string }[] = [
     { key: 'infos', label: t('commonTabInfos') },
+    { key: 'annonces', label: t('presAnnoncesN').replace('{n}', String(annonces.length)) },
     { key: 'kyc', label: 'KYC' },
     // Next to KYC: the de9de9 app account is activated by a verified KYC.
-    ...(hasSync ? [{ key: 'sync' as const, label: t('presTabSync') }] : []),
+    ...(live ? [{ key: 'sync' as const, label: t('presTabSync') }] : []),
     { key: 'contrat', label: t('presTabContrat') },
     { key: 'missions', label: t('statMissionsL') },
     { key: 'factures', label: t('navFactures') },
@@ -406,22 +388,30 @@ function PresProfile({
                       )}
                     </div>
                     {/* The card's coverage follows the company's published B2B annonces: change those, not the card. */}
-                    {payload?.fiche.couvertureSource === 'annonces' && (
+                    {couvertureAnnonces ? (
                       <div className="rounded-md bg-[#EAF2FD] px-3.5 py-2.5 text-[12.5px] text-[#2F7FD0] dark:bg-[#2F7FD0]/15 dark:text-[#7EB5EC]">
                         <div dir="auto" className="font-semibold ltr:text-left rtl:text-right">
-                          {payload.fiche.couvertureNote ?? t('annCouvertureAnnonces')}
+                          {payload?.fiche.couvertureNote ?? t('annCouvertureAnnonces')}
                         </div>
                         <button
                           type="button"
-                          onClick={() => {
-                            onClose();
-                            navigate(`/annonces?onglet=toutes&companyId=${encodeURIComponent(companyId)}`);
-                          }}
+                          onClick={openAnnoncesQueue}
                           className="mt-1 cursor-pointer font-bold underline-offset-2 hover:underline"
                         >
                           {t('annVoirAnnoncesEntreprise')} <Glyph icon={ArrowRight} className="rtl:rotate-180" />
                         </button>
                       </div>
+                    ) : (
+                      // A card filled by hand can have annonces too.
+                      annonces.length > 0 && (
+                        <button
+                          type="button"
+                          onClick={openAnnoncesQueue}
+                          className="cursor-pointer self-start text-[12.5px] font-bold text-de9-teal-dark underline-offset-2 hover:underline"
+                        >
+                          {t('annVoirAnnoncesEntreprise')} <Glyph icon={ArrowRight} className="rtl:rotate-180" />
+                        </button>
+                      )
                     )}
                     <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
                       <div className="rounded-md bg-secondary p-3 text-center">
@@ -479,23 +469,26 @@ function PresProfile({
                   </>
                 )}
 
-                {/* KYC */}
+                {/* ANNONCES — the published B2B ones, each with its own « Demander un devis » */}
+                {tab === 'annonces' &&
+                  (annonces.length > 0 ? (
+                    <AnnonceRows
+                      annonces={annonces}
+                      onDevis={addCandidateFor}
+                      rowClassName="rounded-md border border-de9-line px-3.5 py-3"
+                    />
+                  ) : (
+                    <div className="p-4 text-center text-[12.5px] text-de9-gray">{t('presAucuneAnnonce')}</div>
+                  ))}
+
+                {/* KYC — a live company: the real dossier, one verdict per piece */}
                 {tab === 'kyc' &&
-                  (ficheQ.isPending ? (
+                  (live ? (
+                    <KycDossierPanel companyId={companyId} onOpenReview={openKycReview} />
+                  ) : ficheQ.isPending || !kycServer ? (
                     <PanelSkeleton />
                   ) : (
-                    <KycPanel
-                      status={kycStatus}
-                      motif={kycMotif}
-                      docs={kycDocs}
-                      audit={kycAudit}
-                      onStatusChange={setKycStatus}
-                      onMotifChange={setKycMotifLocal}
-                      onAddDoc={addKycDoc}
-                      onReplaceDoc={replaceKycDoc}
-                      onRemoveDoc={removeKycDoc}
-                      onOpenPiece={openPiece}
-                    />
+                    <KycPanel kyc={kycServer} onOpenPiece={openPiece} />
                   ))}
 
                 {/* CONTRAT */}
@@ -683,11 +676,13 @@ function PresProfile({
               </div>
 
               <PieceViewer piece={piece} onClose={() => setPiece(null)} />
+              {/* Above the fiche (z-92), like the piece viewer: at the default layer it opened behind it. */}
               <ReviewModal
                 presId={companyId}
                 presName={presName}
                 open={reviewOpen}
                 onOpenChange={setReviewOpen}
+                layerClassName="z-[98]"
               />
             </>
           )}

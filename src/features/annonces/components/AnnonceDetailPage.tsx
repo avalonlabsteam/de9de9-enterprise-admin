@@ -168,6 +168,9 @@ function Detail({ detail: d, backLink }: { detail: AnnonceDetail; backLink: Reac
   const b2bPubliee = a.type === 'b2b' && a.statut.code === 'publiee';
   const invisible = b2bPubliee ? invisibiliteOf(e) : [];
   const publication = a.type === 'b2c' ? a.publication : null;
+  const sync = d.synchronisation;
+  /** The annonce is published here and failed on the de9de9 app: red, not the amber of a wait. */
+  const syncEchec = sync?.code === 'echec';
   const modifiee = !!r.modifieeDepuisRevueLe;
   /** The red card under the header: what the company reads on a refused or suspended annonce. */
   const motifEnTete = a.motif && (a.statut.code === 'refusee' || a.statut.code === 'suspendue') ? a.motif : null;
@@ -191,7 +194,14 @@ function Detail({ detail: d, backLink }: { detail: AnnonceDetail; backLink: Reac
               {a.type === 'b2c' && a.sousTitre && <div className="mt-0.5 text-[12.5px] text-de9-gray">{a.sousTitre}</div>}
               {a.type === 'b2b' && a.categorie && <div className="mt-0.5 text-[12.5px] text-de9-gray">{a.categorie.libelle}</div>}
               <div className="mt-2">
-                <StatutPills statut={a.statut} publication={publication} modifiee={modifiee} reprise={r.origine === 'reprise_fiche'} />
+                {/* The note below already carries the reason of a failure: it is not said twice. */}
+                <StatutPills
+                  statut={a.statut}
+                  publication={publication}
+                  raison={sync?.note ? null : publication?.raison}
+                  modifiee={modifiee}
+                  reprise={r.origine === 'reprise_fiche'}
+                />
               </div>
             </div>
           </div>
@@ -227,11 +237,18 @@ function Detail({ detail: d, backLink }: { detail: AnnonceDetail; backLink: Reac
             </span>
           </div>
         )}
-        {d.synchronisation?.note && (
-          <div className="mt-2.5 flex items-start gap-2 rounded-md bg-[#FBF4E4] px-3.5 py-2.5 text-[12.5px] text-[#92702A] dark:bg-[#B68A2E]/15 dark:text-[#D9B36A]">
-            <Glyph icon={Hourglass} className="mt-0.5" />
+        {sync?.note && (
+          <div
+            className={cn(
+              'mt-2.5 flex items-start gap-2 rounded-md px-3.5 py-2.5 text-[12.5px]',
+              syncEchec
+                ? 'bg-[#FDECEC] text-de9-red dark:bg-[#E7464E]/15'
+                : 'bg-[#FBF4E4] text-[#92702A] dark:bg-[#B68A2E]/15 dark:text-[#D9B36A]',
+            )}
+          >
+            <Glyph icon={syncEchec ? TriangleAlert : Hourglass} className="mt-0.5" />
             <span dir="auto" className="ltr:text-left rtl:text-right">
-              {d.synchronisation.note}
+              {sync.note}
             </span>
           </div>
         )}

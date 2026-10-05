@@ -5,7 +5,8 @@
 import axios from 'axios';
 import type { TKey } from '@/lib/i18n';
 import { problemMessage } from '@/api/problem';
-import type { KycAuditEntry } from '../schemas/kyc';
+import { roleLabel } from '@/features/annonces/lib/annonces';
+import type { KycAuditEntry, KycRevuePiece } from '../schemas/kyc';
 
 export type Translate = (key: TKey) => string;
 
@@ -69,8 +70,8 @@ export function docTone(statut: string): Tone {
 }
 
 /**
- * A submitted dossier waits on de9de9 (amber); one still being filed waits on
- * the company (grey).
+ * A dossier with a piece waiting is de9de9's to decide (amber); one with
+ * nothing waiting is the company's to complete (grey).
  */
 export function dossierToneName(statut: string, enRevue: boolean | null | undefined): ToneName {
   if (statut === 'verified') return 'green';
@@ -119,6 +120,35 @@ export function kindLong(kind: string, kindLabel: string | null | undefined, t: 
   if (kindLabel) return kindLabel;
   const key = KIND_LONG[kind];
   return key ? t(key) : kind;
+}
+
+// ===================== the verdict buttons =====================
+
+export interface VerdictButton {
+  show: boolean;
+  enabled: boolean;
+}
+
+export interface PieceVerdicts {
+  valider: VerdictButton;
+  refuser: VerdictButton;
+  /** The server's `blocage`, ready to print. */
+  reason: string | undefined;
+}
+
+/**
+ * « Valider » / « Refuser » on one piece. The server's flags decide — a filed
+ * piece is judged at once, there is no submission to wait for — and a verdict
+ * it blocks stays visible, disabled, under its reason (a number not typed, a
+ * refusal the company was already told about).
+ */
+export function pieceVerdicts(piece: KycRevuePiece): PieceVerdicts {
+  const blocked = !!piece.courante && !!piece.blocage;
+  return {
+    valider: { show: piece.peutValider || blocked, enabled: piece.peutValider },
+    refuser: { show: piece.peutRefuser || blocked, enabled: piece.peutRefuser },
+    reason: piece.blocage ? piece.blocage.message || piece.blocage.code : undefined,
+  };
 }
 
 // ===================== dates & sizes =====================
@@ -182,14 +212,18 @@ export function fmtSize(bytes: number | null | undefined, t: Translate): string 
 export interface KycProblem {
   status?: number;
   code?: string;
+  /** 409 kyc_document_changed: the piece's number moved since the screen read it. */
+  numeroChange?: boolean;
 }
 
 export function kycProblem(err: unknown): KycProblem {
   if (!axios.isAxiosError(err)) return {};
-  const data = err.response?.data as { code?: unknown } | undefined;
+  const data = err.response?.data as { code?: unknown; numero?: unknown } | undefined;
+  const code = typeof data?.code === 'string' ? data.code : undefined;
   return {
     status: err.response?.status,
-    code: typeof data?.code === 'string' ? data.code : undefined,
+    code,
+    numeroChange: code === 'kyc_document_changed' && typeof data?.numero === 'string',
   };
 }
 
@@ -197,17 +231,12 @@ export function kycProblem(err: unknown): KycProblem {
 const ERROR_KEY: Record<string, TKey> = {
   kyc_document_superseded: 'kycErrSuperseded',
   kyc_document_changed: 'kycErrChanged',
-  kyc_document_not_submitted: 'kycErrNotSubmitted',
   kyc_document_already_refused: 'kycErrAlreadyRefused',
   concurrency_conflict: 'kycErrConflict',
   kyc_number_missing: 'kycErrNumberMissing',
   not_found: 'kycErrNotFound',
   kyc_document_approved_locked: 'kycErrApprovedLocked',
   kyc_under_review: 'kycErrUnderReview',
-  kyc_incomplete: 'kycErrIncomplete',
-  kyc_pieces_to_replace: 'kycErrPiecesToReplace',
-  kyc_identifiers_missing: 'kycErrIdentifiersMissing',
-  kyc_already_verified: 'kycErrAlreadyVerified',
   empty_file: 'kycErrEmptyFile',
 };
 
@@ -222,12 +251,14 @@ const STATUS_KEY: Record<number, TKey> = {
  * validation messages, then a localized message for the code or status.
  */
 export function kycErrorMessage(err: unknown, t: Translate): string {
-  const { status, code } = kycProblem(err);
-  const key = (code ? ERROR_KEY[code] : undefined) ?? (status !== undefined ? STATUS_KEY[status] : undefined);
+  const { status, code, numeroChange } = kycProblem(err);
+  const key =
+    (numeroChange ? 'kycErrNumeroChange' : code ? ERROR_KEY[code] : undefined) ??
+    (status !== undefined ? STATUS_KEY[status] : undefined);
   return problemMessage(err, () => (key ? t(key) : undefined));
 }
 
-/** The screen is stale: a colleague decided, a new version arrived, or the dossier moved. */
+/** The screen is stale: a colleague decided, a number or a version changed, or the dossier moved. */
 export function isStaleProblem(p: KycProblem): boolean {
   return p.status === 404 || p.status === 409 || p.status === 422;
 }
@@ -266,17 +297,31 @@ function pick(o: Rec, keys: readonly string[]): unknown {
   return undefined;
 }
 
-/** The entry with its specifics merged in, whether flat or nested (object or JSON string). */
-function withDetails(e: Rec): Rec {
-  let nested = pick(e, ['details', 'data', 'payload', 'metadata', 'changes', 'context']);
-  if (typeof nested === 'string') {
-    try {
-      nested = JSON.parse(nested) as unknown;
-    } catch {
-      nested = undefined;
-    }
+/** An object, or one carried as a JSON string (the audit's `metadataJson`, `afterState`). */
+function objectOf(v: unknown): Rec | null {
+  if (isRec(v)) return v;
+  if (typeof v !== 'string' || !v.trimStart().startsWith('{')) return null;
+  try {
+    const parsed = JSON.parse(v) as unknown;
+    return isRec(parsed) ? parsed : null;
+  } catch {
+    return null;
   }
-  return isRec(nested) ? { ...e, ...nested } : e;
+}
+
+/**
+ * The entry with its specifics merged in. The audit carries them as JSON
+ * strings: `metadataJson` says what the step was about (the documents filed,
+ * the piece decided, its motif and note) and `afterState` what it left behind
+ * (`resoumission`, the dossier's composed motif). What names the step wins.
+ */
+function withDetails(e: Rec): Rec {
+  return {
+    ...e,
+    ...objectOf(e['afterState']),
+    ...objectOf(pick(e, ['details', 'data', 'payload', 'metadata', 'changes', 'context'])),
+    ...objectOf(e['metadataJson']),
+  };
 }
 
 function nameOf(v: unknown): string | null {
@@ -284,9 +329,36 @@ function nameOf(v: unknown): string | null {
   return str(v);
 }
 
+/** The platform itself (a self-signup): nobody to name. */
+const NO_USER = '00000000-0000-0000-0000-000000000000';
+
+/** Who acted: a name when the audit has one, else the server's own sentence, else the role. */
+function actorOf(entry: Rec, t: Translate): string | null {
+  const named = nameOf(
+    pick(entry, ['actorName', 'userName', 'performedByName', 'actorEmail', 'userEmail', 'actor', 'user', 'performedBy']),
+  );
+  if (named) return named;
+  if (entry['actorUserId'] === NO_USER) return null;
+  return str(entry['onBehalfSentence']) ?? roleLabel(str(entry['actorRole']), t);
+}
+
+/** The typed numbers a `company.updated` step changed, as « RC », « NIF », « NIS ». */
+function numbersChanged(entry: Rec): string[] {
+  const before = objectOf(entry['beforeState']);
+  const after = objectOf(entry['afterState']);
+  if (!before || !after) return [];
+  return (['Rc', 'Nif', 'Nis'] as const).filter((k) => (before[k] ?? null) !== (after[k] ?? null)).map((k) => k.toUpperCase());
+}
+
+/** Company steps outside the KYC flow that every dossier's history starts with. */
+const OTHER_STEP: Record<string, TKey> = {
+  'company.created': 'kycEvtEntrepriseCreee',
+  'company.self_signup': 'kycEvtInscription',
+};
+
 /** Piece kinds named by an entry, as « RC », « NIF », « NIS ». */
 function kindsOf(d: Rec): string[] {
-  const raw = pick(d, ['kinds', 'pieces', 'documents', 'kind']);
+  const raw = pick(d, ['kinds', 'pieces', 'documents', 'document', 'kind']);
   const list = Array.isArray(raw) ? raw : raw === undefined ? [] : [raw];
   return list
     .map((x) => (isRec(x) ? str(x['kind']) : str(x)))
@@ -344,10 +416,20 @@ export function auditEvents(entries: KycAuditEntry[], t: Translate): KycAuditEve
       case 'company.kyc.pending':
         title = t('kycEvtRemisEnDepot');
         break;
-      default:
+      case 'company.updated': {
+        // Correcting a number is a plain company update: say which one moved.
+        const numeros = numbersChanged(entry);
+        title = numeros.length ? t('kycEvtNumeroModifie').replace('{n}', numeros.join(', ')) : t('kycEvtEntrepriseModifiee');
+        break;
+      }
+      default: {
         // Company-wide audit: other steps (a corrected number…) keep their own wording.
-        title = str(pick(entry, ['summary', 'description', 'message', 'libelle', 'label'])) ?? (action || '—');
-        code = action || null;
+        const known = OTHER_STEP[action];
+        title =
+          str(pick(entry, ['summary', 'description', 'message', 'libelle', 'label'])) ??
+          (known ? t(known) : action || '—');
+        code = known ? null : action || null;
+      }
     }
 
     return {
@@ -356,18 +438,7 @@ export function auditEvents(entries: KycAuditEntry[], t: Translate): KycAuditEve
       tone,
       code: code && code !== title ? code : null,
       at: str(pick(entry, ['occurredAt', 'createdAt', 'at', 'timestamp', 'date'])),
-      actor: nameOf(
-        pick(entry, [
-          'actorName',
-          'userName',
-          'performedByName',
-          'actorEmail',
-          'userEmail',
-          'actor',
-          'user',
-          'performedBy',
-        ]),
-      ),
+      actor: actorOf(entry, t),
       motif,
       note,
     };

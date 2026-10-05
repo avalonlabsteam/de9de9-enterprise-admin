@@ -1,26 +1,24 @@
 // KYC — review screen of one company: GET /companies/{companyId}/kyc/revue.
 // There is no global « Décision » block: each piece is validated or refused on
 // its own, the header only shows the progress, and the dossier turns
-// « Vérifié » / « À corriger » by itself when the last submitted piece is
-// decided — only then is the company told. Opened from the queue (/kyc) or
+// « Vérifié » / « À corriger » by itself when the last waiting piece is
+// decided — only then is the company told. There is no submit step: a filed
+// piece can be decided at once. Opened from the queue (/kyc) or
 // by URL, so a notification's `kyc-dossier` deep link can land here.
 import { useState } from 'react';
 import type { ReactNode } from 'react';
 import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { ChevronLeft, Lock, RefreshCw, Repeat, Send } from 'lucide-react';
-import { toast } from 'sonner';
+import { ChevronLeft, Lock, RefreshCw, Repeat } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useT } from '@/lib/i18n';
-import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 import { Glyph } from '@/components/common/Glyph';
-import { reloadKycRevue, useKycRevue, useKycSubmitForCompany } from '../api/kyc';
+import { useKycRevue } from '../api/kyc';
 import type { KycRevue } from '../schemas/kyc';
 import {
   TONES,
   dossierStatutLabel,
   dossierToneName,
   fmtDateTime,
-  isStaleProblem,
   kycErrorMessage,
   kycProblem,
 } from '../lib/kyc';
@@ -104,8 +102,6 @@ function Review({ revue: r, backLink }: { revue: KycRevue; backLink: ReactNode }
   const t = useT();
   const [, setSearchParams] = useSearchParams();
   const [target, setTarget] = useState<VerdictTarget | null>(null);
-  const [confirmSubmit, setConfirmSubmit] = useState(false);
-  const submit = useKycSubmitForCompany();
 
   const enRevue = !!r.enRevue;
   const tone = TONES[dossierToneName(r.statut, r.enRevue)];
@@ -113,9 +109,6 @@ function Review({ revue: r, backLink }: { revue: KycRevue; backLink: ReactNode }
   const roleLabels = roles.map((role) =>
     role === 'Client' ? t('roleClient') : role === 'Prestataire' ? t('rolePrestataire') : role,
   );
-  // The server's flag when it sends one; otherwise offer it whenever no round
-  // is open and let a 422 say what is missing.
-  const canSubmit = r.peutSoumettre ?? (!enRevue && r.statut !== 'verified');
 
   const openFiche = (): void => {
     setSearchParams((prev) => {
@@ -123,22 +116,6 @@ function Review({ revue: r, backLink }: { revue: KycRevue; backLink: ReactNode }
       next.set('pres', r.companyId);
       next.delete('client');
       return next;
-    });
-  };
-
-  const runSubmit = (): void => {
-    submit.mutate(r.companyId, {
-      onSuccess: () => {
-        toast.success(t('kycToastSoumis'));
-        setConfirmSubmit(false);
-      },
-      onError: (err) => {
-        toast.error(kycErrorMessage(err, t));
-        if (isStaleProblem(kycProblem(err))) {
-          reloadKycRevue(r.companyId);
-          setConfirmSubmit(false);
-        }
-      },
     });
   };
 
@@ -157,6 +134,7 @@ function Review({ revue: r, backLink }: { revue: KycRevue; backLink: ReactNode }
               <div className="flex flex-wrap items-center gap-2">
                 <h1 className="text-[21px] font-extrabold leading-tight">{r.nom}</h1>
                 <StatusPill tone={tone} label={dossierStatutLabel(r.statut, r.statutLabel, t)} />
+                {r.statut === 'pending' && !enRevue && <Tag tone="grey">{t('kycTagNonSoumis')}</Tag>}
                 {r.revueCommencee && <Tag>{t('kycTagRevueEnCours')}</Tag>}
                 {r.resoumission && (
                   <Tag tone="amber">
@@ -170,26 +148,15 @@ function Review({ revue: r, backLink }: { revue: KycRevue; backLink: ReactNode }
               </div>
             </div>
           </div>
-          <div className="flex flex-wrap gap-2">
-            {roles.includes('Prestataire') && (
-              <button
-                type="button"
-                onClick={openFiche}
-                className="cursor-pointer rounded-full border border-de9-line bg-card px-3.5 py-2 text-[12px] font-bold text-de9-slate"
-              >
-                {t('fichePresta')}
-              </button>
-            )}
-            {canSubmit && (
-              <button
-                type="button"
-                onClick={() => setConfirmSubmit(true)}
-                className="cursor-pointer rounded-full border border-de9-line bg-card px-3.5 py-2 text-[12px] font-bold text-de9-slate"
-              >
-                <Glyph icon={Send} /> {t('kycSoumettrePour')}
-              </button>
-            )}
-          </div>
+          {roles.includes('Prestataire') && (
+            <button
+              type="button"
+              onClick={openFiche}
+              className="cursor-pointer rounded-full border border-de9-line bg-card px-3.5 py-2 text-[12px] font-bold text-de9-slate"
+            >
+              {t('fichePresta')}
+            </button>
+          )}
         </div>
 
         {r.progression && (
@@ -261,41 +228,6 @@ function Review({ revue: r, backLink }: { revue: KycRevue; backLink: ReactNode }
         enRevue={enRevue}
         onClose={() => setTarget(null)}
       />
-
-      {/* ===== submit on the company's behalf ===== */}
-      <Dialog open={confirmSubmit} onOpenChange={setConfirmSubmit}>
-        <DialogContent
-          showCloseButton={false}
-          className="block max-w-[calc(100%-2rem)] gap-0 rounded-xl bg-card p-7 sm:max-w-[440px]"
-        >
-          <div className="flex h-[54px] w-[54px] items-center justify-center rounded-md bg-[#EAF2FD] text-[24px] dark:bg-[#2F7FD0]/15 text-[#2F7FD0] dark:text-[#7EB5EC]">
-            <Glyph icon={Send} />
-          </div>
-          <DialogTitle className="mt-4 text-[19px] leading-normal font-extrabold text-de9-ink">
-            {t('kycSoumettrePour')}
-          </DialogTitle>
-          <DialogDescription className="mt-[9px] text-[13.5px] leading-[1.55] text-de9-slate">
-            {t('kycSoumettreTexte')}
-          </DialogDescription>
-          <div className="mt-[22px] flex gap-[11px]">
-            <button
-              type="button"
-              onClick={() => setConfirmSubmit(false)}
-              className="flex-1 cursor-pointer rounded-full bg-secondary p-3.5 text-center text-sm font-bold text-de9-slate"
-            >
-              {t('annuler')}
-            </button>
-            <button
-              type="button"
-              disabled={submit.isPending}
-              onClick={runSubmit}
-              className="flex-1 cursor-pointer rounded-full bg-[#2F7FD0] p-3.5 text-center text-sm font-bold text-white disabled:opacity-60"
-            >
-              {submit.isPending ? t('kycEnvoi') : t('fcConfirmer')}
-            </button>
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

@@ -15,9 +15,20 @@ interface SelectionState {
    * results on screen predate the suspension.
    */
   fermes: string[];
+  /**
+   * The category of the annonce « Demander un devis » was last asked on. A new
+   * object per ask: the search page takes it as its filter each time, the same
+   * category twice included.
+   */
+  categorieDemandee: { code: string } | null;
 }
 
-export const useSelectionStore = create<SelectionState>(() => ({ selected: [], names: {}, fermes: [] }));
+export const useSelectionStore = create<SelectionState>(() => ({
+  selected: [],
+  names: {},
+  fermes: [],
+  categorieDemandee: null,
+}));
 
 export const selectionActions = {
   toggle(id: string, name?: string): void {
@@ -34,10 +45,14 @@ export const selectionActions = {
       fermes: [...new Set([...s.fermes, ...closed])],
     }));
   },
+  /** « Demander un devis » on an annonce row, from a card or from the profile overlay. */
+  askCategory(code: string): void {
+    useSelectionStore.setState({ categorieDemandee: { code } });
+  },
   forgetClosed(): void {
     useSelectionStore.setState((s) => (s.fermes.length ? { fermes: [] } : s));
   },
   clear(): void {
-    useSelectionStore.setState({ selected: [], names: {} });
+    useSelectionStore.setState({ selected: [], names: {}, categorieDemandee: null });
   },
 };

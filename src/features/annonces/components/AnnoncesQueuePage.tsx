@@ -405,7 +405,13 @@ function QueueRow({ row: r, onglet, onOpen }: { row: AnnonceLigne; onglet: strin
       </div>
       <div className="min-w-0 truncate text-[12px] text-de9-slate">{r.categorie ?? '—'}</div>
       <div className="min-w-0">
-        <StatutPills statut={r.statut} publication={r.publication} modifiee={r.modifieeDepuisRevue} reprise={r.origine === 'reprise_fiche'} />
+        <StatutPills
+          statut={r.statut}
+          publication={r.publication}
+          raison={r.publication?.raison}
+          modifiee={r.modifieeDepuisRevue}
+          reprise={r.origine === 'reprise_fiche'}
+        />
       </div>
       <div className="text-[12px] text-de9-slate">
         <span className="num">{when ?? '—'}</span>

@@ -6,7 +6,7 @@
 import { useState } from 'react';
 import type { ChangeEvent, ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useForm, useWatch } from 'react-hook-form';
+import { Controller, useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { toast } from 'sonner';
@@ -18,6 +18,8 @@ import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Glyph } from '@/components/common/Glyph';
+import { useCommunes, useWilayas } from '@/features/geo/api/geo';
+import { findByNom } from '@/features/geo/lib/geo';
 import { b2bRefusalOf, useDemanderDevis, type CtxCommande } from '../api/prestataires';
 import { CADENCE, FREQUENCE, type DemandeDevisPayload } from '../schemas/demandeDevis';
 import { SERVICE_CAT, TAXO, catObj, slugify } from '../lib/taxonomy';
@@ -165,6 +167,7 @@ function BriefModalContent({ onOpenChange, selected, ctx, filters }: Omit<BriefM
     register,
     handleSubmit,
     control,
+    setValue,
     formState: { errors },
   } = useForm<BriefFormValues>({
     resolver: zodResolver(briefFormSchema),
@@ -191,6 +194,17 @@ function BriefModalContent({ onOpenChange, selected, ctx, filters }: Omit<BriefM
   const cadence = useWatch({ control, name: 'cadence' });
   const required = t('briefChampRequis');
 
+  // Wilaya and commune are picked in the geo dictionary — the brief carries
+  // their French `nom`, as the rows and the search params do. The communes
+  // cascade from the wilaya's code. A prefill the dictionary spells otherwise
+  // (« alger », typed when both were free text) is read as its entry.
+  const wilayaValue = useWatch({ control, name: 'wilaya' });
+  const communeValue = useWatch({ control, name: 'commune' });
+  const { data: wilayas } = useWilayas();
+  const wilaya = findByNom(wilayas, wilayaValue);
+  const { data: communes } = useCommunes(wilaya?.code ?? null);
+  const commune = findByNom(communes, communeValue);
+
   const onSubmit = handleSubmit(async (v) => {
     if (!ctx) return;
     const subs = category?.subs ?? [];
@@ -207,8 +221,8 @@ function BriefModalContent({ onOpenChange, selected, ctx, filters }: Omit<BriefM
         description: v.description.trim(),
         categoryCode: category ? slugify(category.fr) : v.categoryId,
         subCategoryCodes: v.sub && subs.includes(v.sub) ? [slugify(v.sub)] : [],
-        wilaya: v.wilaya.trim(),
-        commune: v.commune.trim(),
+        wilaya: findByNom(wilayas, v.wilaya)?.nom ?? v.wilaya.trim(),
+        commune: findByNom(communes, v.commune)?.nom ?? v.commune.trim(),
         adresseExacte: v.adresse.trim(),
         ...(superficie !== undefined ? { superficieM2: superficie } : {}),
         cadence: CADENCE[v.cadence],
@@ -384,9 +398,61 @@ function BriefModalContent({ onOpenChange, selected, ctx, filters }: Omit<BriefM
 
             <Field label={t('fLocalisation')}>
               <Input {...register('adresse')} placeholder={t('phAdresse')} className={`${inputCls} mb-2.5`} />
+              {/* Both selects are controlled: their options arrive after the form
+                  (the communes on demand), and an uncontrolled <select> would fall
+                  back to its first option meanwhile. A value the dictionary does
+                  not list stays selectable, so sending does not silently drop it. */}
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <Input {...register('commune')} placeholder={t('phCommune')} className={inputCls} />
-                <Input {...register('wilaya')} placeholder={t('phWilaya')} className={inputCls} />
+                <Controller
+                  control={control}
+                  name="wilaya"
+                  render={({ field }) => (
+                    <select
+                      ref={field.ref}
+                      name={field.name}
+                      value={wilaya?.nom ?? field.value}
+                      onBlur={field.onBlur}
+                      onChange={(e) => {
+                        field.onChange(e.target.value);
+                        setValue('commune', '');
+                      }}
+                      aria-label={t('fWilaya')}
+                      className={inputCls}
+                    >
+                      <option value="">{t('phWilaya')}</option>
+                      {field.value && !wilaya && <option value={field.value}>{field.value}</option>}
+                      {(wilayas ?? []).map((w) => (
+                        <option key={w.code} value={w.nom}>
+                          {l(w.nom, w.nomAr)}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                />
+                <Controller
+                  control={control}
+                  name="commune"
+                  render={({ field }) => (
+                    <select
+                      ref={field.ref}
+                      name={field.name}
+                      value={commune?.nom ?? field.value}
+                      onBlur={field.onBlur}
+                      onChange={(e) => field.onChange(e.target.value)}
+                      disabled={!wilayaValue}
+                      aria-label={t('fCommune')}
+                      className={cn(inputCls, 'disabled:opacity-60')}
+                    >
+                      <option value="">{t('phCommune')}</option>
+                      {field.value && !commune && <option value={field.value}>{field.value}</option>}
+                      {(communes ?? []).map((c) => (
+                        <option key={c.code} value={c.nom}>
+                          {l(c.nom, c.nomAr)}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                />
               </div>
             </Field>
 

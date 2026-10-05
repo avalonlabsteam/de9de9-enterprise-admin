@@ -1,5 +1,5 @@
 // KYC — the review queue:
-//   list    GET /kyc?statut=&soumis=&q=&page=&pageSize=   (oldest submission first)
+//   list    GET /kyc?statut=&soumis=&q=&page=&pageSize=   (the longest wait first)
 //   cards   GET /kyc/kpis                                  (also the sidebar badge)
 // Tab, search and page live in the URL, so « Retour » from a review screen
 // lands on the queue exactly as it was left.
@@ -125,6 +125,14 @@ export function KycQueuePage() {
   const q = searchParams.get('q') ?? '';
   const page = Math.max(1, Number(searchParams.get('page')) || 1);
   const [searchInput, setSearchInput] = useState(q);
+  // `?q=` can change under the open page — a fiche's « Chercher dans la file
+  // KYC » lands here: the box follows it, or its own (older) text would be
+  // debounced straight back into the URL.
+  const [seenQ, setSeenQ] = useState(q);
+  if (q !== seenQ) {
+    setSeenQ(q);
+    if (q !== searchInput.trim()) setSearchInput(q);
+  }
 
   /** Replace, not push: « Retour » from a review goes back to the queue, not through every tab. */
   const patchParams = (patch: Record<string, string | null>): void => {
