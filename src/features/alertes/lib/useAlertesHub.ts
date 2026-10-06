@@ -7,6 +7,7 @@ import { fetchAlertesPage, fetchCompteurs, reloadAlertesFeed, ALERTES_PAGE_SIZE 
 import { alerteCompteursSchema, alerteSchema, fileSignalSchema } from '../schemas/alertes';
 import { alertesActions, useAlertesStore } from '../stores/alertesStore';
 import { invalidateForAlerte, invalidateQueue } from './actions';
+import { armAlerteSon, playAlerteSon } from './son';
 import { notifyAlerte, notifyCaughtUp } from './toasts';
 
 // One hub connection for the whole console (guide 11 §4, 11a §3), mounted in
@@ -47,7 +48,10 @@ async function catchUp(): Promise<void> {
       alertesActions.replace((await fetchAlertesPage({ page: 1, pageSize: ALERTES_PAGE_SIZE })).data);
       reloadAlertesFeed();
     } else {
-      notifyCaughtUp(alertesActions.merge(missed.data).length);
+      const fresh = alertesActions.merge(missed.data);
+      // Missed while the socket was down: one knock for the lot, like the one summary.
+      if (fresh.length > 0) playAlerteSon();
+      notifyCaughtUp(fresh.length);
     }
   }
   alertesActions.setCompteurs(await fetchCompteurs());
@@ -78,6 +82,8 @@ export function useAlertesHub(): void {
     let active = true;
     let caughtUp = false;
     let timer: ReturnType<typeof setTimeout> | undefined;
+    // A page may only make sound once the user has touched it.
+    const disarmSon = armAlerteSon();
 
     const hub = new HubConnectionBuilder()
       .withUrl(HUB_URL, { accessTokenFactory: currentToken })
@@ -90,6 +96,8 @@ export function useAlertesHub(): void {
       if (!parsed.success) return;
       if (alertesActions.add(parsed.data)) {
         invalidateForAlerte(parsed.data);
+        // Whether it toasts or not: the sound is what reaches an admin looking elsewhere.
+        playAlerteSon();
         notifyAlerte(parsed.data, { ...route.current, drawerOpen: useAlertesStore.getState().drawerOpen });
       }
     });
@@ -148,6 +156,7 @@ export function useAlertesHub(): void {
     return () => {
       active = false;
       clearTimeout(timer);
+      disarmSon();
       void hub.stop();
       // Signed out (or another admin signs in next): never keep the old rows.
       alertesActions.clear();
