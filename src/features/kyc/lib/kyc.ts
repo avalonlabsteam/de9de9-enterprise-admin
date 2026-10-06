@@ -57,7 +57,7 @@ export const TONES: Record<ToneName, Tone> = {
   },
 };
 
-/** Guide: grey `manquant`, blue `a_verifier`, green `valide`, red `refuse`. */
+/** Guide: grey `manquant`, blue `a_verifier` (« En attente »), green `valide`, red `refuse`. */
 const DOC_TONE: Record<string, ToneName> = {
   manquant: 'grey',
   a_verifier: 'blue',
@@ -138,8 +138,8 @@ export interface PieceVerdicts {
 
 /**
  * « Valider » / « Refuser » on one piece. The server's flags decide — a filed
- * piece is judged at once, there is no submission to wait for — and a verdict
- * it blocks stays visible, disabled, under its reason (a number not typed, a
+ * piece is judged at once: no submission to wait for, no number to type first
+ * — and a verdict it blocks stays visible, disabled, under its reason (a
  * refusal the company was already told about).
  */
 export function pieceVerdicts(piece: KycRevuePiece): PieceVerdicts {
@@ -233,7 +233,6 @@ const ERROR_KEY: Record<string, TKey> = {
   kyc_document_changed: 'kycErrChanged',
   kyc_document_already_refused: 'kycErrAlreadyRefused',
   concurrency_conflict: 'kycErrConflict',
-  kyc_number_missing: 'kycErrNumberMissing',
   not_found: 'kycErrNotFound',
   kyc_document_approved_locked: 'kycErrApprovedLocked',
   kyc_under_review: 'kycErrUnderReview',

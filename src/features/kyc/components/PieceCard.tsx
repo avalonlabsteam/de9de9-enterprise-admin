@@ -180,7 +180,7 @@ export function PieceCard({ piece, companyId, enRevue, onVerdict }: PieceCardPro
 
         {/* ---- details ---- */}
         <div className="flex min-w-0 flex-col gap-3">
-          {/* number — validating the document validates it */}
+          {/* number — validating the document validates it; optional, an empty one blocks nothing */}
           <div className="rounded-md bg-secondary px-4 py-3">
             <div className="flex items-center justify-between gap-2">
               <SectionLabel>{numeroLabel}</SectionLabel>
@@ -212,7 +212,7 @@ export function PieceCard({ piece, companyId, enRevue, onVerdict }: PieceCardPro
                     </button>
                   </>
                 ) : (
-                  <span className="text-[13px] font-semibold text-de9-red">{t('kycNumeroVide')}</span>
+                  <span className="text-[13px] text-de9-gray">{t('kycNumeroVide')}</span>
                 )}
               </div>
             ) : (

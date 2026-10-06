@@ -35,6 +35,7 @@ import { BriefModal } from './BriefModal';
 import { ReviewModal } from './ReviewModal';
 import { CategoryIcon } from './CategoryIcon';
 import { AnnonceRows } from './AnnonceRows';
+import { CategoriesCard } from './CategoriesBlock';
 
 /* ===================== filters ===================== */
 
@@ -501,6 +502,8 @@ function SearchPageContent({ ctxCmd }: { ctxCmd: CtxCommande | null }) {
               const whatsAppHref = p.whatsAppUrl ?? (p.whatsAppPhone ? 'https://wa.me/' + p.whatsAppPhone : null);
               const hasRefs = p.referencesDe9de9 > 0 || p.referencesClient > 0;
               const annonces = p.annonces ?? [];
+              // Every category with its own services; without it (an older API), the first category and one joined line.
+              const categories = p.categoriesDetaillees ?? [];
               return (
                 <div
                   key={p.id}
@@ -560,16 +563,24 @@ function SearchPageContent({ ctxCmd }: { ctxCmd: CtxCommande | null }) {
                           </span>
                         )}
                       </div>
-                      {catLabel && (
-                        <div
-                          className={cn('mt-[3px] text-[12px] font-bold', isInk(famColor) && 'tone-ink')}
-                          style={{ color: famColor }}
-                        >
-                          {catLabel}
+                      {categories.length === 0 && (
+                        <>
+                          {catLabel && (
+                            <div
+                              className={cn('mt-[3px] text-[12px] font-bold', isInk(famColor) && 'tone-ink')}
+                              style={{ color: famColor }}
+                            >
+                              {catLabel}
+                            </div>
+                          )}
+                          <div className="mt-0.5 text-[11.5px] text-de9-slate">{subsLabel}</div>
+                        </>
+                      )}
+                      {zonesLabel && (
+                        <div className={cn('text-[11.5px] text-de9-gray', categories.length > 0 ? 'mt-[3px]' : 'mt-px')}>
+                          <Glyph icon={MapPin} /> {zonesLabel}
                         </div>
                       )}
-                      <div className="mt-0.5 text-[11.5px] text-de9-slate">{subsLabel}</div>
-                      {zonesLabel && <div className="mt-px text-[11.5px] text-de9-gray"><Glyph icon={MapPin} /> {zonesLabel}</div>}
                     </div>
                     <div className="flex-none text-end">
                       <div className="text-[15px] font-extrabold text-de9-ink">
@@ -585,6 +596,10 @@ function SearchPageContent({ ctxCmd }: { ctxCmd: CtxCommande | null }) {
                       )}
                     </div>
                   </div>
+
+                  {categories.length > 0 && (
+                    <CategoriesCard categories={categories} onMore={() => openProfile(selKey)} className="mt-3.5" />
+                  )}
 
                   <div className="mt-3.5 grid grid-cols-2 gap-2 sm:grid-cols-4">
                     <div className="rounded-sm bg-secondary p-[9px] text-center">

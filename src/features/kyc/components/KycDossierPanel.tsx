@@ -204,7 +204,7 @@ function PieceRow({
             {piece.numero}
           </span>
         ) : (
-          <span className="text-[12px] font-semibold text-de9-red">{t('kycNumeroVide')}</span>
+          <span className="text-[12px] text-de9-gray">{t('kycNumeroVide')}</span>
         )}
       </div>
 

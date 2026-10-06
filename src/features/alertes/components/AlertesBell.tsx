@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Bell, ChevronRight, X } from 'lucide-react';
+import { Bell, ChevronRight, Volume2, VolumeX, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@/components/ui/sheet';
 import { problemMessage } from '@/api/problem';
@@ -10,9 +10,11 @@ import { dirOf, useLangStore } from '@/stores/langStore';
 import { useAlertesFeed, useMarquerToutLu } from '../api/alertes';
 import { ALERTE_CATEGORIES, type Alerte, type AlerteCategorie } from '../schemas/alertes';
 import { alertesActions, sortAlertes, useAlertesStore } from '../stores/alertesStore';
+import { alerteSonActions, useAlerteSonStore } from '../stores/sonStore';
 import { CATEGORIE_LABEL, relativeTime, targetOf, tonStyle } from '../lib/alertes';
 import { AlerteIcon } from './AlerteIcon';
 import { openAlerte } from '../lib/actions';
+import { playAlerteSon } from '../lib/son';
 
 // Header bell + right-hand drawer (guide 11a §4.1–4.2). The badge and the chip
 // counts come only from `compteurs`; the rows come from the store, which the
@@ -68,6 +70,12 @@ function DrawerBody() {
   const filter = useMemo(() => ({ nonLues, categorie }), [nonLues, categorie]);
   const feed = useAlertesFeed(filter, true);
   const markAll = useMarquerToutLu();
+  const son = useAlerteSonStore((s) => s.actif);
+  // Switching it on plays the knock: the admin hears what a new alert will sound like.
+  const toggleSon = (): void => {
+    alerteSonActions.set(!son);
+    if (!son) playAlerteSon(true);
+  };
   const now = useNow();
 
   const rows = useMemo(
@@ -119,6 +127,15 @@ function DrawerBody() {
             {t('alertesToutMarquer')}
           </button>
         )}
+        <button
+          type="button"
+          onClick={toggleSon}
+          aria-label={t(son ? 'alertesSonCouper' : 'alertesSonActiver')}
+          title={t(son ? 'alertesSonCouper' : 'alertesSonActiver')}
+          className="flex size-8 flex-none cursor-pointer items-center justify-center rounded-full text-de9-gray hover:bg-de9-row hover:text-de9-slate"
+        >
+          {son ? <Volume2 className="size-[18px]" /> : <VolumeX className="size-[18px]" />}
+        </button>
         <button
           type="button"
           onClick={() => alertesActions.setDrawerOpen(false)}

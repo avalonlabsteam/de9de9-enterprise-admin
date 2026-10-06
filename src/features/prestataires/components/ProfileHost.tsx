@@ -20,6 +20,7 @@ import { usePrestataireFiche } from '../api/prestataires';
 import type { AnnonceCarte } from '../schemas/recherche';
 import { selectionActions, useSelectionStore } from '../stores/selectionStore';
 import { AnnonceRows } from './AnnonceRows';
+import { CategoriesDetail } from './CategoriesBlock';
 import { ReviewModal } from './ReviewModal';
 import {
   avisView,
@@ -213,6 +214,8 @@ function PresProfile({
   // The company's published B2B annonces; every one of them (B2C, drafts) is in the queue.
   const annonces = payload?.fiche.annonces ?? [];
   const couvertureAnnonces = payload?.fiche.couvertureSource === 'annonces';
+  // The card's categories, then those only its annonces carry — each with its own services.
+  const categories = payload?.fiche.categoriesDetaillees ?? [];
   const openAnnoncesQueue = () => {
     onClose();
     navigate(`/annonces?onglet=toutes&companyId=${encodeURIComponent(companyId)}`);
@@ -368,17 +371,23 @@ function PresProfile({
                 {tab === 'infos' && (
                   <>
                     <div>
-                      <SectionLabel>{t('presFamilles')}</SectionLabel>
-                      <div
-                        className="mt-1.5 text-[14px] font-bold text-de9-ink"
-                        style={{ color: vm.famColor }}
-                      >
-                        {vm.categoryLabel}
-                      </div>
-                      <div className="mt-[2px] text-[12.5px] text-de9-slate">
-                        {vm.subs.join(' · ') || '—'}
-                      </div>
-                      <div className="mt-[2px] text-[12.5px] text-de9-slate">
+                      {categories.length > 0 ? (
+                        <CategoriesDetail categories={categories} />
+                      ) : (
+                        <>
+                          <SectionLabel>{t('presFamilles')}</SectionLabel>
+                          <div
+                            className="mt-1.5 text-[14px] font-bold text-de9-ink"
+                            style={{ color: vm.famColor }}
+                          >
+                            {vm.categoryLabel}
+                          </div>
+                          <div className="mt-[2px] text-[12.5px] text-de9-slate">
+                            {vm.subs.join(' · ') || '—'}
+                          </div>
+                        </>
+                      )}
+                      <div className={cn('text-[12.5px] text-de9-slate', categories.length > 0 ? 'mt-2.5' : 'mt-[2px]')}>
                         <Glyph icon={MapPin} /> {vm.zones.join(', ') || '—'}
                       </div>
                       {vm.pitch && (

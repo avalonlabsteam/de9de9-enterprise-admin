@@ -70,6 +70,26 @@ export const annonceCarteSchema = z.object({
 export type AnnonceCarte = z.infer<typeof annonceCarteSchema>;
 
 /**
+ * One category of the company — of its directory card, or of a published B2B
+ * annonce — with its own services and the colour of its catalogue family.
+ */
+export const categorieDetailSchema = z.object({
+  code: z.string(),
+  label: z.string(),
+  /** The category's family, hence its colour; never null in practice. */
+  famille: familleSchema.nullish(),
+  /** The services of THIS category; on the fiche, the card's first, then the annonces' extra ones. */
+  sousCategories: z.array(codeLabelSchema).default([]),
+  /** On the directory card; false = only an annonce carries it. */
+  surFiche: z.boolean().default(true),
+  /** Published B2B annonces of the company in this category — all of them, whatever the search filters. */
+  annonces: z.number().default(0),
+  /** The search asked for it (catégorie, parent of a sous-catégorie, or famille filter). Always false on the fiche. */
+  demandee: z.boolean().default(false),
+});
+export type CategorieDetail = z.infer<typeof categorieDetailSchema>;
+
+/**
  * One search result card. Scalars that are semantically optional (no logo, no
  * tariff published, no contact channel, …) are widened with `nullish` — same
  * convention as the worklist schema.
@@ -127,6 +147,14 @@ export const prestataireSearchItemSchema = z.object({
    * answers of the write routes.
    */
   annonces: z.array(annonceCarteSchema).nullish(),
+  /**
+   * Every category of the company, grouped and ready to draw. Search: one
+   * entry per item of `categories`, same order (the asked ones first). Fiche:
+   * the card's own first, then those only its annonces carry. Null on the
+   * answers of the write routes, absent on an older API: the card then keeps
+   * `categories[0]` and the joined `sousCategories`.
+   */
+  categoriesDetaillees: z.array(categorieDetailSchema).nullish(),
 });
 export type PrestataireSearchItem = z.infer<typeof prestataireSearchItemSchema>;
 

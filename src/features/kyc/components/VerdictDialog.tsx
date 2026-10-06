@@ -160,8 +160,8 @@ function VerdictForm({
             return;
           }
           toast.error(message);
-          // A colleague decided, a newer version arrived, the number changed or
-          // is missing… what this dialog shows is stale: reload rather than retry.
+          // A colleague decided, a newer version arrived, the number changed…
+          // what this dialog shows is stale: reload rather than retry.
           if (isStaleProblem(problem)) {
             reloadKycRevue(companyId);
             onClose();
@@ -188,14 +188,18 @@ function VerdictForm({
       </DialogTitle>
       <DialogDescription className="mt-1 text-[12.5px] text-de9-gray">{long}</DialogDescription>
 
-      {/* the number is validated with the document — last look before locking it */}
+      {/* the number is validated with the document — last look before locking it. It may be empty: it blocks nothing. */}
       <div className="mt-4 rounded-md bg-secondary px-4 py-3">
         <div className="text-[10.5px] font-extrabold uppercase tracking-[.04em] text-de9-gray">
           {piece.numeroLabel || `N° ${short}`}
         </div>
-        <div dir="ltr" className="mt-0.5 break-all text-start font-mono text-[15px] font-bold text-de9-ink">
-          {piece.numero || '—'}
-        </div>
+        {piece.numero ? (
+          <div dir="ltr" className="mt-0.5 break-all text-start font-mono text-[15px] font-bold text-de9-ink">
+            {piece.numero}
+          </div>
+        ) : (
+          <div className="mt-0.5 text-[13px] text-de9-gray">{t('kycNumeroVide')}</div>
+        )}
       </div>
 
       <p className="mt-3.5 text-[13px] leading-[1.55] text-de9-slate">
