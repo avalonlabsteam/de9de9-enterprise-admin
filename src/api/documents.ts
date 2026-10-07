@@ -149,6 +149,14 @@ export async function previewDocument(id: string, fallbackMessage?: string): Pro
   return previewFromApi(`/documents/${encodeURIComponent(id)}/download`, { fallbackMessage });
 }
 
+/**
+ * DELETE /documents/{id} — remove a stored document for good. The server
+ * refuses the ones that must stay (a KYC piece: 409 `kyc_document_undeletable`).
+ */
+export async function deleteDocument(id: string): Promise<void> {
+  await apiClient.delete(`/documents/${encodeURIComponent(id)}`);
+}
+
 export interface DownloadDocumentInput {
   /** A document id or a `/documents/{id}/download` URL. */
   id: string;

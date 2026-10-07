@@ -2,7 +2,8 @@
 // GET /commandes/worklist/{id}. The editable console needs the mock commande
 // payload, which a live commande id (an appel d'offres or a visit) doesn't have. So
 // the page renders what the worklist detail knows — status, each party's side,
-// the next action and its SLA, the devis — and can run that next action through
+// the next action and its SLA, the dossier (client, prestataires, demande,
+// fichiers — CommandeDossier), the devis — and can run that next action through
 // POST …/next-action when it needs no form (the endpoint takes no body), and
 // validate or refuse each received devis (POST /devis/{devisId}/valider | /refuser),
 // then propose the validated ones to the client (POST /appels-offres/{rfqId}/devis/proposer).
@@ -41,6 +42,7 @@ import { ReprogramModal } from './ActionModals';
 import { AssignTeamModal } from './AssignTeamModal';
 import { DepositInvoiceModal } from './DepositInvoiceModal';
 import { ChoosePrestataireModal, type ChoosableQuote } from './ChoosePrestataireModal';
+import { CommandeDossier } from './CommandeDossier';
 
 const CARD =
   'rounded-md border border-de9-line bg-card px-6 py-[22px]';
@@ -229,6 +231,15 @@ export function WorklistSummary({ detail: d, onRefresh, refreshing = false }: Wo
   const stepHint = STEP_HINT[code];
   const overdue = d.slaOverdueMinutes != null && d.slaOverdueMinutes > 0;
   const devis = d.devis ?? [];
+  const prochaineVisite = d.nextVisitAt ? visitLabel(d.nextVisitAt, t) : dash;
+  const traite = d.traite ? (
+    <>
+      <Glyph icon={Check} />
+      {d.traiteAt ? ' ' + visitLabel(d.traiteAt, t) : ''}
+    </>
+  ) : (
+    dash
+  );
 
   const decideDevis = (dv: WorklistDevis, decision: DevisDecision): void => {
     if (!dv.devisId) return;
@@ -304,6 +315,20 @@ export function WorklistSummary({ detail: d, onRefresh, refreshing = false }: Wo
             <div className="mt-1 text-[12px] text-de9-gray">
               {d.reference ?? d.id} · {d.contact ?? dash} · {d.clientPhone ?? dash}
             </div>
+            {/* What the dossier below does not say: the kind of line, its next visit, whether it is handled. */}
+            {d.client && (
+              <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[12px] text-de9-gray">
+                <span className="rounded-full bg-secondary px-2 py-[2px] text-[10.5px] font-bold text-de9-slate">
+                  {kindKey ? t(kindKey) : d.kind}
+                </span>
+                <span>
+                  {t('apercuProchaineVisite')} : <b className="font-bold text-de9-ink">{prochaineVisite}</b>
+                </span>
+                <span>
+                  {t('apercuTraite')} : <b className="font-bold text-de9-ink">{traite}</b>
+                </span>
+              </div>
+            )}
           </div>
           <div className="flex items-center gap-3">
             <span
@@ -505,28 +530,22 @@ export function WorklistSummary({ detail: d, onRefresh, refreshing = false }: Wo
           </div>
         )}
 
-        <div className="mt-5 grid grid-cols-2 gap-x-6 gap-y-4 md:grid-cols-3">
-          <Field label={t('apercuType')} value={kindKey ? t(kindKey) : d.kind} />
-          <Field label={t('apercuService')} value={d.service ?? dash} />
-          <Field label={t('apercuCadence')} value={d.cadence ?? dash} />
-          <Field label={t('apercuLieu')} value={place} />
-          <Field label={t('fPrestataire')} value={d.prestataire?.name ?? dash} />
-          <Field label={t('apercuProchaineVisite')} value={d.nextVisitAt ? visitLabel(d.nextVisitAt, t) : dash} />
-          <Field label={t('apercuEmail')} value={d.clientEmail ?? dash} />
-          <Field
-            label={t('apercuTraite')}
-            value={
-              d.traite ? (
-                <>
-                  <Glyph icon={Check} />
-                  {d.traiteAt ? ' ' + visitLabel(d.traiteAt, t) : ''}
-                </>
-              ) : (
-                dash
-              )
-            }
-          />
-        </div>
+        {/* the dossier: who asked, who receives it, what was asked, every file — the flat
+            fields below only for an answer without it (an older API) */}
+        {d.client ? (
+          <CommandeDossier detail={d} client={d.client} />
+        ) : (
+          <div className="mt-5 grid grid-cols-2 gap-x-6 gap-y-4 md:grid-cols-3">
+            <Field label={t('apercuType')} value={kindKey ? t(kindKey) : d.kind} />
+            <Field label={t('apercuService')} value={d.service ?? dash} />
+            <Field label={t('apercuCadence')} value={d.cadence ?? dash} />
+            <Field label={t('apercuLieu')} value={place} />
+            <Field label={t('fPrestataire')} value={d.prestataire?.name ?? dash} />
+            <Field label={t('apercuProchaineVisite')} value={prochaineVisite} />
+            <Field label={t('apercuEmail')} value={d.clientEmail ?? dash} />
+            <Field label={t('apercuTraite')} value={traite} />
+          </div>
+        )}
 
         {/* devis */}
         {devis.length > 0 && (

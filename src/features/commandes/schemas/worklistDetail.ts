@@ -147,6 +147,160 @@ export const worklistJournalEntrySchema = z.object({
 });
 export type WorklistJournalEntry = z.infer<typeof worklistJournalEntrySchema>;
 
+// ============================================================================
+// The commande's dossier — four grouped blocks the GET builds, identical for
+// every status and kind of line: who asked (`client`), who receives the
+// commande (`prestataires`), what was asked (`demande`) and every file
+// (`fichiers`). The answers of the page's POST actions carry the four as null:
+// the page refetches the GET after every action and never reads them there.
+//
+// Display only — no button depends on them — so everything but the ids and the
+// names is widened, and a block that still does not read is dropped (`dossier`
+// below) rather than failing the page: the flat members above say the same.
+// ============================================================================
+
+/** pending « En attente » · verified « Vérifié » · rejected « Rejeté » */
+const dossierKycSchema = z.object({ statut: z.string(), label: z.string().nullish() });
+const dossierCodeLabelSchema = z.object({ code: z.string(), label: z.string() });
+
+/** The company that made the demande. */
+export const commandeClientSchema = z.object({
+  companyId: z.string(),
+  /** Trade name, else legal name. */
+  nom: z.string(),
+  raisonSociale: z.string().nullish(),
+  nomCommercial: z.string().nullish(),
+  /** As stored: a document URL (needs the bearer token), a public URL or a `data:` URI. */
+  logoUrl: z.string().nullish(),
+  kyc: dossierKycSchema.nullish(),
+  contact: z.string().nullish(),
+  telephone: z.string().nullish(),
+  email: z.string().nullish(),
+  wilaya: z.string().nullish(),
+  commune: z.string().nullish(),
+  adresse: z.string().nullish(),
+  rc: z.string().nullish(),
+  nif: z.string().nullish(),
+  nis: z.string().nullish(),
+  effectif: z.number().nullish(),
+  actif: z.boolean().nullish(),
+  inscritLe: z.string().nullish(),
+});
+export type CommandeClient = z.infer<typeof commandeClientSchema>;
+
+/**
+ * One company that receives the commande. Before a contract: everyone
+ * consulted. On a contract: the retained one first (`retenu`), then the others
+ * consulted — the retained one alone, with no `devis`, when it was created by
+ * phone.
+ */
+export const commandePrestataireSchema = z.object({
+  companyId: z.string(),
+  nom: z.string(),
+  raisonSociale: z.string().nullish(),
+  logoUrl: z.string().nullish(),
+  /** retenu · consulte */
+  role: z.string().nullish(),
+  roleLabel: z.string().nullish(),
+  retenu: z.boolean().nullish(),
+  telephone: z.string().nullish(),
+  email: z.string().nullish(),
+  wilaya: z.string().nullish(),
+  commune: z.string().nullish(),
+  kyc: dossierKycSchema.nullish(),
+  /** Null until the company has a review. */
+  note: z.number().nullish(),
+  nombreAvis: z.number().nullish(),
+  missions: z.number().nullish(),
+  effectif: z.number().nullish(),
+  inviteLe: z.string().nullish(),
+  /** Mirrors this company's line of `devis[]`: attente · recu · valide · refuse. */
+  devis: z
+    .object({
+      devisId: z.string().nullish(),
+      statut: z.string(),
+      statutLabel: z.string().nullish(),
+      montantCredits: z.number().nullish(),
+    })
+    .nullish(),
+});
+export type CommandePrestataire = z.infer<typeof commandePrestataireSchema>;
+
+/** What was asked. Null on a contract created by phone: there is no demande. */
+export const commandeDemandeSchema = z.object({
+  id: z.string(),
+  reference: z.string().nullish(),
+  titre: z.string().nullish(),
+  description: z.string().nullish(),
+  categorie: dossierCodeLabelSchema.nullish(),
+  sousCategories: z.array(dossierCodeLabelSchema).nullish(),
+  wilaya: z.string().nullish(),
+  commune: z.string().nullish(),
+  adresseExacte: z.string().nullish(),
+  superficieM2: z.number().nullish(),
+  /** « Récurrent » | « Ponctuel » */
+  cadence: z.string().nullish(),
+  /** Null on a one-off demande. */
+  frequence: z.string().nullish(),
+  dateSouhaitee: z.string().nullish(),
+  deadline: z.string().nullish(),
+  budgetMinCredits: z.number().nullish(),
+  budgetMaxCredits: z.number().nullish(),
+  contraintes: z.string().nullish(),
+  criteres: z.string().nullish(),
+  envoyeeLe: z.string().nullish(),
+  creeLe: z.string().nullish(),
+  /** Set when the demande started from an annonce that still exists. */
+  annonce: z.object({ id: z.string(), titre: z.string().nullish() }).nullish(),
+});
+export type CommandeDemande = z.infer<typeof commandeDemandeSchema>;
+
+export const commandeFichierSchema = z.object({
+  id: z.string(),
+  /** Set when `source` is `document`: the id the panel's preview and download take. */
+  documentId: z.string().nullish(),
+  /** document (bearer-protected, opened by `documentId`) · annonce_photo (public `url`) */
+  source: z.string(),
+  nom: z.string(),
+  contentType: z.string().nullish(),
+  /** pdf · image · autre */
+  type: z.string().nullish(),
+  tailleOctets: z.number().nullish(),
+  /** Absolute. Never followed for a document — an <a> carries no token. */
+  url: z.string().nullish(),
+  urlApercu: z.string().nullish(),
+  ajouteLe: z.string().nullish(),
+  /** The company that owns the file, when it is a party: `role` is client · prestataire. */
+  ajoutePar: z.object({ companyId: z.string().nullish(), nom: z.string(), role: z.string().nullish() }).nullish(),
+  nature: z.string().nullish(),
+  natureLabel: z.string().nullish(),
+  devisId: z.string().nullish(),
+  factureId: z.string().nullish(),
+  /** An `occurrences[].id`, on facture and litige files. */
+  occurrenceId: z.string().nullish(),
+  occurrenceNumero: z.number().nullish(),
+  /** On a visit line: true only for the facture / litige files of THAT visit. Always true elsewhere. */
+  deCetteLigne: z.boolean().nullish(),
+});
+export type CommandeFichier = z.infer<typeof commandeFichierSchema>;
+
+/** Only the non-empty groups, in order: demande · annonce · devis · facture · litige. */
+export const commandeFichiersSchema = z.object({
+  total: z.number().nullish(),
+  groupes: z
+    .array(z.object({ code: z.string(), label: z.string().nullish(), fichiers: z.array(commandeFichierSchema) }))
+    .nullish(),
+});
+export type CommandeFichiers = z.infer<typeof commandeFichiersSchema>;
+
+/** A dossier block: null on the POST answers and on an older API, dropped when it does not read. */
+function dossier<T extends z.ZodType>(schema: T, name: string) {
+  return schema.nullish().catch((ctx) => {
+    if (import.meta.env.DEV) console.warn(`[commandes] bloc « ${name} » illisible, ignoré`, ctx.issues);
+    return null;
+  });
+}
+
 export const worklistDetailSchema = z.object({
   id: z.string(),
   kind: z.string(), // 'rfq' | 'visite'
@@ -184,6 +338,11 @@ export const worklistDetailSchema = z.object({
   devis: z.array(worklistDevisSchema).nullish(),
   journal: z.array(worklistJournalEntrySchema).nullish(),
   createdAt: z.string(),
+  // The dossier — see above. Filled by the GET only.
+  client: dossier(commandeClientSchema, 'client'),
+  prestataires: dossier(z.array(commandePrestataireSchema), 'prestataires'),
+  demande: dossier(commandeDemandeSchema, 'demande'),
+  fichiers: dossier(commandeFichiersSchema, 'fichiers'),
   /**
    * POST …/next-action only: the commande id after the action. The console
    * follows it when it differs from the id it posted, instead of reopening a

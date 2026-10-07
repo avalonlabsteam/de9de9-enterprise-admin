@@ -3,6 +3,15 @@
 // multipart/form-data: the JSON `payload` plus every photo and document as a
 // `files` part. The client comes from the search-context commande when there
 // is one, else is picked among the worklist's clients.
+//
+// The server REPLACES the demande with what the brief carries — title,
+// description, services, place, dates, constraints (seen live: a send left on
+// its defaults turned a client's title into the category name and emptied its
+// description) — and stores the brief's files with the demande's own. So the
+// form starts from the demande, and the demande's files are shown as already
+// attached instead of being sent a second time. One of them can be taken out:
+// it is only marked, and deleted from the demande (DELETE /documents/{id}) when
+// the brief is sent — a form closed without sending deletes nothing.
 import { useState } from 'react';
 import type { ChangeEvent, ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -10,7 +19,7 @@ import { Controller, useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { toast } from 'sonner';
-import { type LucideIcon, ClipboardList, ImageIcon, Lock, Paperclip, Plus, TriangleAlert, X } from 'lucide-react';
+import { type LucideIcon, ClipboardList, FileCheck, FileX, ImageIcon, Lock, Paperclip, Plus, TriangleAlert, Undo2, X } from 'lucide-react';
 import { useL, useT } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 import { problemMessage } from '@/api/problem';
@@ -20,7 +29,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Glyph } from '@/components/common/Glyph';
 import { useCommunes, useWilayas } from '@/features/geo/api/geo';
 import { findByNom } from '@/features/geo/lib/geo';
-import { b2bRefusalOf, useDemanderDevis, type CtxCommande } from '../api/prestataires';
+import { b2bRefusalOf, retirerPieceJointe, useDemanderDevis, type CtxCommande } from '../api/prestataires';
 import { CADENCE, FREQUENCE, type DemandeDevisPayload } from '../schemas/demandeDevis';
 import { SERVICE_CAT, TAXO, catObj, slugify } from '../lib/taxonomy';
 import { selectionActions } from '../stores/selectionStore';
@@ -78,6 +87,23 @@ const invalidCls = 'border-de9-red';
 /** « 2026-09-22 » from a date input → « 2026-09-22T00:00:00Z ». */
 const isoDay = (day: string): string => `${day}T00:00:00Z`;
 
+/** The `sub` value that stands for the services the client ticked: sent back as they are. */
+const SUBS_DEMANDE = '__demande__';
+
+/** An instant → yyyy-mm-dd on Algiers' calendar, the day the client picked, for a date input. '' when unset. */
+function algiersDay(iso: string | null | undefined): string {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Algiers', year: 'numeric', month: '2-digit', day: '2-digit' }).format(d);
+}
+
+/** « Hebdomadaire » → the form's value; daily when the demande names none. */
+function frequenceOf(label: string | null | undefined): BriefFormValues['frequence'] {
+  const s = (label ?? '').toLowerCase();
+  return s.startsWith('hebdo') ? 'hebdomadaire' : s.startsWith('mens') ? 'mensuelle' : 'quotidienne';
+}
+
 /** A number from a numeric input, or undefined when left empty. */
 function numberOrUndefined(value: string): number | undefined {
   if (!value.trim()) return undefined;
@@ -108,6 +134,43 @@ function FileChip({ icon, name, onRemove }: { icon: LucideIcon; name: string; on
       <button type="button" onClick={onRemove} className="cursor-pointer text-[13px] text-de9-faint">
         <Glyph icon={X} />
       </button>
+    </div>
+  );
+}
+
+/**
+ * A file the demande already carries — never sent again. Taking it out only
+ * marks it (`removed`): it is deleted when the brief is sent, and can be put
+ * back until then. Without `onToggle` it cannot be taken out.
+ */
+function AttachedChip({ name, removed, onToggle }: { name: string; removed: boolean; onToggle?: () => void }) {
+  const t = useT();
+  const action = t(removed ? 'briefRetablirDoc' : 'briefRetirerDoc');
+  return (
+    <div
+      className={cn(
+        'flex items-center gap-[7px] rounded-sm border border-de9-line px-[11px] py-2',
+        removed ? 'border-dashed bg-card' : 'bg-secondary',
+      )}
+    >
+      <Glyph icon={removed ? FileX : FileCheck} className={cn('text-[15px]', removed ? 'text-de9-red' : 'text-de9-teal')} />
+      <span
+        className={cn(
+          'max-w-[160px] overflow-hidden text-ellipsis whitespace-nowrap text-[12px] font-semibold text-de9-slate',
+          removed && 'line-through opacity-60',
+        )}
+        title={name}
+      >
+        {name}
+      </span>
+      <span className={cn('text-[10.5px] font-bold', removed ? 'text-de9-red' : 'text-de9-gray')}>
+        {t(removed ? 'briefDocSupprimeEnvoi' : 'briefDejaJoint')}
+      </span>
+      {onToggle && (
+        <button type="button" onClick={onToggle} aria-label={action} title={action} className="cursor-pointer text-[13px] text-de9-faint">
+          <Glyph icon={removed ? Undo2 : X} />
+        </button>
+      )}
     </div>
   );
 }
@@ -156,12 +219,26 @@ function BriefModalContent({ onOpenChange, selected, ctx, filters }: Omit<BriefM
   const [docs, setDocs] = useState<File[]>([]);
   // Recipients a send refused (B2B access suspended): out of the selection, named here.
   const [retires, setRetires] = useState<string[]>([]);
+  // The demande's files the admin took out, by file id: deleted when the brief is sent, restorable until then.
+  const [aRetirer, setARetirer] = useState<string[]>([]);
+  // Those a send already deleted: gone, whatever the context still lists while it reads again.
+  const [supprimes, setSupprimes] = useState<string[]>([]);
+  const [retrait, setRetrait] = useState(false);
 
   const pick = (value: string): string => (value && value !== 'all' ? value : '');
+  // What the client asked: the form starts from it (see the header).
+  const demande = ctx?.demande ?? null;
+  const demandeCat = demande?.categorie ? TAXO.find((c) => slugify(c.fr) === demande.categorie?.code) : undefined;
+  const demandeSubs = demandeCat ? (demande?.sousCategories ?? []) : [];
+  // The demande's own attachments — already part of what the prestataires are asked.
+  const dejaJoints = (ctx?.fichiers?.groupes ?? [])
+    .filter((g) => g.code === 'demande')
+    .flatMap((g) => g.fichiers)
+    .filter((f) => !supprimes.includes(f.id));
   // Live context rows carry the taxonomy label as `service`, mock ones a service name.
-  const ctxCategory = ctx?.service
-    ? (TAXO.find((c) => c.fr === ctx.service)?.id ?? SERVICE_CAT[ctx.service])
-    : undefined;
+  const ctxCategory =
+    demandeCat?.id ??
+    (ctx?.service ? (TAXO.find((c) => c.fr === ctx.service)?.id ?? SERVICE_CAT[ctx.service]) : undefined);
 
   const {
     register,
@@ -172,22 +249,23 @@ function BriefModalContent({ onOpenChange, selected, ctx, filters }: Omit<BriefM
   } = useForm<BriefFormValues>({
     resolver: zodResolver(briefFormSchema),
     defaultValues: {
-      title: ctx?.service ?? '',
+      title: demande?.titre ?? ctx?.service ?? '',
       categoryId: ctxCategory ? String(ctxCategory) : pick(filters.cat),
-      sub: ctx ? '' : pick(filters.sub),
-      description: '',
+      sub: demandeSubs.length > 0 ? SUBS_DEMANDE : ctx ? '' : pick(filters.sub),
+      description: demande?.description ?? '',
       message: '',
-      budgetMin: '',
-      budgetMax: '',
-      superficie: '',
-      adresse: '',
-      commune: ctx?.commune ?? pick(filters.commune),
-      wilaya: ctx?.wilaya ?? pick(filters.wilaya),
-      cadence: /r[ée]current/i.test(ctx?.cadence ?? '') ? 'recurrent' : 'ponctuel',
-      frequence: 'quotidienne',
-      dateSouhaitee: '',
-      deadline: '',
-      contraintes: '',
+      budgetMin: demande?.budgetMinCredits != null ? String(demande.budgetMinCredits) : '',
+      budgetMax: demande?.budgetMaxCredits != null ? String(demande.budgetMaxCredits) : '',
+      superficie: demande?.superficieM2 != null ? String(demande.superficieM2) : '',
+      adresse: demande?.adresseExacte ?? '',
+      commune: demande?.commune ?? ctx?.commune ?? pick(filters.commune),
+      wilaya: demande?.wilaya ?? ctx?.wilaya ?? pick(filters.wilaya),
+      cadence: /r[ée]current/i.test(demande?.cadence ?? ctx?.cadence ?? '') ? 'recurrent' : 'ponctuel',
+      frequence: frequenceOf(demande?.frequence),
+      dateSouhaitee: algiersDay(demande?.dateSouhaitee),
+      deadline: algiersDay(demande?.deadline),
+      // The brief has one field for both: the client's constraints, then its criteria.
+      contraintes: [demande?.contraintes, demande?.criteres].filter(Boolean).join('\n'),
     },
   });
   const category = catObj(useWatch({ control, name: 'categoryId' }));
@@ -207,6 +285,23 @@ function BriefModalContent({ onOpenChange, selected, ctx, filters }: Omit<BriefM
 
   const onSubmit = handleSubmit(async (v) => {
     if (!ctx) return;
+    // The files taken out leave the demande first: a brief never goes out with a
+    // document the admin removed. One that cannot be deleted stops the send.
+    const sortants = dejaJoints.filter((f) => aRetirer.includes(f.id) && f.documentId);
+    if (sortants.length > 0) {
+      setRetrait(true);
+      try {
+        for (const f of sortants) {
+          await retirerPieceJointe(f.documentId as string);
+          setSupprimes((prev) => [...prev, f.id]);
+        }
+      } catch (err) {
+        toast.error(`${t('briefErrRetirerDoc')} — ${problemMessage(err)}`);
+        return;
+      } finally {
+        setRetrait(false);
+      }
+    }
     const subs = category?.subs ?? [];
     const superficie = numberOrUndefined(v.superficie);
     const budgetMin = numberOrUndefined(v.budgetMin);
@@ -220,7 +315,15 @@ function BriefModalContent({ onOpenChange, selected, ctx, filters }: Omit<BriefM
         title: v.title.trim(),
         description: v.description.trim(),
         categoryCode: category ? slugify(category.fr) : v.categoryId,
-        subCategoryCodes: v.sub && subs.includes(v.sub) ? [slugify(v.sub)] : [],
+        subCategoryCodes:
+          v.sub === SUBS_DEMANDE
+            ? // The client's own services — only while the category is still the demande's.
+              category && category.id === demandeCat?.id
+              ? demandeSubs.map((sc) => sc.code)
+              : []
+            : v.sub && subs.includes(v.sub)
+              ? [slugify(v.sub)]
+              : [],
         wilaya: findByNom(wilayas, v.wilaya)?.nom ?? v.wilaya.trim(),
         commune: findByNom(communes, v.commune)?.nom ?? v.commune.trim(),
         adresseExacte: v.adresse.trim(),
@@ -345,6 +448,12 @@ function BriefModalContent({ onOpenChange, selected, ctx, filters }: Omit<BriefM
 
             <Field label={t('briefFSousCategorie')}>
               <select {...register('sub')} disabled={!category} className={cn(inputCls, 'disabled:opacity-60')}>
+                {/* The demande can name several services, this select one: this entry keeps them all. */}
+                {demandeSubs.length > 0 && category?.id === demandeCat?.id && (
+                  <option value={SUBS_DEMANDE}>
+                    {t('briefSousCategoriesDemande')} : {demandeSubs.map((sc) => sc.label).join(', ')}
+                  </option>
+                )}
                 <option value="">{t('briefToutesSousCategories')}</option>
                 {(category?.subs ?? []).map((s) => (
                   <option key={s} value={s}>
@@ -495,6 +604,18 @@ function BriefModalContent({ onOpenChange, selected, ctx, filters }: Omit<BriefM
 
             <Field label={t('fDocs')} hint={t('optionnel')}>
               <div className="flex flex-wrap gap-[9px]">
+                {dejaJoints.map((f) => (
+                  <AttachedChip
+                    key={f.id}
+                    name={f.nom}
+                    removed={aRetirer.includes(f.id)}
+                    onToggle={
+                      f.documentId
+                        ? () => setARetirer((prev) => (prev.includes(f.id) ? prev.filter((x) => x !== f.id) : [...prev, f.id]))
+                        : undefined
+                    }
+                  />
+                ))}
                 {docs.map((file, i) => (
                   <FileChip
                     key={file.name + i}
@@ -520,10 +641,10 @@ function BriefModalContent({ onOpenChange, selected, ctx, filters }: Omit<BriefM
             </button>
             <button
               type="submit"
-              disabled={!ctx || demander.isPending || selected.length === 0}
+              disabled={!ctx || demander.isPending || retrait || selected.length === 0}
               className="cursor-pointer rounded-full bg-de9-teal px-6 py-[13px] text-[13.5px] font-bold text-white disabled:opacity-60"
             >
-              {demander.isPending ? t('briefEnvoiEnCours') : `${t('envoyerBrief')} (${selected.length})`}
+              {demander.isPending || retrait ? t('briefEnvoiEnCours') : `${t('envoyerBrief')} (${selected.length})`}
             </button>
           </div>
         </form>

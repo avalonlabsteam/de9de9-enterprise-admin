@@ -2,15 +2,16 @@
 // page — the annonce as its company reads it, the company, the review facts,
 // de9de9's buttons (`actions`, drawn as sent) and the history. The five
 // actions answer the same shape: the page is replaced with the answer.
-import { useState, type ReactNode } from 'react';
+import { Fragment, useState, type ReactNode } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
-import { ArrowRight, Check, ChevronLeft, Circle, Hourglass, RefreshCw, TriangleAlert } from 'lucide-react';
+import { ArrowRight, Check, ChevronLeft, Circle, ExternalLink, FileText, Hourglass, RefreshCw, TriangleAlert } from 'lucide-react';
 import { useT, type TKey } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Glyph } from '@/components/common/Glyph';
 import { fmtAlger } from '@/features/comptabilite/lib/comptabilite';
+import { fmtSize } from '@/features/kyc/lib/kyc';
 import { CategoryIcon } from '@/features/prestataires/components/CategoryIcon';
 import { refreshAnnonces, reloadAnnonce, useAnnonceAction, useAnnonceDetail } from '../api/annonces';
 import {
@@ -379,10 +380,24 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
   );
 }
 
+/** The five networks the form offers; another code prints as the server spells it. */
+const RESEAU_LABEL: Record<string, string> = {
+  facebook: 'Facebook',
+  instagram: 'Instagram',
+  tiktok: 'TikTok',
+  snapchat: 'Snapchat',
+  linkedin: 'LinkedIn',
+};
+
+/** The server only stores https addresses on the network's own domain; anything else is not followed. */
+const isHttps = (url: string): boolean => /^https:\/\//i.test(url);
+
 function FicheB2b({ a }: { a: AnnonceB2b }) {
   const t = useT();
   const taxo = taxoOf(a.categorie?.code);
   const zones = a.zones ?? [];
+  const liens = Object.entries(a.liensSociaux ?? {}).filter((e): e is [string, string] => !!e[1]);
+  const documents = a.documents ?? [];
   return (
     <div className="grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2">
       <Field label={t('annCategorie')}>
@@ -456,6 +471,63 @@ function FicheB2b({ a }: { a: AnnonceB2b }) {
         )}
       </Field>
       <Field label={t('annDemandesIssues')}>{a.demandesIssues?.label ?? '—'}</Field>
+      {/* The company's own pages: read them when reviewing the annonce. */}
+      <div className="sm:col-span-2">
+        <Field label={t('annReseaux')}>
+          {liens.length ? (
+            <span className="flex flex-wrap gap-1.5">
+              {liens.map(([code, url]) =>
+                isHttps(url) ? (
+                  <a key={code} href={url} target="_blank" rel="noopener noreferrer" title={url} className={cn(CHIP, 'no-underline hover:underline')}>
+                    {RESEAU_LABEL[code] ?? code} <Glyph icon={ExternalLink} />
+                  </a>
+                ) : (
+                  <span key={code} title={url} className={CHIP}>
+                    {RESEAU_LABEL[code] ?? code}
+                  </span>
+                ),
+              )}
+            </span>
+          ) : (
+            '—'
+          )}
+        </Field>
+      </div>
+      <div className="sm:col-span-2">
+        <Field label={t('annDocuments')}>
+          {documents.length ? (
+            <span className="flex flex-col">
+              {documents.map((doc) => (
+                <span key={doc.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-de9-line py-2 last:border-b-0">
+                  <span className="text-[15px] text-de9-gray">
+                    <Glyph icon={FileText} />
+                  </span>
+                  <span className="min-w-0 flex-1 basis-[180px]">
+                    <bdi className="block truncate text-[12.5px] font-bold" title={doc.nom}>
+                      {doc.nom}
+                    </bdi>
+                    {/* Each part isolated: a size and a date keep their own order in the Arabic UI. */}
+                    <span className="block text-[11px] text-de9-gray">
+                      {[fmtSize(doc.tailleOctets, t), fmtAlger(doc.ajouteLe)].filter(Boolean).map((part, i) => (
+                        <Fragment key={i}>
+                          {i > 0 && ' · '}
+                          <bdi>{part}</bdi>
+                        </Fragment>
+                      ))}
+                    </span>
+                  </span>
+                  {/* Public like a photo, and never framed: a new tab. */}
+                  <a href={doc.url} target="_blank" rel="noopener noreferrer" className="flex-none text-[12px] font-bold text-de9-teal-dark no-underline hover:underline">
+                    {t('commonOuvrir')} <Glyph icon={ExternalLink} />
+                  </a>
+                </span>
+              ))}
+            </span>
+          ) : (
+            '—'
+          )}
+        </Field>
+      </div>
     </div>
   );
 }
