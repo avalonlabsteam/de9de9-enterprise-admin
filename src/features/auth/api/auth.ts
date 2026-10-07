@@ -30,8 +30,11 @@ export const authClient = axios.create({
 // Credentials and tokens are masked by the logger before anything is printed.
 attachHttpLogger(authClient);
 
-/** Machine-readable reason, so the UI can localize instead of echoing English. */
-export type AuthFailureKind = 'credentials' | 'network' | 'server';
+/**
+ * Machine-readable reason, so the UI can localize instead of echoing English.
+ * `forbidden`: the sign-in is the admins' own — a 403 is an account that is not one.
+ */
+export type AuthFailureKind = 'credentials' | 'forbidden' | 'network' | 'server';
 
 export interface AuthFailure {
   kind: AuthFailureKind;
@@ -61,21 +64,26 @@ function toAuthError(err: unknown): AuthError {
   const parsed = problemDetailsSchema.safeParse(data);
   const code = parsed.success ? (parsed.data.code ?? null) : null;
   const traceId = parsed.success ? (parsed.data.traceId ?? null) : null;
-  const kind: AuthFailureKind = status === 401 || status === 400 ? 'credentials' : 'server';
+  const kind: AuthFailureKind = status === 401 || status === 400 ? 'credentials' : status === 403 ? 'forbidden' : 'server';
 
   return new AuthError({ kind, code, traceId });
 }
 
 /**
- * POST /auth/login — on success the session is written to the auth store and the
- * query cache is cleared so no data from a previous user survives the switch.
+ * POST /auth/admin/login — the admins' own sign-in (/api/v1/auth/admin/login
+ * behind the proxy), not the companies' /auth/login. The route came without
+ * its contract: it is ASSUMED to take the same body and answer the same
+ * session as /auth/login did. An answer of another shape is reported as
+ * `malformed_response`; a 403 as an account that is not an admin's.
+ * On success the session is written to the auth store and the query cache is
+ * cleared so no data from a previous user survives the switch.
  */
 export function useLogin() {
   return useMutation<LoginResponse, AuthError, LoginInput>({
     mutationFn: async (input) => {
       let data: unknown;
       try {
-        const res = await authClient.post('/auth/login', input);
+        const res = await authClient.post('/auth/admin/login', input);
         data = res.data;
       } catch (err) {
         throw toAuthError(err);
@@ -136,7 +144,7 @@ async function doRefresh(): Promise<string> {
     throw authError;
   }
 
-  // Same contract as login (verified against the swagger example).
+  // Same contract as the login's answer (verified against the swagger example).
   const parsed = loginResponseSchema.safeParse(data);
   if (!parsed.success) {
     throw new AuthError({ kind: 'server', code: 'malformed_response', traceId: null });

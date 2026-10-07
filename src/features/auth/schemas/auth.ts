@@ -1,8 +1,10 @@
 import { z } from 'zod';
 
 // ============================================================================
-// Contract: POST {VITE_AUTH_API_URL}/auth/login
-// Source: https://api.entreprise.de9de9.dz/swagger
+// Contract: POST {VITE_AUTH_API_URL}/auth/admin/login  (real: /api/v1/auth/admin/login)
+// The admins' sign-in. Its own contract was not shared: the shapes below are
+// those of the companies' /auth/login (read from
+// https://api.entreprise.de9de9.dz/swagger and verified live), assumed the same.
 // ============================================================================
 
 // ---------- request ----------

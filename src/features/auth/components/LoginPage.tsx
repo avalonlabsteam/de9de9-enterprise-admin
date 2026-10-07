@@ -21,6 +21,7 @@ const THEME_ICONS: Record<ThemeMode, typeof Sun> = {
 
 const FAILURE_KEY: Record<AuthFailureKind, TKey> = {
   credentials: 'loginErrIdentifiants',
+  forbidden: 'loginErrNonAdmin',
   network: 'loginErrReseau',
   server: 'loginErrServeur',
 };
