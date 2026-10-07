@@ -88,6 +88,17 @@ const photoSchema = z.object({
 
 const etapeSchema = z.object({ code: z.string(), label: z.string(), complete: z.boolean() });
 
+/** A PDF the company attached to a B2B annonce — a brochure, a price list, a certificate. Never mixed with the photos. */
+const documentSchema = z.object({
+  id: z.string(),
+  nom: z.string(),
+  /** Absolute and public, like a photo's: a plain link, opened in a new tab (the server forbids framing). */
+  url: z.string(),
+  tailleOctets: z.number().nullish(),
+  contentType: z.string().nullish(),
+  ajouteLe: z.string().nullish(),
+});
+
 /** The twelve members both kinds share. `actions` is always empty for an admin. */
 const annonceCommon = {
   id: z.string(),
@@ -148,6 +159,9 @@ export const annonceB2bSchema = z.object({
   references: z.string().nullish(),
   certifications: z.array(z.string()).nullish(),
   demandesIssues: z.object({ count: z.number(), label: z.string().nullish() }).nullish(),
+  /** facebook · instagram · tiktok · snapchat · linkedin → the page's address, or null. de9de9 checks them at review. */
+  liensSociaux: z.record(z.string(), z.string().nullable()).nullish(),
+  documents: z.array(documentSchema).nullish(),
   origine: z.string().nullish(),
   soumiseLe: z.string().nullish(),
   publieeLe: z.string().nullish(),

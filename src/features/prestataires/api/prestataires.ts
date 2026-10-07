@@ -2,8 +2,10 @@ import axios from 'axios';
 import { keepPreviousData, useMutation, useQuery } from '@tanstack/react-query';
 import { z } from 'zod';
 import { apiClient } from '@/api/apiClient';
+import { deleteDocument } from '@/api/documents';
 import { asRecord } from '@/lib/pick';
 import { queryClient } from '@/lib/queryClient';
+import { commandeDemandeSchema, commandeFichiersSchema } from '@/features/commandes/schemas/worklistDetail';
 import type { DemandeDevisPayload } from '../schemas/demandeDevis';
 import { prestataireSchema } from '../schemas/prestataire';
 import type { Prestataire } from '../schemas/prestataire';
@@ -99,8 +101,10 @@ export function usePrestataires() {
 // ---------------------------------------------------------------------------
 // Search context commande (`?ctx=`): read from the worklist detail, which takes
 // the commande id for live rows and mock ones alike and carries the client
-// company id the brief needs. Local minimal schema on purpose: the commandes
-// feature is built concurrently, so we do NOT import from it. Own cache key —
+// company id the brief needs. A minimal schema of its own — what the search
+// and the brief read — plus two blocks of the commande's dossier: the demande
+// the brief starts from, and its files. As on the commande page, a block that
+// does not read is dropped rather than failing the search. Own cache key —
 // ['commandes', 'worklist-detail', id] holds the full, aliased detail.
 // ---------------------------------------------------------------------------
 const ctxCommandeSchema = z.looseObject({
@@ -113,6 +117,10 @@ const ctxCommandeSchema = z.looseObject({
   wilaya: z.string().nullish(),
   commune: z.string().nullish(),
   cadence: z.string().nullish(), // 'Ponctuel' | 'Récurrent'
+  /** What the client asked; absent on a mock row, on an older API and on a contract created by phone. */
+  demande: commandeDemandeSchema.nullish().catch(null),
+  /** Every file of the commande; the group `demande` holds the demande's attachments. */
+  fichiers: commandeFichiersSchema.nullish().catch(null),
 });
 export type CtxCommande = z.infer<typeof ctxCommandeSchema>;
 
@@ -157,6 +165,16 @@ export function useDemanderDevis(rfqId: string) {
       });
     },
   });
+}
+
+/**
+ * DELETE /documents/{documentId} — take one of the demande's own attachments
+ * off, for good, before its brief leaves. Everything under ['commandes'] reads
+ * again: the commande page's files, and the brief's context.
+ */
+export async function retirerPieceJointe(documentId: string): Promise<void> {
+  await deleteDocument(documentId);
+  void queryClient.invalidateQueries({ queryKey: ['commandes'] });
 }
 
 /**

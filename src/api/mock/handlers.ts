@@ -556,6 +556,8 @@ passthrough('GET', '/comptabilite/bilan');
 // Stored documents (KYC pieces, contracts, recharge pieces) — the download
 // every document's `url` points at.
 passthrough('GET', '/documents/:documentId/download');
+// Taking a file off a demande before its brief leaves (BriefModal).
+passthrough('DELETE', '/documents/:documentId');
 
 register('GET', '/credits', (req) => {
   const q = req.query;
