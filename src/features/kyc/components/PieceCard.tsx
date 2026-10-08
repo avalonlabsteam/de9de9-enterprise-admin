@@ -1,7 +1,7 @@
 // One KYC piece on the review screen: the current file (inline preview), its
 // typed number, the verdict so far, « Valider » / « Refuser » — or the
 // server's `blocage.message` — and the replaced versions.
-import { useState } from 'react';
+import { useId, useRef, useState } from 'react';
 import type { ChangeEvent, FormEvent } from 'react';
 import {
   Check,
@@ -29,6 +29,7 @@ import {
 } from '../api/kyc';
 import { KYC_FILE_MAX_BYTES, type KycRevuePiece, type KycVersion } from '../schemas/kyc';
 import {
+  NUMBER_EXAMPLE,
   docStatutLabel,
   docTone,
   isRevocation,
@@ -37,7 +38,9 @@ import {
   kindLong,
   kindShort,
   kycErrorMessage,
+  numberLengthError,
   pieceVerdicts,
+  refusedNumbers,
 } from '../lib/kyc';
 import { useDocPreview, useSaveDocument } from '../api/preview';
 import { PreviewDialog, PreviewFrame } from './DocPreview';
@@ -94,12 +97,43 @@ export function PieceCard({ piece, companyId, enRevue, onVerdict }: PieceCardPro
   const field = KYC_NUMBER_FIELD[piece.kind];
   const numeroLabel = piece.numeroLabel || `N° ${short}`;
   const [draft, setDraft] = useState<string | null>(null);
+  // Why the number was not saved, kept under the input until it is retyped: the
+  // server's sentence for a refused RC / NIF / NIS, or — `own` — the count of
+  // digits this form objects to before asking. Its own objection is said once:
+  // « Enregistrer quand même » sends the same text, because the server stays the
+  // judge (its control can be switched off, and stores the number as typed then).
+  const [numberError, setNumberError] = useState<{ message: string; own: boolean } | null>(null);
+  const [overridden, setOverridden] = useState<string | null>(null);
+  const numberInput = useRef<HTMLInputElement>(null);
+  const numberErrorId = useId();
+  const closeNumber = (): void => {
+    setDraft(null);
+    setNumberError(null);
+    setOverridden(null);
+  };
+  const refuseNumber = (message: string, own = false): void => {
+    setNumberError({ message, own });
+    numberInput.current?.focus();
+  };
   const saveNumber = (e: FormEvent): void => {
     e.preventDefault();
     const value = (draft ?? '').trim();
     if (!field || !value) return;
     if (value === (piece.numero ?? '')) {
-      setDraft(null);
+      closeNumber();
+      return;
+    }
+    const count = overridden === value ? null : numberLengthError(field, value, piece.numero);
+    if (count) {
+      setOverridden(value);
+      refuseNumber(
+        t('kycNumeroLongueur')
+          .replace('{n}', short)
+          .replace('{a}', String(count.expected))
+          .replace('{b}', String(count.secondary))
+          .replace('{c}', String(count.typed)),
+        true,
+      );
       return;
     }
     correct.mutate(
@@ -107,9 +141,15 @@ export function PieceCard({ piece, companyId, enRevue, onVerdict }: PieceCardPro
       {
         onSuccess: () => {
           toast.success(t('kycToastNumero').replace('{n}', numeroLabel));
-          setDraft(null);
+          closeNumber();
         },
-        onError: (err) => toast.error(kycErrorMessage(err, t)),
+        onError: (err) => {
+          // A refused number is said where it was typed. A refusal that names
+          // another number, or any other failure, goes to the toast.
+          const refused = refusedNumbers(err);
+          if (refused && (refused.length === 0 || refused.includes(field))) refuseNumber(kycErrorMessage(err, t));
+          else toast.error(kycErrorMessage(err, t));
+        },
       },
     );
   };
@@ -219,24 +259,49 @@ export function PieceCard({ piece, companyId, enRevue, onVerdict }: PieceCardPro
             ) : (
               <form onSubmit={saveNumber} className="mt-1.5">
                 <input
+                  ref={numberInput}
                   value={draft}
-                  onChange={(e) => setDraft(e.target.value)}
+                  onChange={(e) => {
+                    setDraft(e.target.value);
+                    setNumberError(null);
+                    setOverridden(null);
+                  }}
                   dir="ltr"
                   autoFocus
                   aria-label={numeroLabel}
-                  className="w-full rounded-xs border border-outline bg-card px-3 py-2 font-mono text-[14px] text-de9-ink outline-none focus:border-de9-teal"
+                  aria-invalid={!!numberError}
+                  aria-describedby={numberError ? numberErrorId : undefined}
+                  placeholder={field ? NUMBER_EXAMPLE[field] : undefined}
+                  className={cn(
+                    'w-full rounded-xs border bg-card px-3 py-2 font-mono text-[14px] text-de9-ink outline-none placeholder:text-de9-gray',
+                    numberError ? 'border-de9-red' : 'border-outline focus:border-de9-teal',
+                  )}
                 />
+                {numberError && (
+                  <div
+                    id={numberErrorId}
+                    role="alert"
+                    dir="auto"
+                    className="mt-1.5 text-[11.5px] font-semibold leading-[1.45] text-de9-red"
+                  >
+                    {numberError.message}
+                  </div>
+                )}
                 <div className="mt-2 flex flex-wrap items-center gap-2">
                   <button
                     type="submit"
                     disabled={correct.isPending || !draft.trim()}
                     className="cursor-pointer rounded-full bg-primary px-3 py-[7px] text-[11.5px] font-bold text-primary-foreground disabled:opacity-50"
                   >
-                    {correct.isPending ? t('kycEnvoi') : t('kycEnregistrer')}
+                    {correct.isPending
+                      ? t('kycEnvoi')
+                      : numberError?.own
+                        ? t('kycEnregistrerQuandMeme')
+                        : t('kycEnregistrer')}
                   </button>
                   <button
                     type="button"
-                    onClick={() => setDraft(null)}
+                    onClick={closeNumber}
                     className="cursor-pointer rounded-full bg-card px-3 py-[7px] text-[11.5px] font-bold text-de9-slate"
                   >
                     {t('annuler')}

@@ -250,8 +250,10 @@ export function useKycUploadForCompany() {
   });
 }
 
+export type KycNumberField = 'rc' | 'nif' | 'nis';
+
 /** The company field each piece's number is stored in. */
-export const KYC_NUMBER_FIELD: Record<string, 'rc' | 'nif' | 'nis'> = {
+export const KYC_NUMBER_FIELD: Record<string, KycNumberField> = {
   KycRc: 'rc',
   KycNif: 'nif',
   KycNis: 'nis',
@@ -259,7 +261,7 @@ export const KYC_NUMBER_FIELD: Record<string, 'rc' | 'nif' | 'nis'> = {
 
 export interface KycNumberInput {
   companyId: string;
-  field: 'rc' | 'nif' | 'nis';
+  field: KycNumberField;
   value: string;
 }
 
@@ -268,6 +270,12 @@ export interface KycNumberInput {
  * change the number, PUT the full body back. The raw body is sent back as
  * received, so fields this app does not model survive the round trip. de9de9
  * is never locked out of a number (the change is audited).
+ *
+ * The server judges the format of a number only when it changes (400
+ * `kyc_identifier_invalid`), so the two numbers sent back untouched pass even
+ * when they are old ones that would not today. It stores the number in its own
+ * spelling: the screen shows what the refetched review returns, never the text
+ * that was typed.
  */
 export function useCorrectKycNumber() {
   return useMutation({

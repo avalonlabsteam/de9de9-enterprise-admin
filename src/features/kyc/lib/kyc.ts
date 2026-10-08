@@ -1,11 +1,14 @@
 // Pure presentation helpers for the KYC screens: colours per status, labels
 // the server did not send, dates, sizes, error messages, and the history
 // normalizer. No rule is re-derived here — what may be done comes from the
-// server's flags (peutValider / peutRefuser / blocage).
+// server's flags (peutValider / peutRefuser / blocage). One answer is given
+// ahead of the server: a NIF or NIS with the wrong count of digits
+// (numberLengthError); the server stays the judge of every number.
 import axios from 'axios';
 import type { TKey } from '@/lib/i18n';
 import { problemMessage } from '@/api/problem';
 import { roleLabel } from '@/features/annonces/lib/annonces';
+import type { KycNumberField } from '../api/kyc';
 import type { KycAuditEntry, KycRevuePiece } from '../schemas/kyc';
 
 export type Translate = (key: TKey) => string;
@@ -236,8 +239,23 @@ export function kycProblem(err: unknown): KycProblem {
   };
 }
 
+/**
+ * 400 `kyc_identifier_invalid`: the server refused a typed RC, NIF or NIS. Its
+ * `detail` is the sentence to print (kycErrorMessage gives it); `field` is the
+ * first refused member and `fields` all of them — returned here, `field` first.
+ * Null for any other failure.
+ */
+export function refusedNumbers(err: unknown): string[] | null {
+  if (!axios.isAxiosError(err)) return null;
+  const data = err.response?.data as { code?: unknown; field?: unknown; fields?: unknown } | undefined;
+  if (data?.code !== 'kyc_identifier_invalid') return null;
+  const fields = Array.isArray(data.fields) ? data.fields.filter((f): f is string => typeof f === 'string') : [];
+  return typeof data.field === 'string' && !fields.includes(data.field) ? [data.field, ...fields] : fields;
+}
+
 /** Localized fallback per problem `code` (guide §2 and §3 error tables). */
 const ERROR_KEY: Record<string, TKey> = {
+  kyc_identifier_invalid: 'kycErrIdentifiant',
   kyc_document_superseded: 'kycErrSuperseded',
   kyc_document_changed: 'kycErrChanged',
   kyc_document_already_refused: 'kycErrAlreadyRefused',
@@ -264,6 +282,53 @@ export function kycErrorMessage(err: unknown, t: Translate): string {
     (numeroChange ? 'kycErrNumeroChange' : code ? ERROR_KEY[code] : undefined) ??
     (status !== undefined ? STATUS_KEY[status] : undefined);
   return problemMessage(err, () => (key ? t(key) : undefined));
+}
+
+// ===================== the typed numbers =====================
+
+/** How the register writes an RC — the input's example; the server reads many other spellings. */
+export const NUMBER_EXAMPLE: Partial<Record<KycNumberField, string>> = { rc: '16/00-0123456 B 21' };
+
+/** NIF and NIS are digits only: 15 of them, or 20 / 18 for a secondary establishment. */
+const NUMBER_LENGTHS: Partial<Record<KycNumberField, readonly [number, number]>> = {
+  nif: [15, 20],
+  nis: [15, 18],
+};
+
+/** Spaces and dots out, Arabic digits as 0-9 — part of what the server tidies before it counts. */
+function tidyDigits(raw: string): string {
+  return raw
+    .replace(/[٠-٩]/g, (d) => String(d.charCodeAt(0) - 0x0660))
+    .replace(/[۰-۹]/g, (d) => String(d.charCodeAt(0) - 0x06f0))
+    .replace(/[\s.]/g, '');
+}
+
+export interface NumberLengthError {
+  /** The usual count of digits, and the one of a secondary establishment. */
+  expected: number;
+  secondary: number;
+  typed: number;
+}
+
+/**
+ * The one thing said about a typed number without asking the server: a NIF or
+ * NIS made of digits only, in a count it will refuse. Everything else is left
+ * to it — the RC, whose spellings are too many for one pattern, a text with
+ * letters (it strips a label such as « NIF : » first), and the stored number
+ * typed another way, which is not a change and is not judged.
+ */
+export function numberLengthError(
+  field: KycNumberField,
+  typed: string,
+  stored: string | null | undefined,
+): NumberLengthError | null {
+  const lengths = NUMBER_LENGTHS[field];
+  if (!lengths) return null;
+  const digits = tidyDigits(typed);
+  if (!/^\d+$/.test(digits) || digits === tidyDigits(stored ?? '')) return null;
+  return lengths.includes(digits.length)
+    ? null
+    : { expected: lengths[0], secondary: lengths[1], typed: digits.length };
 }
 
 /** The screen is stale: a colleague decided, a number or a version changed, or the dossier moved. */
