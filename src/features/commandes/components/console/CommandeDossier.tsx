@@ -103,14 +103,8 @@ function Rows({ rows }: { rows: [label: string, value: ReactNode][] }) {
   );
 }
 
-const tel = (n: string | null | undefined): ReactNode =>
-  n ? (
-    <a href={'tel:' + n.replace(/\s/g, '')} dir="ltr" className="text-de9-ink underline decoration-[#C7CFD7] decoration-dotted underline-offset-[3px]">
-      {n}
-    </a>
-  ) : (
-    DASH
-  );
+/** A number to read or copy, not a call link. */
+const tel = (n: string | null | undefined): ReactNode => (n ? <span className="num select-all">{n}</span> : DASH);
 const mail = (e: string | null | undefined): ReactNode =>
   e ? (
     <a href={'mailto:' + e} dir="ltr" className="text-de9-ink underline decoration-[#C7CFD7] decoration-dotted underline-offset-[3px]">

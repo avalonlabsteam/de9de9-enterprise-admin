@@ -5,14 +5,16 @@
 // the next action and its SLA, the dossier (client, prestataires, demande,
 // fichiers — CommandeDossier), the devis — and can run that next action through
 // POST …/next-action when it needs no form (the endpoint takes no body), and
-// validate or refuse each received devis (POST /devis/{devisId}/valider | /refuser),
-// then propose the validated ones to the client (POST /appels-offres/{rfqId}/devis/proposer).
+// validate or refuse each received devis (POST /devis/{devisId}/valider | /refuser).
+// Proposing the validated ones to the client is the S3 next action, run from
+// that same button — the devis list has no button of its own for it.
 import { useState, type ReactNode } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
-import { Check, Lock, Mail, Pencil, Phone, Play, RefreshCw, Search, Send, Timer, X } from 'lucide-react';
+import { Check, Lock, Mail, Pencil, Play, RefreshCw, Search, Timer, X } from 'lucide-react';
 import { Glyph } from '@/components/common/Glyph';
+import { PhoneNumber } from '@/components/common/PhoneNumber';
 import { useT, type TKey } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 import { problemMessage } from '@/api/problem';
@@ -23,7 +25,6 @@ import {
   useDevisDecision,
   usePlanifierOccurrence,
   usePrestataireEquipe,
-  useProposerDevis,
   useWorklistNextAction,
   type DevisDecision,
 } from '../../api/commandes';
@@ -182,7 +183,6 @@ export function WorklistSummary({ detail: d, onRefresh, refreshing = false }: Wo
   const navigate = useNavigate();
   const runNext = useWorklistNextAction(d.id);
   const decide = useDevisDecision();
-  const propose = useProposerDevis(d.id);
   const planifier = usePlanifierOccurrence(d.id);
   const affecter = useAffecterOuvrier(d.id);
   const deposer = useDeposerFacture(d.id);
@@ -254,10 +254,8 @@ export function WorklistSummary({ detail: d, onRefresh, refreshing = false }: Wo
       },
     );
   };
-  // « Proposer au client » sends the validated devis to the client: the S3 → S4
-  // step, so it only shows at S3, and is clickable once a devis is validated.
-  // `toPropose` counts the validated devis it will send.
-  const canPropose = d.currentStatus.code === 'S3' && devis.length > 0;
+  // « Proposer au client » — the S3 → S4 next action — sends the validated devis
+  // to the client; `toPropose` counts the ones it would send.
   const toPropose = devis.filter((dv) => dv.statut === 'valide' && !dv.chosen).length;
   // Hint on what is actionable, not on « not attente »: a devis can be decided
   // only while it is 'recu' with an id, an invited one ('attente') is merely
@@ -280,13 +278,6 @@ export function WorklistSummary({ detail: d, onRefresh, refreshing = false }: Wo
   // S3 with nothing validated: POST …/next-action answers 409 « Validez au moins
   // un devis », so the big Exécuter button must not invite that.
   const s3NothingToPropose = code === 'S3' && toPropose === 0;
-
-  const proposeDevis = (): void => {
-    propose.mutate(undefined, {
-      onSuccess: () => toast.success(t('apercuDevisProposerOk')),
-      onError: (err) => toast.error(actionError(err, t)),
-    });
-  };
 
   /** The devis + verdict in flight, to label only the clicked button « En cours… ». */
   const deciding = decide.isPending ? decide.variables : undefined;
@@ -474,8 +465,8 @@ export function WorklistSummary({ detail: d, onRefresh, refreshing = false }: Wo
                 </span>
               ) : blockingForm ? (
                 /* Not runnable from here — this step's form isn't integrated. Say who
-                   it waits on and offer the ways to chase them; the form key stays in
-                   the tooltip, for us rather than for the user. */
+                   it waits on and how to chase them (the number to dial, the e-mail);
+                   the form key stays in the tooltip, for us rather than for the user. */
                 <>
                   <span
                     title={t('apercuActionFormRequis').replace('{n}', blockingForm)}
@@ -485,9 +476,7 @@ export function WorklistSummary({ detail: d, onRefresh, refreshing = false }: Wo
                     {waitingOn}
                   </span>
                   {next.actor === 'client' && d.clientPhone && (
-                    <a href={'tel:' + d.clientPhone.replace(/\s/g, '')} className={CONTACT_LINK}>
-                      <Glyph icon={Phone} /> {t('apercuAppeler')}
-                    </a>
+                    <PhoneNumber value={d.clientPhone} className="px-1 text-[12px] font-bold text-de9-ink" />
                   )}
                   {next.actor === 'client' && d.clientEmail && (
                     <a href={'mailto:' + d.clientEmail} className={CONTACT_LINK}>
@@ -550,30 +539,8 @@ export function WorklistSummary({ detail: d, onRefresh, refreshing = false }: Wo
         {/* devis */}
         {devis.length > 0 && (
           <div id={DEVIS_ANCHOR} className="mt-5 scroll-mt-24">
-            <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-              <div className={SECTION_LABEL}>
-                {t('apercuDevis')} ({devis.length})
-              </div>
-              {canPropose && (
-                <div className="flex flex-wrap items-center gap-2">
-                  {proposeHint && <span className="text-[11px] font-semibold text-de9-gray">{proposeHint}</span>}
-                  <button
-                    type="button"
-                    onClick={proposeDevis}
-                    disabled={toPropose === 0 || propose.isPending}
-                    className="cursor-pointer rounded-full bg-primary px-3 py-1.5 text-[11.5px] font-bold text-primary-foreground disabled:cursor-not-allowed disabled:opacity-45"
-                  >
-                    {propose.isPending ? (
-                      t('apercuActionEnCours')
-                    ) : (
-                      <>
-                        <Glyph icon={Send} /> {t('apercuDevisProposer')}
-                        {toPropose > 0 ? ` (${toPropose})` : ''}
-                      </>
-                    )}
-                  </button>
-                </div>
-              )}
+            <div className={cn(SECTION_LABEL, 'mb-2')}>
+              {t('apercuDevis')} ({devis.length})
             </div>
             <div className="flex flex-col gap-2">
               {devis.map((dv) => {

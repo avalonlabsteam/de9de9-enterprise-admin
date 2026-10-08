@@ -31,6 +31,7 @@ import { KYC_FILE_MAX_BYTES, type KycRevuePiece, type KycVersion } from '../sche
 import {
   docStatutLabel,
   docTone,
+  isRevocation,
   fmtDateTime,
   fmtSize,
   kindLong,
@@ -331,7 +332,7 @@ export function PieceCard({ piece, companyId, enRevue, onVerdict }: PieceCardPro
                     verdicts.valider.show ? 'min-w-[120px] flex-1' : '',
                   )}
                 >
-                  <Glyph icon={X} /> {t('kycRefuser')}
+                  <Glyph icon={X} /> {t(isRevocation(piece) ? 'kycRevoquer' : 'kycRefuser')}
                 </button>
               )}
             </div>

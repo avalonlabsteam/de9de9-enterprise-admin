@@ -5,13 +5,13 @@
 // company. Opened alone it is a plain directory.
 import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Check, MessageCircle, Phone, Plus, Star, X } from 'lucide-react';
+import { Check, MessageCircle, Plus, Star, X } from 'lucide-react';
 import { useL, useT, type TKey } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 import { problemMessage } from '@/api/problem';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Glyph } from '@/components/common/Glyph';
-import { telHref, waHref } from '@/features/handicap/lib/handicap';
+import { waHref } from '@/features/handicap/lib/handicap';
 import { useCtrDemande, useCtrFiltres, useCtrPros, type CtrProsFilters } from '@/features/contractuels/api/contractuels';
 import {
   CHIP_AMBER,
@@ -520,6 +520,12 @@ function ProRow({ pro: p, action, onPlacer }: { pro: CtrPro; action: { label: st
               )}
             </div>
           )}
+          {/* The number to dial, to read or copy — it was only a call icon's tooltip. */}
+          {p.phone && (
+            <div className="mt-0.5 text-[11px] text-de9-gray">
+              <span className="num select-all">{p.phone}</span>
+            </div>
+          )}
         </div>
       </div>
       <div className="min-w-0 text-[11.5px] text-de9-slate">{lieu || '—'}</div>
@@ -550,14 +556,9 @@ function ProRow({ pro: p, action, onPlacer }: { pro: CtrPro; action: { label: st
       </div>
       <div className="flex items-center justify-end gap-1.5">
         {p.phone && (
-          <>
-            <a href={telHref(p.phone)} aria-label={t('tel')} title={p.phone} className="flex size-[30px] flex-none items-center justify-center rounded-full border border-de9-line text-[13px] text-de9-slate no-underline">
-              <Glyph icon={Phone} />
-            </a>
-            <a href={waHref(p.phone)} target="_blank" rel="noreferrer" aria-label="WhatsApp" title="WhatsApp" className="flex size-[30px] flex-none items-center justify-center rounded-full border border-de9-line text-[13px] text-de9-slate no-underline">
-              <Glyph icon={MessageCircle} />
-            </a>
-          </>
+          <a href={waHref(p.phone)} target="_blank" rel="noreferrer" aria-label="WhatsApp" title="WhatsApp" className="flex size-[30px] flex-none items-center justify-center rounded-full border border-de9-line text-[13px] text-de9-slate no-underline">
+            <Glyph icon={MessageCircle} />
+          </a>
         )}
         <button
           type="button"

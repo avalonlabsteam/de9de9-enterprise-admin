@@ -20,6 +20,7 @@ import {
   dossierToneName,
   fmtDateTime,
   fmtSize,
+  isRevocation,
   kindLong,
   kindShort,
   kycErrorMessage,
@@ -290,7 +291,7 @@ function PieceRow({
                 verdicts.valider.show && 'min-w-[110px] flex-1',
               )}
             >
-              <Glyph icon={X} /> {t('kycRefuser')}
+              <Glyph icon={X} /> {t(isRevocation(piece) ? 'kycRevoquer' : 'kycRefuser')}
             </button>
           )}
         </div>

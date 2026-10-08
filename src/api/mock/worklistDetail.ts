@@ -271,28 +271,6 @@ export const devisValiderHandler = devisDecisionHandler('valider');
 export const devisRefuserHandler = devisDecisionHandler('refuser');
 
 /**
- * POST /appels-offres/:rfqId/devis/proposer — transmit the validated devis to
- * the client (the S3 → S4 step, refused at any other status), with the mock's
- * POST /commandes/:id/devis `propose` state change and journal text. Answers
- * with the updated detail, like the live endpoint.
- */
-export const devisProposerHandler: MockHandler = (req) => {
-  const id = req.pathParams['rfqId'] ?? '';
-  const cmd = cmdById(id);
-  if (!cmd) return problem(404, 'Not Found', `Appel d'offres introuvable : ${id}`);
-  if (flowKey(cmd, projectCommande(cmd)) !== 'devis') {
-    return problem(409, 'Conflict', 'Proposer au client est possible uniquement au statut S3 (en attente des devis).');
-  }
-  const valides = (cmd.devis ?? []).filter((d) => d.status === 'valide');
-  if (!valides.length) {
-    return problem(422, 'Unprocessable Content', 'Validez au moins un devis avant de le proposer au client.');
-  }
-  cmd.proposedToClient = true;
-  addAudit(cmd, valides.length + ' devis validé(s) transmis au client — par de9de9.', 'de9');
-  return { data: worklistDetailOf(cmd) };
-};
-
-/**
  * POST /commandes/worklist/:id/planifier-occurrence — V0 → V1: date the visit
  * and move it to « À confirmer », with the mock's own `plan` state change and
  * journal text. The mock db stores a day only, so the time is accepted and

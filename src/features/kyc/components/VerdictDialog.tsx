@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/compone
 import { Glyph } from '@/components/common/Glyph';
 import { reloadKycRevue, useKycVerdict, type KycVerdict } from '../api/kyc';
 import { KYC_MOTIF_MAX, KYC_NOTE_MAX, type KycRevuePiece } from '../schemas/kyc';
-import { isStaleProblem, kindLong, kindShort, kycErrorMessage, kycProblem } from '../lib/kyc';
+import { isRevocation, isStaleProblem, kindLong, kindShort, kycErrorMessage, kycProblem } from '../lib/kyc';
 
 export interface VerdictTarget {
   piece: KycRevuePiece;
@@ -118,8 +118,8 @@ function VerdictForm({
   const [note, setNote] = useState('');
   const [motifError, setMotifError] = useState<string | null>(null);
 
-  // A refusal of a validated piece is a revocation (fraud, expired RC).
-  const revoking = refusing && piece.statut === 'valide';
+  // A refusal of a validated piece is a revocation (fraud, expired RC): named so, sent the same.
+  const revoking = refusing && isRevocation(piece);
 
   const addPreset = (text: string): void => {
     setMotif((m) => (m.trim() ? `${m.trim()} ${text}` : text).slice(0, KYC_MOTIF_MAX));
@@ -184,7 +184,7 @@ function VerdictForm({
         <Glyph icon={refusing ? X : Check} />
       </div>
       <DialogTitle className="mt-4 text-[19px] leading-normal font-extrabold text-de9-ink">
-        {t(refusing ? 'kycRefuserTitre' : 'kycValiderTitre').replace('{n}', short)}
+        {t(revoking ? 'kycRevoquerTitre' : refusing ? 'kycRefuserTitre' : 'kycValiderTitre').replace('{n}', short)}
       </DialogTitle>
       <DialogDescription className="mt-1 text-[12.5px] text-de9-gray">{long}</DialogDescription>
 
@@ -286,7 +286,7 @@ function VerdictForm({
               : 'bg-[#2FA86A]',
           )}
         >
-          {mutation.isPending ? t('kycEnvoi') : refusing ? t('kycRefuser') : t('kycValider')}
+          {mutation.isPending ? t('kycEnvoi') : revoking ? t('kycRevoquer') : refusing ? t('kycRefuser') : t('kycValider')}
         </button>
       </div>
     </>

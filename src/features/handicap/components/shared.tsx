@@ -1,12 +1,12 @@
 // Small pieces shared by the two Handicap tabs and their dialogs.
 import type { ReactNode } from 'react';
-import { Mail, MessageCircle, Phone, type LucideIcon } from 'lucide-react';
+import { Mail, MessageCircle, type LucideIcon } from 'lucide-react';
 import { useT } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Glyph } from '@/components/common/Glyph';
-import { telHref, waHref } from '../lib/handicap';
+import { waHref } from '../lib/handicap';
 
 export function Pill({ className, children }: { className: string; children: ReactNode }) {
   return (
@@ -52,7 +52,7 @@ export function IconButton({
   );
 }
 
-/** Call · WhatsApp · e-mail — whichever the row has. */
+/** WhatsApp · e-mail — whichever the row has. The phone number is printed in the row, to read: no call link. */
 export function ContactLinks({ phone, email }: { phone?: string | null; email?: string | null }) {
   const t = useT();
   if (!phone && !email) return null;
@@ -60,11 +60,6 @@ export function ContactLinks({ phone, email }: { phone?: string | null; email?: 
     'flex size-7 items-center justify-center rounded-full border border-de9-line text-[12.5px] text-de9-slate no-underline';
   return (
     <div className="mt-1.5 flex items-center gap-1.5">
-      {phone && (
-        <a href={telHref(phone)} aria-label={t('hcAppeler')} title={t('hcAppeler')} className={cls}>
-          <Glyph icon={Phone} />
-        </a>
-      )}
       {phone && (
         <a href={waHref(phone)} target="_blank" rel="noreferrer" aria-label="WhatsApp" title="WhatsApp" className={cls}>
           <Glyph icon={MessageCircle} />

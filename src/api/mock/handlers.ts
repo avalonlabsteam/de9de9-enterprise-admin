@@ -11,7 +11,6 @@ import { commandeDetailOf } from './commandeDetail';
 import { worklistFiltersHandler, worklistHandler, worklistKpisHandler } from './worklist';
 import { demanderDevisHandler } from './demandeDevis';
 import {
-  devisProposerHandler,
   devisRefuserHandler,
   devisValiderHandler,
   affecterOuvrierHandler,
@@ -150,11 +149,6 @@ passthrough('POST', '/devis/:devisId/refuser');
 
 register('POST', '/devis/:devisId/valider', devisValiderHandler);
 register('POST', '/devis/:devisId/refuser', devisRefuserHandler);
-
-// Integrated with the real API — comment out to fall back to the mock twin.
-passthrough('POST', '/appels-offres/:rfqId/devis/proposer');
-
-register('POST', '/appels-offres/:rfqId/devis/proposer', devisProposerHandler);
 
 // Integrated with the real API — comment out to fall back to the mock twin,
 // which records the brief on the appel d'offres and opens its devis (S2 → S3).

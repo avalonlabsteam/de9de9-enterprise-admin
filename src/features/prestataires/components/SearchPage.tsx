@@ -9,12 +9,13 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
-import { ArrowRight, Check, Mail, MapPin, MessageCircle, Phone, Search, Star, Timer, X } from 'lucide-react';
+import { ArrowRight, Check, Mail, MapPin, MessageCircle, Search, Star, Timer, X } from 'lucide-react';
 import { useL, useT } from '@/lib/i18n';
 import { cn, isInk } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Glyph } from '@/components/common/Glyph';
+import { PhoneNumber } from '@/components/common/PhoneNumber';
 import { useCommunes, useWilayas } from '@/features/geo/api/geo';
 import { taxoOf } from '@/features/annonces/lib/annonces';
 import { useContextCommande, useRecherchePrestataires, type CtxCommande } from '../api/prestataires';
@@ -676,12 +677,7 @@ function SearchPageContent({ ctxCmd }: { ctxCmd: CtxCommande | null }) {
 
                   <div className="mt-[13px] flex flex-wrap gap-2">
                     {p.contactPhone && (
-                      <a
-                        href={'tel:' + p.contactPhone}
-                        className="flex-[1_1_30%] rounded-full border border-de9-line bg-card p-2.5 text-center text-[12px] font-bold text-de9-slate no-underline"
-                      >
-                        <Glyph icon={Phone} /> {t('tel')}
-                      </a>
+                      <PhoneNumber value={p.contactPhone} className="flex-[1_1_30%] p-2.5 text-[12px] font-bold text-de9-ink" />
                     )}
                     {whatsAppHref && (
                       <a

@@ -1,9 +1,10 @@
 // V4 → V5 « Déposer la facture » for a live visit: POST
 // /commandes/worklist/{id}/deposer-facture uploads the invoice itself
 // (multipart `files`), with the amount and note as the JSON `payload`.
+// The amount is mandatory at this step: nothing is sent without it.
 // ActionModals' DepositModal stays as it is — the mock console only records a
 // file name. Visual ground truth: src/admin/views/Console.tsx modals.
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import type { ChangeEvent } from 'react';
 import { Paperclip, ReceiptText, Upload, X } from 'lucide-react';
 import { useT } from '@/lib/i18n';
@@ -16,31 +17,53 @@ interface DepositInvoiceModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   pending: boolean;
-  /** `montantCredits` / `note` are left out when the fields are empty — the payload part is optional. */
-  onConfirm: (values: { files: File[]; montantCredits?: number; note?: string }) => void;
+  /** The amount always goes — a whole number of credits above zero; `note` is left out when empty. */
+  onConfirm: (values: { files: File[]; montantCredits: number; note?: string }) => void;
 }
 
-const LABEL_CLASS = 'mb-1.5 text-xs font-semibold text-de9-slate';
+const LABEL_CLASS = 'mb-1.5 block text-xs font-semibold text-de9-slate';
 const INPUT_CLASS =
   'h-auto w-full rounded-xs border border-outline bg-card px-3.5 py-3 text-[14px] text-de9-ink shadow-none outline-none';
+
+/** The typed amount as credits — a whole number above zero — or null while it is not one. */
+function parseMontant(raw: string): number | null {
+  const text = raw.trim();
+  if (!/^\d+$/.test(text)) return null;
+  const amount = Number(text);
+  return Number.isSafeInteger(amount) && amount > 0 ? amount : null;
+}
 
 export function DepositInvoiceModal({ open, onOpenChange, pending, onConfirm }: DepositInvoiceModalProps) {
   const t = useT();
   const [files, setFiles] = useState<File[]>([]);
   const [montant, setMontant] = useState('');
   const [note, setNote] = useState('');
+  // The amount's error waits for a refused « Déposer » or for a typed value that
+  // is not an amount: the dialog opens with the cursor in this field, and merely
+  // leaving it to pick the file must not turn it red.
+  const [montantChecked, setMontantChecked] = useState(false);
+  const montantRef = useRef<HTMLInputElement>(null);
+  const amount = parseMontant(montant);
+  const montantError = montantChecked && amount === null;
 
   const pickFiles = (e: ChangeEvent<HTMLInputElement>): void => {
-    const picked = e.target.files;
-    if (picked && picked.length) setFiles((fs) => [...fs, ...picked]);
+    // Copied now, not inside the updater: clearing the input empties this very
+    // FileList, and React often runs the updater only after that — a file picked
+    // after typing in the form was then silently dropped.
+    const picked = Array.from(e.target.files ?? []);
+    if (picked.length) setFiles((fs) => [...fs, ...picked]);
     e.target.value = '';
   };
 
   const submit = (): void => {
-    const amount = Number(montant);
+    if (amount === null) {
+      setMontantChecked(true);
+      montantRef.current?.focus();
+      return;
+    }
     onConfirm({
       files,
-      ...(montant.trim() && Number.isFinite(amount) ? { montantCredits: amount } : {}),
+      montantCredits: amount,
       ...(note.trim() ? { note: note.trim() } : {}),
     });
   };
@@ -60,7 +83,10 @@ export function DepositInvoiceModal({ open, onOpenChange, pending, onConfirm }: 
         <div className="mt-[9px] text-[13px] leading-[1.55] text-de9-slate">{t('depositInfo')}</div>
 
         <div className="mt-4">
-          <div className={LABEL_CLASS}>{t('fileLabel')}</div>
+          <div className={LABEL_CLASS}>
+            {t('fileLabel')}
+            <span aria-hidden> *</span>
+          </div>
           <div className="flex flex-wrap items-center gap-[9px]">
             {files.map((file, i) => (
               <div
@@ -94,20 +120,40 @@ export function DepositInvoiceModal({ open, onOpenChange, pending, onConfirm }: 
         </div>
 
         <div className="mt-3.5">
-          <div className={LABEL_CLASS}>{t('montantLabel')}</div>
+          <label htmlFor="deposit-montant" className={LABEL_CLASS}>
+            {t('montantLabel')}
+            <span aria-hidden> *</span>
+          </label>
           <Input
+            ref={montantRef}
+            id="deposit-montant"
             type="number"
-            min={0}
+            inputMode="numeric"
+            min={1}
+            step={1}
+            required
             value={montant}
             onChange={(e) => setMontant(e.target.value)}
-            placeholder={t('optionnel')}
+            onBlur={() => {
+              if (montant.trim()) setMontantChecked(true);
+            }}
+            aria-invalid={montantError}
+            aria-describedby={montantError ? 'deposit-montant-error' : undefined}
             className={INPUT_CLASS}
           />
+          {montantError && (
+            <div id="deposit-montant-error" role="alert" className="mt-1.5 text-[11.5px] font-semibold text-de9-red">
+              {t('depositMontantRequis')}
+            </div>
+          )}
         </div>
 
         <div className="mt-3.5">
-          <div className={LABEL_CLASS}>{t('noteLabel')}</div>
+          <label htmlFor="deposit-note" className={LABEL_CLASS}>
+            {t('noteLabel')}
+          </label>
           <Input
+            id="deposit-note"
             value={note}
             onChange={(e) => setNote(e.target.value)}
             placeholder={t('optionnel')}

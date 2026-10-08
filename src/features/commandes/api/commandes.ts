@@ -142,24 +142,6 @@ export function useDevisDecision() {
 }
 
 /**
- * POST /appels-offres/:rfqId/devis/proposer — transmit an appel d'offres's
- * validated devis to the client, who can then choose among them. `rfqId` is the
- * commande id of an 'rfq' worklist row. No request body; responds with the
- * updated worklist detail, where transmitted devis come back `choosable`.
- */
-export function useProposerDevis(rfqId: string) {
-  return useMutation({
-    mutationFn: async (): Promise<WorklistDetail> => {
-      const res = await apiClient.post(`/appels-offres/${encodeURIComponent(rfqId)}/devis/proposer`);
-      return worklistDetailSchema.parse(res.data);
-    },
-    onSettled: () => {
-      void queryClient.invalidateQueries({ queryKey: ['commandes'] });
-    },
-  });
-}
-
-/**
  * S4 → V1 « Choisir le prestataire » — the client retains one of the devis they
  * were shown, which turns the appel d'offres into a visit. Per the API schema
  * the body is { devisId, date, time }: retaining a devis also schedules that
@@ -228,8 +210,9 @@ export function useAffecterOuvrier(visitId: string) {
 /**
  * POST /commandes/worklist/:id/deposer-facture — V4 → V5: upload the invoice.
  * multipart/form-data, like demander-devis: each file goes in a `files` part,
- * and the amount / note travel as a JSON `payload` string, which the contract
- * makes optional — it is omitted when neither is filled.
+ * and the amount / note travel as a JSON `payload` string. The contract calls
+ * that part optional, but the panel requires the amount at this step, so it
+ * always goes.
  *
  * That JSON's field names are NOT documented: `montantCredits` and `note`
  * follow the API's own vocabulary (montantCredits everywhere in its responses).
@@ -244,16 +227,16 @@ export function useDeposerFacture(visitId: string) {
       note,
     }: {
       files: File[];
-      montantCredits?: number;
+      montantCredits: number;
       note?: string;
     }): Promise<void> => {
       const form = new FormData();
       files.forEach((file) => form.append('files', file));
       const payload = {
-        ...(montantCredits !== undefined ? { montantCredits } : {}),
+        montantCredits,
         ...(note?.trim() ? { note: note.trim() } : {}),
       };
-      if (Object.keys(payload).length) form.append('payload', JSON.stringify(payload));
+      form.append('payload', JSON.stringify(payload));
       await apiClient.post(`/commandes/worklist/${encodeURIComponent(visitId)}/deposer-facture`, form, {
         timeout: 120_000,
       });
