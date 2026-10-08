@@ -124,6 +124,15 @@ export function kindLong(kind: string, kindLabel: string | null | undefined, t: 
 
 // ===================== the verdict buttons =====================
 
+/**
+ * Refusing a validated piece is a revocation (fraud, an expired RC): the same
+ * verdict and the same call, named for what it undoes — « Révoquer la
+ * validation » on the button, in the dialog's title and on its confirmation.
+ */
+export function isRevocation(piece: Pick<KycRevuePiece, 'statut'>): boolean {
+  return piece.statut === 'valide';
+}
+
 export interface VerdictButton {
   show: boolean;
   enabled: boolean;

@@ -8,10 +8,11 @@ import type { ReactNode } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Dialog as DialogPrimitive } from 'radix-ui';
 import { toast } from 'sonner';
-import { ArrowRight, Check, Circle, Eye, Mail, MapPin, MessageCircle, Phone, ReceiptText, Star } from 'lucide-react';
+import { ArrowRight, Check, Circle, Eye, Mail, MapPin, MessageCircle, ReceiptText, Star } from 'lucide-react';
 import { cn, isInk, isLiveId } from '@/lib/utils';
 import { Dialog, DialogOverlay, DialogPortal, DialogTitle } from '@/components/ui/dialog';
 import { Glyph } from '@/components/common/Glyph';
+import { PhoneNumber } from '@/components/common/PhoneNumber';
 import { useL, useT } from '@/lib/i18n';
 import { uiActions } from '@/stores/uiStore';
 import { SyncPanel } from '@/features/acces/components/SyncPanel';
@@ -316,12 +317,8 @@ function PresProfile({
                   </div>
                 </div>
                 <div className="mt-4 flex flex-wrap gap-[9px]">
-                  <a
-                    href={'tel:' + vm.phone.replace(/\s/g, '')}
-                    className="min-w-[90px] flex-1 rounded-full border border-de9-line bg-card py-[11px] text-center text-[12.5px] font-bold text-de9-slate no-underline"
-                  >
-                    <Glyph icon={Phone} /> {t('tel')}
-                  </a>
+                  {/* The number itself, to read or copy — not a call link. */}
+                  <PhoneNumber value={vm.phone} className="min-w-[90px] flex-1 py-[11px] text-[12.5px] font-bold text-de9-ink" />
                   <a
                     href={vm.waUrl}
                     target="_blank"

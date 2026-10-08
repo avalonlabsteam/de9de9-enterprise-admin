@@ -101,7 +101,6 @@ function international(phone: string): string {
   return '+213' + digits.replace(/^0/, '');
 }
 
-export const telHref = (phone: string): string => 'tel:' + international(phone);
 export const waHref = (phone: string): string => 'https://wa.me/' + international(phone).slice(1);
 
 // ===================== errors =====================

@@ -13,7 +13,6 @@ import {
   Mail,
   MapPin,
   MessageCircle,
-  Phone,
   Plus,
   ReceiptText,
   TriangleAlert,
@@ -21,6 +20,7 @@ import {
 import { cn, isLiveId } from '@/lib/utils';
 import { Dialog, DialogOverlay, DialogPortal, DialogTitle } from '@/components/ui/dialog';
 import { Glyph } from '@/components/common/Glyph';
+import { PhoneNumber } from '@/components/common/PhoneNumber';
 import { useL, useT } from '@/lib/i18n';
 import { uiActions } from '@/stores/uiStore';
 import { useKycCompanyIdByName, useKycRevue } from '@/features/kyc/api/kyc';
@@ -195,7 +195,6 @@ function ClientFiche({
   const openPiece = (title: string, fileName: string, documentId?: string | null) =>
     setPiece({ title, fileName, documentId });
 
-  const tel = first?.phone ? 'tel:+213' + first.phone.replace(/^0/, '') : '#';
   const wa = first?.phone ? 'https://wa.me/213' + first.phone.replace(/^0/, '') : '#';
   const mail = first?.clientEmail ? 'mailto:' + first.clientEmail : '#';
 
@@ -257,12 +256,8 @@ function ClientFiche({
               </div>
             </div>
             <div className="mt-4 flex gap-[9px]">
-              <a
-                href={tel}
-                className="flex-1 rounded-full border border-de9-line bg-card py-[11px] text-center text-[12.5px] font-bold text-de9-slate no-underline"
-              >
-                <Glyph icon={Phone} /> Tél
-              </a>
+              {/* The number itself, to read or copy — not a call link. */}
+              <PhoneNumber value={first?.phone} className="flex-1 py-[11px] text-[12.5px] font-bold text-de9-ink" />
               <a
                 href={wa}
                 target="_blank"

@@ -3,13 +3,11 @@
 // placements dialog of « Sous-traitance ».
 import { useState, type FormEvent } from 'react';
 import { toast } from 'sonner';
-import { Phone } from 'lucide-react';
 import { useT } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 import { problemMessage } from '@/api/problem';
-import { Glyph } from '@/components/common/Glyph';
+import { PhoneNumber } from '@/components/common/PhoneNumber';
 import { fmtAlger } from '@/features/comptabilite/lib/comptabilite';
-import { telHref } from '@/features/handicap/lib/handicap';
 import { refreshCtr, useReleasePlacement } from '../api/contractuels';
 import { CHIP_GREEN, CHIP_GREY, REASON_MAX, ctrProblem } from '../lib/contractuels';
 import type { CtrPlacement } from '../schemas/contractuels';
@@ -75,11 +73,7 @@ export function PlacementsList({ placements }: { placements: CtrPlacement[] }) {
                   {!actif && pl.releasedAt && <> · {t('stLibereLe').replace('{n}', fmtAlger(pl.releasedAt, false) ?? '—')}</>}
                 </div>
               </div>
-              {pl.phone && (
-                <a href={telHref(pl.phone)} dir="ltr" className="text-[12px] font-semibold text-de9-teal-dark no-underline">
-                  <Glyph icon={Phone} /> {pl.phone}
-                </a>
-              )}
+              {pl.phone && <PhoneNumber value={pl.phone} className="text-[12px] font-semibold text-de9-slate" />}
               <span className={cn(PILL, actif ? CHIP_GREEN : CHIP_GREY)}>{t(actif ? 'stEnPoste' : 'stLibere')}</span>
               {actif && releasing !== pl.id && (
                 <button
